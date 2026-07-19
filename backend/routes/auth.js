@@ -248,16 +248,7 @@ const generateUserId = async () => {
 // });
 
 // 🔥 RANDOM PASSWORD GENERATOR HELPER FUNCTION
-const generateRandomPassword = (length = 8) => {
-    // Sirf Capital letters hataye hain, small letters aur numbers wahi hain
-    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-    let pass = '';
-    for (let i = 0; i < length; i++) {
-        pass += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return pass;
-};
-
+ 
 // router.post('/register', checkFeature('allowRegistrations'), async (req, res) => {
 //   try {
 //     // 🔥 Frontend se ab password nahi aayega, sirf ye details aayengi
@@ -621,17 +612,50 @@ const generateRandomPassword = (length = 8) => {
 
 
 
+// 🔥 Numeric-only password generator (replaces the old alphanumeric generateRandomPassword)
+// Generates an N-digit numeric string, e.g. "48213967"
+function generateNumericPassword(length = 8) {
+  let password = '';
+  for (let i = 0; i < length; i++) {
+    password += Math.floor(Math.random() * 10); // 0-9
+  }
+  return password;
+}
+
 router.post('/register', checkFeature('allowRegistrations'), async (req, res) => {
   try {
     // 🔥 Frontend se ab password nahi aayega, sirf ye details aayengi
-    let { name, mobile, email, country, sponsorId, deviceId, walletAddress } = req.body;
+    // 🔥 walletAddress hata diya gaya hai (ab required nahi hai)
+    // 🔥 hp (honeypot) aur formLoadedAt anti-bot fields
+    let { name, mobile, email, country, sponsorId, deviceId, hp, formLoadedAt } = req.body;
     const userIP = getClientIP(req);
+
+    // 🛡️ ANTI-BOT CHECK 1: Honeypot field must be empty.
+    // Real users never see or fill this field (hidden via CSS on the frontend).
+    // Bots that auto-fill every input will fill it, exposing themselves.
+    if (hp && hp.trim() !== '') {
+      console.log(`[ANTI-BOT] Honeypot triggered from IP: ${userIP}`);
+      return res.status(400).json({ message: 'Registration failed. Please try again.' });
+    }
+
+    // 🛡️ ANTI-BOT CHECK 2: Timing check.
+    // A human needs at least ~2.5s to fill the form. Bots submit near-instantly.
+    if (formLoadedAt) {
+      const elapsed = Date.now() - Number(formLoadedAt);
+      if (isNaN(elapsed) || elapsed < 2500) {
+        console.log(`[ANTI-BOT] Submission too fast (${elapsed}ms) from IP: ${userIP}`);
+        return res.status(400).json({ message: 'Please take a moment to fill the form before submitting.' });
+      }
+      // Optional: reject absurdly stale submissions too (e.g. > 1 hour = stale/replayed form)
+      if (elapsed > 60 * 60 * 1000) {
+        return res.status(400).json({ message: 'Form expired. Please refresh and try again.' });
+      }
+    }
 
     // 🔥 SECURITY LAYER 0: Remove extra spaces (trim)
     name = name ? name.trim() : '';
     mobile = mobile ? mobile.trim() : '';
     email = email ? email.trim() : '';
-    walletAddress = walletAddress ? walletAddress.trim() : ''; 
 
     // 🔥 1. STRICT NAME VALIDATION
     const nameRegex = /^[A-Za-z\s]{3,50}$/;
@@ -650,15 +674,7 @@ router.post('/register', checkFeature('allowRegistrations'), async (req, res) =>
         return res.status(400).json({ message: 'Registration failed: Only @gmail.com emails are accepted.' });
     }
 
-    // 🔥 4. USDT BEP20 WALLET VALIDATION (Flexible Length)
-    if (!walletAddress) {
-        return res.status(400).json({ message: 'USDT BEP20 Withdrawal Address is compulsory.' });
-    }
-    if (!/^0x[a-fA-F0-9]{28,48}$/.test(walletAddress)) {
-        return res.status(400).json({ message: 'Invalid USDT BEP20 Address format. It must start with 0x and be valid length.' });
-    }
-
-    // 🔥 5. SPONSOR CHECK LOGIC (Modified for FIRST ID)
+    // 🔥 4. SPONSOR CHECK LOGIC (Modified for FIRST ID)
     let actualSponsorId = null; // Default null rakha hai (First ID ke liye)
     let isFakeSponsor = false;
 
@@ -729,17 +745,16 @@ router.post('/register', checkFeature('allowRegistrations'), async (req, res) =>
         }
     }
 
-    // 🔥 AUTO GENERATE PASSWORD
-    const generatedPassword = generateRandomPassword(8); // 8 character ka strong mix password
+    // 🔥 AUTO GENERATE NUMERIC-ONLY PASSWORD (8 digits, e.g. "48213967")
+    const generatedPassword = generateNumericPassword(8);
 
-    // User Creation
+    // User Creation (walletAddress removed)
     const user = new User({
       userId: newUserId, 
       name, mobile, email, country,
       password: generatedPassword, 
       transactionPassword: generatedPassword, // Same password dono ke liye
       sponsorId: actualSponsorId, // Agar First ID hai toh ye null save hoga
-      walletAddress: walletAddress, 
       role: 'user',
       ipAddress: userIP,
       deviceId: deviceId || null 
@@ -807,6 +822,9 @@ router.post('/register', checkFeature('allowRegistrations'), async (req, res) =>
     res.status(500).json({ message: 'Server error.' });
   }
 });
+
+
+
 router.post('/login', async (req, res) => {
   try {
     const { userId, password, deviceId } = req.body;

@@ -51,16 +51,16 @@ const SafePalIcon = () => (
 
 
 // --- TERMS & CONDITIONS (FAQ) DATA ---
+// 🔥 "Donation Packages" (dollar amounts) entry removed per request; list renumbered 01-08
 const faqData = [
   { q: "01. Free Registration", a: "Joining on the platform is completely free." },
   { q: "02. Transaction Currency", a: "All donations, earnings and withdrawals are processed in BEP20 USDT only." },
-  { q: "03. Donation Packages", a: "Available donation packages are: $30, $100, $300, $500 and $1000." },
-  { q: "04. Earnings Policy", a: "All earnings are subject to the rules of the active donation package." },
-  { q: "05. Upgrade Bounce Back Income", a: "If a direct member activates a higher package than yours, the Direct and Upgrade Income will go to the nearest upline who has the same package upgraded." },
-  { q: "06. Package Upgrade", a: "To receive benefits and income from a higher package, you must upgrade to that package." },
-  { q: "07. 24/7 Withdrawal Available", a: "Withdraw your earnings 24 hours a day, 7 days a week." },
-  { q: "08. One Account Policy", a: "Each member is allowed to have only one account. Duplicate accounts are not allowed." },
-  { q: "09. Rights Reserved", a: "The platform reserves the right to change, modify or update any rule, policy or plan at any time without prior notice." }
+  { q: "03. Earnings Policy", a: "All earnings are subject to the rules of the active donation package." },
+  { q: "04. Upgrade Bounce Back Income", a: "If a direct member activates a higher package than yours, the Direct and Upgrade Income will go to the nearest upline who has the same package upgraded." },
+  { q: "05. Package Upgrade", a: "To receive benefits and income from a higher package, you must upgrade to that package." },
+  { q: "06. 24/7 Withdrawal Available", a: "Withdraw your earnings 24 hours a day, 7 days a week." },
+  { q: "07. One Account Policy", a: "Each member is allowed to have only one account. Duplicate accounts are not allowed." },
+  { q: "08. Rights Reserved", a: "The platform reserves the right to change, modify or update any rule, policy or plan at any time without prior notice." }
 ];
 
 const Home = () => {
@@ -158,7 +158,7 @@ const Home = () => {
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
               <button onClick={() => navigate('/register')} className="bg-emerald-500 hover:bg-emerald-600 text-white text-sm sm:text-base font-black tracking-widest px-8 py-4 sm:py-5 rounded-2xl flex items-center justify-center gap-3 transition-all transform hover:-translate-y-1 shadow-[0_10px_30px_rgba(16,185,129,0.3)] w-full sm:w-auto">
-                START WITH $30 <ArrowRight size={20} />
+                GET STARTED <ArrowRight size={20} />
               </button>
             </div>
           </div>
