@@ -71,11 +71,9 @@ const IncomeSummary = ({ income = {}, user = {} }) => {
       {/* Header — passbook style */}
       <div className="flex items-end justify-between mb-4 px-1">
         <div>
-          <p className="text-slate-400 text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.2em] mb-0.5">
-            Statement
-          </p>
+           
           <h2 className="text-lg sm:text-xl md:text-2xl font-black text-[#0b1c3c] tracking-tight">
-            Type of Earning
+            Earnings
           </h2>
         </div>
         <p className="text-slate-300 text-[10px] sm:text-xs font-mono font-bold hidden sm:block">
@@ -97,12 +95,7 @@ const IncomeSummary = ({ income = {}, user = {} }) => {
             ></span>
 
             {/* Number tag */}
-            <span
-              className="shrink-0 font-mono text-[10px] sm:text-xs font-bold w-6 sm:w-7 text-center"
-              style={{ color: item.accent }}
-            >
-              {item.num}
-            </span>
+        
 
             {/* Icon */}
             <div

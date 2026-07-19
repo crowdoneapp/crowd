@@ -28,9 +28,9 @@ const allowedOrigins = [
   'http://soul.localhost:5173', 
 
   // --- LIVE SERVER KE LIYE (Ye sabse zaroori hain) ---
-  'https://crowdone.live',        // 🔥 Live Main Website
-  'https://www.crowdone.live',    // 🔥 Live Main Website (www wali)
-  'https://soul.crowdone.live'   // 🔥 Live Admin Panel (soul.localhost ki jagah)
+  'https://crowdone.world',        // 🔥 Live Main Website
+  'https://www.crowdone.world',    // 🔥 Live Main Website (www wali)
+  'https://soul.crowdone.world'   // 🔥 Live Admin Panel (soul.localhost ki jagah)
 ];
 app.use(cors({
   origin: function (origin, callback) {

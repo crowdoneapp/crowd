@@ -109,7 +109,7 @@ const UserLifetimeTxReport = () => {
   //     const adminToken = localStorage.getItem('adminToken');
   //     const res = await api.post('/admin/impersonate', { userId: targetUserId }, { headers: { Authorization: `Bearer ${adminToken}` } });
   //     const { token: userToken, user: impersonatedUser } = res.data;
-  //     const targetBaseUrl = window.location.hostname.includes("localhost") ? "http://localhost:5173" : "https://crowdone.live"; 
+  //     const targetBaseUrl = window.location.hostname.includes("localhost") ? "http://localhost:5173" : "https://crowdone.world"; 
   //     window.open(`${targetBaseUrl}/login?token=${userToken}&user=${encodeURIComponent(JSON.stringify(impersonatedUser))}`, '_blank');
   //   } catch (err) { alert(err.response?.data?.message || "Login failed"); }
   // };

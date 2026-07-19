@@ -1,15 +1,19 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
-import { Menu, LogOut } from "lucide-react";
+import { Menu, User } from "lucide-react"; // 🔥 LogOut hata kar User import kiya
 
 const TopNav = ({ onHamburgerClick }) => {
   const navigate = useNavigate();
-  const { logout } = useAuth();
 
   const handleLogoClick = () => {
     navigate("/dashboard");
     window.scrollTo({ top: 0, behavior: "smooth" }); 
+  };
+
+  // 🔥 Profile par le jaane wala function
+  const handleProfileClick = () => {
+    navigate("/profile");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
@@ -33,7 +37,7 @@ const TopNav = ({ onHamburgerClick }) => {
             className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 cursor-pointer flex items-center justify-center transition-transform hover:scale-105"
             onClick={handleLogoClick}
           >
-            {/* 🔥 YAHAN AAPKA NAYA LOGO AAYEGA 🔥 */}
+            {/* 🔥 YAHAN AAPKA LOGO HAI 🔥 */}
             <img 
               src="/logo.jpg" // Agar aapne png me save kiya hai to "/logo.png" kar dena
               alt="Crowd One Logo" 
@@ -41,14 +45,14 @@ const TopNav = ({ onHamburgerClick }) => {
             />
           </div>
 
-          {/* 3. Right Section: Logout */}
+          {/* 3. Right Section: Profile Button */}
           <div className="flex-1 flex justify-end">
             <button
-              onClick={logout}
-              className="flex items-center gap-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 px-3 py-2 md:px-4 md:py-2.5 rounded-xl transition-all active:scale-95 shadow-sm"
+              onClick={handleProfileClick}
+              className="flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 px-3 py-2 md:px-4 md:py-2.5 rounded-xl transition-all active:scale-95 shadow-sm"
             >
-              <LogOut size={18} strokeWidth={2.5} />
-              <span className="hidden md:inline font-bold text-xs tracking-widest uppercase">Logout</span>
+              <User size={18} strokeWidth={2.5} />
+              <span className="hidden md:inline font-bold text-xs tracking-widest uppercase">Profile</span>
             </button>
           </div>
 

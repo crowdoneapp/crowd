@@ -98,7 +98,7 @@ const MonthlyRewardReport = () => {
       
   //     let targetBaseUrl = window.location.hostname.includes("localhost") || window.location.hostname === "127.0.0.1" 
   //                         ? "http://localhost:5173" 
-  //                         : "https://crowdone.live"; 
+  //                         : "https://crowdone.world"; 
 
   //     const mainWebsiteUrl = `${targetBaseUrl}/login?token=${userToken}&user=${userDataStr}`;
   //     window.open(mainWebsiteUrl, '_blank', 'noopener,noreferrer');

@@ -220,7 +220,7 @@ const generateUserId = async () => {
 //     //                 </div>
                     
 //     //                 <div style="text-align: center; margin-bottom: 40px;">
-//     //                     <a href="https://crowdone.live/login" style="display: inline-block; background-color: #1e88e5; color: #ffffff; text-decoration: none; padding: 14px 30px; border-radius: 6px; font-size: 16px; font-weight: bold; box-shadow: 0 4px 6px rgba(30,136,229,0.3);">🔐 Login to Dashboard</a>
+//     //                     <a href="https://crowdone.world/login" style="display: inline-block; background-color: #1e88e5; color: #ffffff; text-decoration: none; padding: 14px 30px; border-radius: 6px; font-size: 16px; font-weight: bold; box-shadow: 0 4px 6px rgba(30,136,229,0.3);">🔐 Login to Dashboard</a>
 //     //                 </div>
                     
 //     //                 <p style="font-size: 14px; color: #d32f2f; margin: 0; background-color: #ffebee; padding: 12px; border-radius: 6px;">
@@ -396,7 +396,7 @@ const generateUserId = async () => {
 //                         </p>
 //                     </div>
 //                     <div style="text-align: center; margin-bottom: 40px;">
-//                         <a href="https://crowdone.live/login" style="display: inline-block; background-color: #1e88e5; color: #ffffff; text-decoration: none; padding: 14px 30px; border-radius: 6px; font-size: 16px; font-weight: bold; box-shadow: 0 4px 6px rgba(30,136,229,0.3);">🔐 Login to Dashboard</a>
+//                         <a href="https://crowdone.world/login" style="display: inline-block; background-color: #1e88e5; color: #ffffff; text-decoration: none; padding: 14px 30px; border-radius: 6px; font-size: 16px; font-weight: bold; box-shadow: 0 4px 6px rgba(30,136,229,0.3);">🔐 Login to Dashboard</a>
 //                     </div>
 //                     <p style="font-size: 14px; color: #d32f2f; margin: 0; background-color: #ffebee; padding: 12px; border-radius: 6px;">
 //                         ⚠️ <strong>Security Alert:</strong> Please do not share your login or transaction passwords with anyone for your account's safety.
@@ -580,7 +580,7 @@ const generateUserId = async () => {
 //                         </p>
 //                     </div>
 //                     <div style="text-align: center; margin-bottom: 40px;">
-//                         <a href="https://crowdone.live/login" style="display: inline-block; background-color: #1e88e5; color: #ffffff; text-decoration: none; padding: 14px 30px; border-radius: 6px; font-size: 16px; font-weight: bold; box-shadow: 0 4px 6px rgba(30,136,229,0.3);">🔐 Login to Dashboard</a>
+//                         <a href="https://crowdone.world/login" style="display: inline-block; background-color: #1e88e5; color: #ffffff; text-decoration: none; padding: 14px 30px; border-radius: 6px; font-size: 16px; font-weight: bold; box-shadow: 0 4px 6px rgba(30,136,229,0.3);">🔐 Login to Dashboard</a>
 //                     </div>
 //                     <p style="font-size: 14px; color: #d32f2f; margin: 0; background-color: #ffebee; padding: 12px; border-radius: 6px;">
 //                         ⚠️ <strong>Security Alert:</strong> Please do not share your login or transaction passwords with anyone for your account's safety.
@@ -793,7 +793,7 @@ router.post('/register', checkFeature('allowRegistrations'), async (req, res) =>
                         </p>
                     </div>
                     <div style="text-align: center; margin-bottom: 40px;">
-                        <a href="https://crowdone.live/login" style="display: inline-block; background-color: #1e88e5; color: #ffffff; text-decoration: none; padding: 14px 30px; border-radius: 6px; font-size: 16px; font-weight: bold; box-shadow: 0 4px 6px rgba(30,136,229,0.3);">🔐 Login to Dashboard</a>
+                        <a href="https://crowdone.world/login" style="display: inline-block; background-color: #1e88e5; color: #ffffff; text-decoration: none; padding: 14px 30px; border-radius: 6px; font-size: 16px; font-weight: bold; box-shadow: 0 4px 6px rgba(30,136,229,0.3);">🔐 Login to Dashboard</a>
                     </div>
                     <p style="font-size: 14px; color: #d32f2f; margin: 0; background-color: #ffebee; padding: 12px; border-radius: 6px;">
                         ⚠️ <strong>Security Alert:</strong> Please do not share your login or transaction passwords with anyone for your account's safety.
@@ -945,7 +945,7 @@ router.post('/forgot-password', checkFeature(), async (req, res) => {
 
     await user.save();
 
-    const resetLink = `https://crowdone.live/reset-password/${resetToken}`;
+    const resetLink = `https://crowdone.world/reset-password/${resetToken}`;
     
     // 📧 SEND EMAIL
     await sendEmail({
@@ -1015,7 +1015,7 @@ router.post('/reset-password/:token', async (req, res) => {
           </div>
 
           <br/>
-          <a href="https://crowdone.live/login"
+          <a href="https://crowdone.world/login"
           style="background:#1e88e5; color:#fff; padding:12px 25px; text-decoration:none; border-radius:6px;">
           🔐 Login Now
           </a>

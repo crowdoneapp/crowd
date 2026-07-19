@@ -74,7 +74,7 @@ function UserProfile() {
     }
   };
 
-  const supportEmail = "support@crowdone.live";
+  const supportEmail = "support@crowdone.world";
   const mailSubject = encodeURIComponent(`Wallet Address Update Request - User ID: ${user?.userId}`);
   const mailBody = encodeURIComponent(`Hello Support Team,\n\nPlease update my USDT (BEP20) wallet address.\n\nUser ID: ${user?.userId}\nRegistered Email: ${user?.email}\nNew Wallet Address: [Please paste your BEP-20 address here]\n\nThank you.`);
 

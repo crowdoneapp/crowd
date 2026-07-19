@@ -70,7 +70,7 @@
 //           reply_markup: {
 //             inline_keyboard: [
 //               [
-//                 { text: "🌐 Go to Website / Login", url: "https://crowdone.live/login" }
+//                 { text: "🌐 Go to Website / Login", url: "https://crowdone.world/login" }
 //               ]
 //             ]
 //           }

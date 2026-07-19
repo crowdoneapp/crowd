@@ -190,6 +190,10 @@ const Dashboard = ({ setModalState }) => {
 
       <div className="space-y-6 md:space-y-8 relative z-10 px-2 sm:px-4 md:px-0 pt-4">
         
+           <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_8px_30px_-10px_rgba(0,0,0,0.04)] border border-slate-100">
+            <ReferralLink link={referralLink} />
+        </div>
+        
         <section>
           <WalletBalance userId={user.userId} refreshKey={walletRefreshKey} income={income} />
         </section>
@@ -203,9 +207,7 @@ const Dashboard = ({ setModalState }) => {
           />
         </section>
 
-        <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_8px_30px_-10px_rgba(0,0,0,0.04)] border border-slate-100">
-            <ReferralLink link={referralLink} />
-        </div>
+     
 
         {/* <FastTrackTimerBanner user={user} />  */}
 
