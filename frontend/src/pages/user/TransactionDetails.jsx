@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from "react";
-import api from "../../api/axios";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
+import api from "../../api/axios"; 
 import { getUserId } from "../../utils/authUtils";
-import { Search, ChevronLeft, ChevronRight, FileText, ArrowDownLeft, ArrowUpRight, ArrowRightLeft, ListFilter } from "lucide-react";
+import { Search, FileText, ArrowDownLeft, ArrowUpRight, ArrowRightLeft, ListFilter, Activity, ChevronLeft, ChevronRight } from "lucide-react"; 
 
 const TransactionDetails = () => {
   const userId = String(getUserId()); 
@@ -13,6 +13,10 @@ const TransactionDetails = () => {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [loading, setLoading] = useState(true);
 
+  // 🔥 PAGINATION FUNCTIONS (Ye component ke andar hone chahiye)
+  const handlePrev = () => currentPage > 1 && setCurrentPage(p => p - 1);
+  const handleNext = () => currentPage < totalPages && setCurrentPage(p => p + 1);
+
   useEffect(() => {
     if (!userId) return;
     
@@ -21,7 +25,6 @@ const TransactionDetails = () => {
       .then((res) => {
         let sorted = (res.data || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-        // 🔥 SUPER STRICT LEDGER FILTER 🔥
         sorted = sorted.filter(txn => {
             const tType = (txn.type || "").toLowerCase();
             const tSource = (txn.source || "").toLowerCase();
@@ -31,32 +34,12 @@ const TransactionDetails = () => {
             const tTo = String(txn.toUserId);
             const me = userId;
 
-            // 0. 🔥 ULTIMATE BLOCKER: Faltu incomes hatao (Jaise Instant Leader Bonus)
-            if (
-              tSource === "instant_leader_bonus" || 
-              tDesc.includes("instant leader bonus") || 
-              tDesc.includes("instant bonus")
-            ) {
-              return false;
-            }
-
-            // 1. Promo waale topup ignore karo
-            if (tType === "topup" && txn.description?.toUpperCase().includes("PROMOTION")) {
-                return false;
-            }
-
-            // 2. Agar ye transaction explicitly mere ledger (wallet) ka hai, toh dikhao
-            if (tUserId === me) {
-                return true;
-            }
-
-            // 3. Agar ye Transfer ya Topup hai (jahan funds do logon ke beech move hue hain)
-            // aur main Sender (from) ya Receiver (to) hoon, toh dikhao
+            if (tSource === "instant_leader_bonus" || tDesc.includes("instant leader bonus") || tDesc.includes("instant bonus")) return false;
+            if (tType === "topup" && txn.description?.toUpperCase().includes("PROMOTION")) return false;
+            if (tUserId === me) return true;
             if (tType === "transfer" || tType === "topup") {
                 if (tFrom === me || tTo === me) return true;
             }
-
-            // 4. BAAKI SAB IGNORE KAR DO! 
             return false;
         });
 
@@ -113,18 +96,12 @@ const TransactionDetails = () => {
 
   const formatAmount = (txn) => {
     const type = txn.type?.toLowerCase() || "";
-    
-    // Amount extraction fix
     let amt = 0;
-    if (txn.amount && typeof txn.amount === 'object' && txn.amount.$numberDecimal) {
-      amt = parseFloat(txn.amount.$numberDecimal);
-    } else if (txn.amount !== undefined && txn.amount !== null) {
-      amt = parseFloat(txn.amount);
-    } else {
-      amt = parseFloat(txn.grossAmount || 0);
-    }
+    if (txn.amount && typeof txn.amount === 'object' && txn.amount.$numberDecimal) amt = parseFloat(txn.amount.$numberDecimal);
+    else if (txn.amount !== undefined && txn.amount !== null) amt = parseFloat(txn.amount);
+    else amt = parseFloat(txn.grossAmount || 0);
 
-    let colorClass = "text-slate-900";
+    let colorClass = "text-white";
     let display = `$${isNaN(amt) ? "0.00" : amt.toFixed(2)}`;
     let icon = null;
 
@@ -132,141 +109,136 @@ const TransactionDetails = () => {
       if (String(txn.toUserId) === userId || String(txn.userId) === userId) { 
         if(type === "topup" && String(txn.userId) === userId && String(txn.fromUserId) !== userId) {
             display = `+$${amt.toFixed(2)}`; 
-            colorClass = "text-green-400 drop-shadow-[0_0_5px_rgba(74,222,128,0.3)]"; 
-            icon = <ArrowDownLeft size={14} className="text-green-400" />;
+            colorClass = "text-emerald-400"; 
+            icon = <ArrowDownLeft size={14} />;
         }
         else if(type === "transfer" && String(txn.toUserId) === userId) {
             display = `+$${amt.toFixed(2)}`; 
-            colorClass = "text-green-400 drop-shadow-[0_0_5px_rgba(74,222,128,0.3)]"; 
-            icon = <ArrowDownLeft size={14} className="text-green-400" />;
+            colorClass = "text-emerald-400"; 
+            icon = <ArrowDownLeft size={14} />;
         }
         else {
             display = `-$${amt.toFixed(2)}`; 
-            colorClass = "text-red-400 drop-shadow-[0_0_5px_rgba(248,113,113,0.3)]"; 
-            icon = <ArrowUpRight size={14} className="text-red-400" />;
+            colorClass = "text-rose-400"; 
+            icon = <ArrowUpRight size={14} />;
         }
-      } else if (String(txn.fromUserId) === userId) { 
-        display = `-$${amt.toFixed(2)}`; 
-        colorClass = "text-red-400 drop-shadow-[0_0_5px_rgba(248,113,113,0.3)]"; 
-        icon = <ArrowUpRight size={14} className="text-red-400" />;
       } else {
-        icon = <ArrowRightLeft size={14} className="text-black" />;
+        display = `-$${amt.toFixed(2)}`; 
+        colorClass = "text-rose-400"; 
+        icon = <ArrowUpRight size={14} />;
       }
     } else if (isCreditType(type)) { 
       display = `+$${amt.toFixed(2)}`; 
-      colorClass = "text-green-400 drop-shadow-[0_0_5px_rgba(74,222,128,0.3)]"; 
-      icon = <ArrowDownLeft size={14} className="text-green-400" />;
+      colorClass = "text-emerald-400"; 
+      icon = <ArrowDownLeft size={14} />;
     } else if (isDebitType(type)) { 
       display = `-$${Math.abs(amt).toFixed(2)}`; 
-      colorClass = "text-red-400 drop-shadow-[0_0_5px_rgba(248,113,113,0.3)]"; 
-      icon = <ArrowUpRight size={14} className="text-red-400" />;
+      colorClass = "text-rose-400"; 
+      icon = <ArrowUpRight size={14} />;
     }
 
     return { display, colorClass, icon };
   };
 
-  const handlePrev = () => currentPage > 1 && setCurrentPage(p => p - 1);
-  const handleNext = () => currentPage < totalPages && setCurrentPage(p => p + 1);
-
   return (
-    <div className="w-full max-w-7xl mx-auto pb-10 relative z-10 animate-in fade-in duration-500">
+    <div className="w-full max-w-7xl mx-auto pb-10 relative z-10 animate-in fade-in duration-500 font-sans">
       
       <style>{`
         .custom-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
-        .custom-scroll::-webkit-scrollbar-track { background: #050505; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: #f97316; border-radius: 10px; }
+        .custom-scroll::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
+        .custom-scroll::-webkit-scrollbar-thumb { background: rgba(34, 211, 238, 0.3); border-radius: 10px; }
       `}</style>
 
       {/* Header */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
         <div>
-          <h2 className="text-2xl md:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-500 uppercase tracking-wide flex items-center gap-3">
-             <FileText className="text-green-500" size={28} /> All Transactions
+          <h2 className="text-2xl md:text-3xl font-black text-white uppercase tracking-wide flex items-center gap-3">
+             <div className="p-2.5 bg-cyan-500/10 border border-cyan-500/20 rounded-2xl shadow-[0_0_15px_rgba(34,211,238,0.1)]">
+               <FileText className="text-cyan-400" size={24} /> 
+             </div>
+             Master Ledger
           </h2>
-          <p className="text-black text-xs md:text-sm font-bold tracking-widest uppercase mt-1">
-            Complete master ledger of your account
+          <p className="text-cyan-400/60 text-[10px] md:text-xs font-bold tracking-widest uppercase mt-2 ml-1">
+            Complete audit trail of all assets
           </p>
         </div>
         
-        <div className="bg-white shadow-sm border border-slate-200 px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg">
-           <ListFilter size={16} className="text-green-500" />
-           <span className="text-black text-xs font-bold uppercase tracking-widest">Total Records:</span>
-           <span className="text-slate-900 font-black text-sm">{filtered.length}</span>
+        <div className="bg-[#0f172a]/80 backdrop-blur-xl border border-white/5 px-5 py-2.5 rounded-2xl flex items-center gap-3 shadow-inner">
+           <ListFilter size={16} className="text-cyan-400" />
+           <span className="text-cyan-400 text-[10px] font-black uppercase tracking-widest">Total Records:</span>
+           <span className="text-white font-black text-sm">{filtered.length}</span>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col lg:flex-row gap-4 mb-6 justify-between items-center bg-white shadow-sm p-4 rounded-2xl border border-slate-200">
-        
+      <div className="flex flex-col lg:flex-row gap-4 mb-6 justify-between items-center bg-[#0f172a]/80 backdrop-blur-xl p-4 rounded-2xl border border-white/5 shadow-inner">
         <div className="relative w-full lg:w-80 group">
-           <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-             <Search size={16} className="text-gray-500 group-focus-within:text-green-500 transition-colors" />
+           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+             <Search size={16} className="text-slate-500 group-focus-within:text-cyan-400 transition-colors" />
            </div>
            <input
              type="text"
-             placeholder="Search type, User ID, desc..."
+             placeholder="Search tx hash, desc..."
              value={search}
              onChange={(e) => setSearch(e.target.value)}
-             className="w-full bg-white border border-slate-200 text-slate-900 text-sm font-bold tracking-wide rounded-xl px-4 py-3 pl-10 focus:border-green-500 focus:outline-none transition-all placeholder-slate-400"
+             className="w-full bg-black/40 border border-white/10 text-white text-sm font-bold tracking-wide rounded-xl px-4 py-3.5 pl-11 focus:border-cyan-400 focus:outline-none transition-all placeholder-slate-600 shadow-inner"
            />
         </div>
 
-        <div className="flex items-center gap-3 w-full lg:w-auto flex-wrap sm:flex-nowrap">
+        <div className="flex items-center gap-3 w-full lg:w-auto">
            <select
              value={filterType}
              onChange={(e) => setFilterType(e.target.value)}
-             className="w-full sm:w-auto bg-white border border-slate-200 text-slate-900 text-sm font-bold rounded-xl px-4 py-3 focus:border-green-500 focus:outline-none transition-all appearance-none cursor-pointer uppercase"
+             className="w-full sm:w-auto bg-black/40 border border-white/10 text-white text-sm font-bold rounded-xl px-4 py-3.5 focus:border-cyan-400 focus:outline-none transition-all appearance-none cursor-pointer uppercase shadow-inner outline-none"
            >
-             <option value="all">All Types</option>
-             <option value="credit">Credits Only</option>
-             <option value="debit">Debits Only</option>
+             <option value="all" className="bg-slate-900">All Types</option>
+             <option value="credit" className="bg-slate-900">Credits</option>
+             <option value="debit" className="bg-slate-900">Debits</option>
            </select>
 
            <select
              value={itemsPerPage}
-             onChange={(e) => {
-               setItemsPerPage(Number(e.target.value));
-               setCurrentPage(1);
-             }}
-             className="w-full sm:w-auto bg-white border border-slate-200 text-slate-900 text-sm font-bold rounded-xl px-4 py-3 focus:border-green-500 focus:outline-none transition-all appearance-none cursor-pointer"
+             onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+             className="w-full sm:w-auto bg-black/40 border border-white/10 text-white text-sm font-bold rounded-xl px-4 py-3.5 focus:border-cyan-400 focus:outline-none transition-all appearance-none cursor-pointer shadow-inner outline-none"
            >
-             <option value={10}>10 Rows</option>
-             <option value={20}>20 Rows</option>
-             <option value={50}>50 Rows</option>
-             <option value={100}>100 Rows</option>
+             <option value={10} className="bg-slate-900">10 Rows</option>
+             <option value={20} className="bg-slate-900">20 Rows</option>
+             <option value={50} className="bg-slate-900">50 Rows</option>
            </select>
         </div>
       </div>
 
       {/* Table Box */}
-      <div className="bg-white shadow-sm backdrop-blur-xl rounded-2xl border border-slate-200 overflow-hidden shadow-2xl relative">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-green-600/5 blur-[100px] pointer-events-none rounded-full"></div>
-        
+      <div className="bg-[#0f172a]/60 backdrop-blur-xl shadow-[0_0_30px_rgba(0,0,0,0.3)] rounded-3xl border border-white/5 overflow-hidden relative">
         <div className="overflow-x-auto custom-scroll w-full relative z-10">
           <table className="w-full text-xs sm:text-sm text-left whitespace-nowrap">
-            <thead className="bg-slate-50 text-green-500 text-[10px] md:text-xs uppercase tracking-widest border-b border-slate-200">
+            <thead className="bg-black/40 text-cyan-400 text-[10px] md:text-xs uppercase tracking-widest border-b border-white/5">
               <tr>
-                <th className="p-4 font-black text-center w-16">Sr.</th>
-                <th className="p-4 font-black text-right">Date & Time</th>
-                <th className="p-4 font-black">Type</th>
-                <th className="p-4 font-black text-center">Amount</th>
-                <th className="p-4 font-black">From User</th>
-                <th className="p-4 font-black">To User</th>
-                <th className="p-4 font-black">Description</th>
+                <th className="p-5 font-black text-center">Sr.</th>
+                <th className="p-5 font-black">Date & Time</th>
+                <th className="p-5 font-black">Event Type</th>
+                <th className="p-5 font-black text-center">Amount</th>
+                <th className="p-5 font-black">From UserId</th>
+                <th className="p-5 font-black">To UserId</th>
+                <th className="p-5 font-black">Description</th>
               </tr>
             </thead>
-            <tbody className="text-slate-600">
+            <tbody className="text-slate-300">
               {loading ? (
                 <tr>
-                  <td colSpan="7" className="text-center py-10">
-                    <svg className="animate-spin h-8 w-8 text-green-500 mx-auto mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                    <span className="text-xs font-bold uppercase tracking-widest text-gray-500">Loading Transactions...</span>
+                  <td colSpan="7" className="text-center py-16">
+                     <div className="flex flex-col items-center justify-center gap-3">
+                        <Activity size={28} className="text-cyan-400 animate-pulse" />
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400/70">Syncing Ledger...</span>
+                     </div>
                   </td>
                 </tr>
               ) : paginated.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="text-center py-10">
-                    <span className="text-gray-500 font-bold text-sm uppercase tracking-widest">No transaction records found</span>
+                  <td colSpan="7" className="text-center py-16">
+                    <span className="text-slate-500 font-bold text-xs uppercase tracking-widest bg-black/40 px-6 py-3 rounded-xl border border-white/5">
+                      No Records Found
+                    </span>
                   </td>
                 </tr>
               ) : (
@@ -275,51 +247,33 @@ const TransactionDetails = () => {
                   const { display, colorClass, icon } = formatAmount(txn);
                   
                   return (
-                    <tr key={txn._id || idx} className="border-b border-slate-100 hover:bg-white/5 transition-colors bg-white">
-                      
-                      <td className="p-4 font-bold text-gray-500 text-center">
-                        {indexOfFirst + idx + 1}
-                      </td>
-                       <td className="p-4 text-gray-500 font-mono text-[10px] sm:text-xs text-right">
-                        <div className="flex flex-col items-end">
-                           <span className="text-slate-600">{date.toLocaleDateString("en-GB", { day: '2-digit', month: 'short', year: 'numeric' })}</span>
-                           <span>{date.toLocaleTimeString("en-US", { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
+                    <tr key={txn._id || idx} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                      <td className="p-5 font-bold text-slate-500 text-center">{indexOfFirst + idx + 1}</td>
+                      <td className="p-5 text-slate-400 font-mono text-[11px]">
+                        <div className="flex flex-col gap-0.5">
+                            <span className="text-white font-bold">{date.toLocaleDateString("en-GB", { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                            <span className="text-slate-500 text-[10px]">{date.toLocaleTimeString("en-US", { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
                         </div>
                       </td>
-
-                      <td className="p-4">
-                         <span className="inline-flex items-center gap-1.5 bg-white/5 border border-slate-200 px-2 py-1 rounded-md text-[10px] font-black tracking-widest text-slate-600">
-                           {icon} {(txn.type || "-").replace(/_/g, " ").toUpperCase()}
+                      <td className="p-5">
+                         <span className="inline-flex items-center gap-1.5 bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg text-[10px] font-black tracking-widest text-cyan-100 uppercase">
+                            {icon} {(txn.type || "-").replace(/_/g, " ").toUpperCase()}
                          </span>
                       </td>
-
-                      <td className={`p-4 font-black text-center text-base ${colorClass}`}>
+                      <td className={`p-5 font-black text-center text-sm font-mono ${colorClass} drop-shadow-[0_0_5px_rgba(255,255,255,0.1)]`}>
                         {display}
                       </td>
-
-                      <td className="p-4 font-mono text-black text-[10px] sm:text-xs">
-                         {txn.fromUserId ? <span className="bg-white/5 px-2 py-1 border border-slate-200 rounded">{String(txn.fromUserId) === userId ? "Self" : txn.fromUserId}</span> : "-"}
+                      <td className="p-5 font-mono text-slate-300 text-[11px]">
+                         {txn.fromUserId ? <span className="bg-black/40 px-3 py-1.5 border border-white/5 rounded-lg">{String(txn.fromUserId) === userId ? "Self" : txn.fromUserId}</span> : "-"}
                       </td>
-
-                      <td className="p-4 font-mono text-black text-[10px] sm:text-xs">
-                         {txn.toUserId ? <span className="bg-white/5 px-2 py-1 border border-slate-200 rounded">{String(txn.toUserId) === userId ? "Self" : txn.toUserId}</span> : "-"}
+                      <td className="p-5 font-mono text-slate-300 text-[11px]">
+                         {txn.toUserId ? <span className="bg-black/40 px-3 py-1.5 border border-white/5 rounded-lg">{String(txn.toUserId) === userId ? "Self" : txn.toUserId}</span> : "-"}
                       </td>
-
-                   <td 
-  className="p-4 text-black text-[11px] md:text-xs font-bold tracking-wide capitalize max-w-[200px] truncate" 
-  title={txn.description || "-"}
->
-  {txn.description 
-    ? txn.description
-        .replace(/\s*\(Leader\)/gi, "")                         // 🔥 LEADER word hatao
-        .replace(/leader settlement:?\s*/gi, "")                // Leader Settlement hataya
-        .replace(/(singel|single)\s?leg/gi, "Community Income") // Singel/Single leg ko Community Income kiya
-        .replace(/pool/gi, "Community Income")                  // Pool ko Community Income kiya
-        .replace(/unlocked/gi, "")                              // "Unlocked" text hataya
-        .trim()                                                 // Extra spaces saaf kiye
-    : "-"}
-</td>
-
+                      <td className="p-5 text-white text-[11px] font-bold tracking-wide capitalize max-w-[200px] truncate" title={txn.description}>
+                        {txn.description 
+                            ? txn.description.replace(/\s*\(Leader\)/gi, "").replace(/leader settlement:?\s*/gi, "").replace(/(singel|single)\s?leg/gi, "Community Income").replace(/pool/gi, "Community Income").replace(/unlocked/gi, "").trim()
+                            : "-"}
+                      </td>
                     </tr>
                   );
                 })
@@ -330,8 +284,8 @@ const TransactionDetails = () => {
 
         {/* Pagination Footer */}
         {!loading && filtered.length > 0 && (
-           <div className="p-4 border-t border-slate-100 bg-slate-50/40 flex flex-col sm:flex-row justify-between items-center gap-4 relative z-10">
-              <span className="text-gray-500 text-[10px] md:text-xs font-black uppercase tracking-widest">
+           <div className="p-5 border-t border-white/5 bg-black/20 flex flex-col sm:flex-row justify-between items-center gap-4 relative z-10">
+              <span className="text-cyan-400/60 text-[10px] font-black uppercase tracking-widest">
                 Showing {indexOfFirst + 1} to {Math.min(indexOfLast, filtered.length)} of {filtered.length} Entries
               </span>
               
@@ -339,21 +293,21 @@ const TransactionDetails = () => {
                  <button
                    onClick={handlePrev}
                    disabled={currentPage === 1}
-                   className={`p-2 rounded-lg flex items-center justify-center transition-all ${currentPage === 1 ? 'bg-white/5 text-gray-600 cursor-not-allowed' : 'bg-white/10 text-slate-900 hover:bg-green-500/20 hover:text-green-500 border border-transparent hover:border-green-500/30'}`}
+                   className={`p-2.5 rounded-xl flex items-center justify-center transition-all ${currentPage === 1 ? 'bg-white/5 text-slate-600 cursor-not-allowed border border-transparent' : 'bg-white/5 text-cyan-400 border border-white/10 hover:bg-white/10 hover:border-cyan-500/30 active:scale-95'}`}
                  >
-                   <ChevronLeft size={18} />
+                   <ChevronLeft size={16} strokeWidth={2.5} />
                  </button>
                  
-                 <span className="bg-white border border-slate-200 text-slate-900 text-xs font-bold px-4 py-2 rounded-lg">
+                 <span className="bg-black/40 border border-white/10 text-white text-[11px] font-black font-mono px-4 py-2.5 rounded-xl shadow-inner">
                     {currentPage} / {totalPages}
                  </span>
                  
                  <button
                    onClick={handleNext}
                    disabled={currentPage === totalPages}
-                   className={`p-2 rounded-lg flex items-center justify-center transition-all ${currentPage === totalPages ? 'bg-white/5 text-gray-600 cursor-not-allowed' : 'bg-white/10 text-slate-900 hover:bg-green-500/20 hover:text-green-500 border border-transparent hover:border-green-500/30'}`}
+                   className={`p-2.5 rounded-xl flex items-center justify-center transition-all ${currentPage === totalPages ? 'bg-white/5 text-slate-600 cursor-not-allowed border border-transparent' : 'bg-white/5 text-cyan-400 border border-white/10 hover:bg-white/10 hover:border-cyan-500/30 active:scale-95'}`}
                  >
-                   <ChevronRight size={18} />
+                   <ChevronRight size={16} strokeWidth={2.5} />
                  </button>
               </div>
            </div>

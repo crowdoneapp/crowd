@@ -379,7 +379,7 @@ const generateUserId = async () => {
 //                 <div style="padding: 40px 30px; color: #333333;">
 //                     <p style="font-size: 16px; margin-top: 0; margin-bottom: 15px;">Hello <strong>${user.name}</strong>,</p>
 //                     <p style="font-size: 15px; line-height: 1.6; color: #555555; margin-bottom: 20px;">
-//                         Congratulations! Your account has been successfully created. Get ready to build your global network, unlock exciting <strong>Community Earning rewards</strong>, and track your daily growth with our secure platform. We are thrilled to have you on board! 🌟
+//                         Congratulations! Your account has been successfully created. Get ready to build your global network, unlock exciting <strong> Crowd Donation Earning rewards</strong>, and track your daily growth with our secure platform. We are thrilled to have you on board! 🌟
 //                     </p>
 //                     <p style="font-size: 15px; line-height: 1.6; color: #555555; margin-bottom: 30px;">
 //                         Please find your confidential login details below:
@@ -563,7 +563,7 @@ const generateUserId = async () => {
 //                 <div style="padding: 40px 30px; color: #333333;">
 //                     <p style="font-size: 16px; margin-top: 0; margin-bottom: 15px;">Hello <strong>${user.name}</strong>,</p>
 //                     <p style="font-size: 15px; line-height: 1.6; color: #555555; margin-bottom: 20px;">
-//                         Congratulations! Your account has been successfully created. Get ready to build your global network, unlock exciting <strong>Community Earning rewards</strong>, and track your daily growth with our secure platform. We are thrilled to have you on board! 🌟
+//                         Congratulations! Your account has been successfully created. Get ready to build your global network, unlock exciting <strong> Crowd Donation Earning rewards</strong>, and track your daily growth with our secure platform. We are thrilled to have you on board! 🌟
 //                     </p>
 //                     <p style="font-size: 15px; line-height: 1.6; color: #555555; margin-bottom: 30px;">
 //                         Please find your confidential login details below:
@@ -776,7 +776,7 @@ router.post('/register', checkFeature('allowRegistrations'), async (req, res) =>
                 <div style="padding: 40px 30px; color: #333333;">
                     <p style="font-size: 16px; margin-top: 0; margin-bottom: 15px;">Hello <strong>${user.name}</strong>,</p>
                     <p style="font-size: 15px; line-height: 1.6; color: #555555; margin-bottom: 20px;">
-                        Congratulations! Your account has been successfully created. Get ready to build your global network, unlock exciting <strong>Community Earning rewards</strong>, and track your daily growth with our secure platform. We are thrilled to have you on board! 🌟
+                        Congratulations! Your account has been successfully created. Get ready to build your global network, unlock exciting <strong> Crowd Donation Earning rewards</strong>, and track your daily growth with our secure platform. We are thrilled to have you on board! 🌟
                     </p>
                     <p style="font-size: 15px; line-height: 1.6; color: #555555; margin-bottom: 30px;">
                         Please find your confidential login details below:

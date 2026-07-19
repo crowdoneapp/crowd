@@ -3,72 +3,30 @@ import api from "../../api/axios";
 import SuccessModal from "./SuccessModal";
 import MessageModal from "./MessageModal";
 import { useAuth } from "../../context/AuthContext";
-import { Zap, Users, Trophy, Layers, ArrowRightLeft, X, Eye, EyeOff } from "lucide-react"; // 🔥 Eye, EyeOff import kiya
-
-// ✅ GLOBAL POOL CONFIG
-const GLOBAL_POOLS = [
-  { level: 1,  globalTeam: 20,    reqDirects: 1,  earning: 10   },
-  { level: 2,  globalTeam: 40,    reqDirects: 2,  earning: 20   },
-  { level: 3,  globalTeam: 100,   reqDirects: 3,  earning: 40   },
-  { level: 4,  globalTeam: 200,   reqDirects: 4,  earning: 80   },
-  { level: 5,  globalTeam: 400,   reqDirects: 5,  earning: 150  },
-  { level: 6,  globalTeam: 1600,  reqDirects: 6,  earning: 200  },
-  { level: 7,  globalTeam: 2000,  reqDirects: 8,  earning: 500  }, 
-  { level: 8,  globalTeam: 3000,  reqDirects: 10, earning: 700  }, 
-  { level: 9,  globalTeam: 4000,  reqDirects: 12, earning: 1000 }, 
-  { level: 10, globalTeam: 5000,  reqDirects: 14, earning: 1500 }, 
-  { level: 11, globalTeam: 7500,  reqDirects: 16, earning: 3000 }, 
-  { level: 12, globalTeam: 10000, reqDirects: 18, earning: 5000 }  
-];
-
-// 🔥 CLEAN COMPONENT FOR DIRECT, LEVEL, REWARD
-const MainIncomeBox = React.memo(({ title, icon: Icon, iconColor, source, balance, val, onChange, isLeader }) => (
-    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 shadow-sm transition-all hover:border-slate-300">
-        <div className="flex justify-between items-center mb-2 px-1">
-            <h3 className="text-slate-700 text-[11px] font-black uppercase tracking-widest flex items-center gap-1.5">
-                <Icon size={14} className={iconColor} /> {title}
-            </h3>
-        </div>
-        <div className="flex flex-row gap-1.5 items-stretch">
-            <div className="w-1/3 bg-white p-1 rounded-lg border border-slate-200 shadow-sm flex flex-col justify-center items-center">
-                <span className="text-[14px] font-black text-blue-500">${Number(balance).toFixed(2)}</span>
-            </div>
-            <div className="w-2/3 flex items-center gap-1 bg-white p-1 rounded-lg border border-slate-200 shadow-inner">
-                <span className={`${iconColor} font-bold text-sm pl-2`}>$</span>
-                <input 
-                    type="number" 
-                    placeholder="0.00" 
-                    autoComplete="off"
-                    data-lpignore="true"
-                    className="flex-1 bg-transparent border-none text-slate-800 text-[12px] font-black outline-none w-full placeholder-slate-300 py-1 px-1"
-                    value={val} 
-                    onChange={e => onChange(e, source)} 
-                    disabled={isLeader} 
-                />
-            </div>
-        </div>
-    </div>
-));
+import { Wallet, Zap, Users, Trophy, Layers, ArrowRightLeft, X, Eye, EyeOff, CheckCircle2, ShieldCheck, Activity } from "lucide-react";
 
 const CreditToWalletModal = ({ userId, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false); // 🔥 Password toggle ke liye state
+  const [showPassword, setShowPassword] = useState(false);
   
+  // 🔥 NAYA PLAN: Sabhi 6 incomes
   const [balances, setBalances] = useState({
     walletBalance: 0,
     direct: 0, 
     level: 0,
     reward: 0,
-    pool: 0
+    pool: 0,
+    getPass: 0,
+    upgradeBounceBack: 0
   });
-  
-  const [unlockedLevels, setUnlockedLevels] = useState([]);
   
   const [credits, setCredits] = useState({
     direct: "",
     level: "",
-    reward: ""
-    // Dynamic pool_1, pool_2 etc. added via input
+    reward: "",
+    pool: "",
+    getPass: "",
+    upgradeBounceBack: ""
   });
   
   const [transactionPassword, setTransactionPassword] = useState("");
@@ -80,7 +38,9 @@ const CreditToWalletModal = ({ userId, onClose, onSuccess }) => {
   const { user: loggedInUser } = useAuth();
   const token = localStorage.getItem("token");
   
-  const isLeader = loggedInUser?.role === "leader";
+  // Roles
+  const isLeader = loggedInUser?.role === "leader" || loggedInUser?.role === "superleader";
+  const isSetupUser = loggedInUser?.role === "setup" || loggedInUser?.role === "super_setup";
 
   const showMessage = (title, message, type = "error") =>
     setMessageModal({ open: true, title, message, type });
@@ -90,7 +50,6 @@ const CreditToWalletModal = ({ userId, onClose, onSuccess }) => {
       const res = await api.get(`/wallet/withdrawable/${userId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      const profileRes = await api.get(`/user/${userId}`);
 
       if (res.data) {
         setBalances({
@@ -98,51 +57,10 @@ const CreditToWalletModal = ({ userId, onClose, onSuccess }) => {
           direct: Number(res.data.direct) || 0, 
           level: Number(res.data.level) || 0,
           reward: Number(res.data.reward) || 0,
-          pool: Number(res.data.pool) || 0
+          pool: Number(res.data.pool) || 0,
+          getPass: Number(res.data.getPass) || 0,
+          upgradeBounceBack: Number(res.data.upgradeBounceBack) || 0
         });
-      }
-
-      const u = profileRes.data?.user || profileRes.data;
-
-      if (u) {
-        const userGlobal = Number(u.globalTeamCount) || 0;
-        const userDirects = Number(u.directCount) || 0;
-        const activePoolsData = u.activePools || []; 
-        
-        let cumulativeGlobal = 0;
-        let unlockedLevelsTemp = [];
-
-        for (const lvl of GLOBAL_POOLS) {
-            cumulativeGlobal += lvl.globalTeam;
-            if (userGlobal >= cumulativeGlobal) {
-                unlockedLevelsTemp.push({ 
-                    ...lvl, 
-                    isDirectMet: userDirects >= lvl.reqDirects, 
-                    reqDirects: lvl.reqDirects 
-                });
-            } else {
-                break; 
-            }
-        }
-
-        let boxData = unlockedLevelsTemp.map(lvl => {
-            const p = activePoolsData.find(ap => Number(ap.level) === Number(lvl.level));
-            
-            const generated = p ? (Number(p.daysPaid) || 0) * (Number(p.dailyAmount) || 0) : 0;
-            const withdrawnAmt = p ? (Number(p.withdrawnAmount) || 0) : 0;
-            
-            let available = generated - withdrawnAmt;
-            available = available > 0.01 ? available : 0;
-
-            return { 
-                ...lvl, 
-                generated, 
-                withdrawnAmt,
-                available 
-            };
-        });
-
-        setUnlockedLevels(boxData);
       }
     } catch (err) {
       console.error("Fetch Error:", err);
@@ -153,25 +71,16 @@ const CreditToWalletModal = ({ userId, onClose, onSuccess }) => {
     fetchData();
   }, [fetchData]);
 
-  const totalCommunityAvailable = unlockedLevels.reduce((sum, lvl) => {
-    if (lvl.isDirectMet) return sum + lvl.available;
-    return sum;
-  }, 0);
+  const totalAvailableToWithdraw = 
+    balances.direct + balances.level + balances.reward + balances.pool + balances.getPass + balances.upgradeBounceBack;
 
-  const totalAvailableToWithdraw = balances.direct + balances.level + balances.reward + totalCommunityAvailable;
-
-  const hasMainIncome = balances.direct > 0 || balances.level > 0 || balances.reward > 0 || totalCommunityAvailable > 0;
+  const hasMainIncome = totalAvailableToWithdraw > 0;
 
   // 🔥 TOTAL ENTERED AMOUNT CALCULATION 🔥
   const totalEnteredAmount = useMemo(() => {
     let sum = 0;
-    sum += Number(credits.direct) || 0;
-    sum += Number(credits.level) || 0;
-    sum += Number(credits.reward) || 0;
-    Object.keys(credits).forEach(key => {
-      if (key.startsWith('pool_')) {
-        sum += Number(credits[key]) || 0;
-      }
+    Object.values(credits).forEach(val => {
+      sum += Number(val) || 0;
     });
     return sum;
   }, [credits]);
@@ -185,49 +94,33 @@ const CreditToWalletModal = ({ userId, onClose, onSuccess }) => {
 
   const handleCredit = async () => {
     try {
-      if (isLeader) {
-         return showMessage("Action Denied", "Leaders cannot credit funds to wallet directly from here.");
+      if (isLeader || isSetupUser) {
+         return showMessage("Action Denied", "System roles cannot credit funds to the wallet directly from here.");
       }
 
       let items = [];
       let totalRequested = 0;
-      let poolRequestedTotal = 0;
 
       const checkAndPush = (sourceName, inputVal, availableBal, displayName) => {
           const amt = Number(inputVal);
           if (amt > 0) {
-              if (amt > availableBal) throw new Error(`Insufficient funds in ${displayName}.`);
+              if (amt > availableBal) throw new Error(`Insufficient yield in ${displayName}.`);
               items.push({ source: sourceName, amount: amt });
               totalRequested += amt;
           }
       };
 
-      checkAndPush("direct", credits.direct, balances.direct, "Direct Income");
-      checkAndPush("level", credits.level, balances.level, "Level Income");
-      checkAndPush("reward", credits.reward, balances.reward, "Team Reward");
+      checkAndPush("direct", credits.direct, balances.direct, "Direct Reward");
+      checkAndPush("level", credits.level, balances.level, "Level Yield");
+      checkAndPush("reward", credits.reward, balances.reward, "Team Bonus");
+      checkAndPush("pool", credits.pool, balances.pool, "Crowd Donation");
+      checkAndPush("getPass", credits.getPass, balances.getPass, "Fast Track Pass");
+      checkAndPush("upgradeBounceBack", credits.upgradeBounceBack, balances.upgradeBounceBack, "Account Roll-up");
 
-      unlockedLevels.forEach(lvl => {
-        const amt = Number(credits[`pool_${lvl.level}`] || 0);
-        if (amt > 0) {
-            if (!lvl.isDirectMet) {
-                throw new Error(`Please complete Total ${lvl.reqDirects} Direct${lvl.reqDirects > 1 ? 's' : ''} to credit from Community Lvl ${lvl.level}.`);
-            }
-            if (amt > lvl.available) throw new Error(`Insufficient funds in Level ${lvl.level} Pool.`);
-            
-            items.push({ source: `pool_${lvl.level}`, amount: amt });
-            totalRequested += amt;
-            poolRequestedTotal += amt;
-        }
-      });
-
-      if (poolRequestedTotal > 0 && poolRequestedTotal > balances.pool) {
-          return showMessage("Insufficient Funds", "Total community Income requested exceeds available balance.");
-      }
-
-      if (totalRequested === 0) return showMessage("Warning", "Enter amount to credit.");
-      if (totalRequested < 10) return showMessage("Warning", `Minimum credit amount is $10. You entered $${totalRequested}.`);
-      if (totalRequested % 10 !== 0) return showMessage("Warning", `Amount must be in multiples of $10. Your total is $${totalRequested}.`);
-      if (!transactionPassword.trim()) return showMessage("Warning", "Enter transaction password.");
+      if (totalRequested === 0) return showMessage("Invalid Request", "Enter an amount to credit.");
+      if (totalRequested < 10) return showMessage("Limit Error", `Minimum credit amount is $10. You entered $${totalRequested}.`);
+      if (totalRequested % 10 !== 0) return showMessage("Invalid Format", `Amount must be in multiples of $10. Your total is $${totalRequested}.`);
+      if (!transactionPassword.trim()) return showMessage("Security Alert", "Enter your Secure Tx-PIN.");
 
       setLoading(true);
 
@@ -240,32 +133,60 @@ const CreditToWalletModal = ({ userId, onClose, onSuccess }) => {
       if (res.data.success) {
         setSuccessData({ userId, amount: totalRequested });
         setSuccessModalOpen(true);
-        setCredits({ direct: "", level: "", reward: "" }); 
+        setCredits({ direct: "", level: "", reward: "", pool: "", getPass: "", upgradeBounceBack: "" }); 
         setTransactionPassword("");
         await fetchData();
         if (onSuccess) onSuccess({ userId, walletBalance: res.data.walletBalance });
       } else {
-        showMessage("Error", res.data.message || "Failed to credit.");
+        showMessage("Contract Error", res.data.message || "Failed to execute credit protocol.");
       }
 
     } catch (err) {
       console.error("Catch Error:", err);
-      const errorMessage = err.response?.data?.message || err.message || "Error crediting income";
+      const errorMessage = err.response?.data?.message || err.message || "Error processing internal asset transfer";
       showMessage("Error", errorMessage);
     } finally {
       setLoading(false); 
     }
   };
 
+  // 🔥 Helper function for UI consistency
+  const renderInputRow = (label, icon, iconColor, balance, stateKey) => (
+    <div className="bg-black/40 p-3 rounded-2xl border border-white/5 shadow-inner transition-all hover:border-cyan-500/30">
+        <div className="flex justify-between items-center mb-2.5 px-1">
+            <h3 className="text-slate-300 text-[11px] font-black uppercase tracking-widest flex items-center gap-1.5">
+                {icon} {label}
+            </h3>
+        </div>
+        <div className="flex flex-row gap-2 items-stretch">
+            <div className="w-[35%] bg-white/5 p-2 rounded-xl border border-white/10 shadow-sm flex flex-col justify-center items-center">
+                <span className={`text-[14px] font-black font-mono ${iconColor}`}>${Number(balance).toFixed(2)}</span>
+            </div>
+            <div className="w-[65%] flex items-center gap-1 bg-white/5 p-1 rounded-xl border border-white/10 shadow-inner group focus-within:border-cyan-500/50">
+                <span className={`${iconColor} font-bold text-sm pl-3`}>$</span>
+                <input 
+                    type="number" 
+                    placeholder="0.00" 
+                    autoComplete="off"
+                    data-lpignore="true"
+                    className="flex-1 bg-transparent border-none text-white text-[14px] font-black font-mono outline-none w-full placeholder-slate-600 py-1.5 px-2 disabled:opacity-50"
+                    value={credits[stateKey] || ""} 
+                    onChange={e => handleInputChange(e, stateKey)} 
+                    disabled={isLeader || isSetupUser} 
+                />
+            </div>
+        </div>
+    </div>
+  );
+
   return (
     <>
       <style>{`
         input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         input[type=number] { -moz-appearance: textfield; }
-        .custom-scroll { scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; }
+        .custom-scroll { scrollbar-width: thin; scrollbar-color: rgba(34,211,238,0.3) transparent; }
         .custom-scroll::-webkit-scrollbar { width: 4px; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: rgba(34,211,238,0.3); border-radius: 10px; }
       `}</style>
 
       {successModalOpen && (
@@ -277,107 +198,58 @@ const CreditToWalletModal = ({ userId, onClose, onSuccess }) => {
       )}
 
       {!successModalOpen && (
-        <div className="fixed inset-0 mt-8 bg-slate-900/60 backdrop-blur-sm z-[1000] flex justify-center items-center p-4">
+        <div className="fixed inset-0 bg-[#020617]/90 backdrop-blur-md z-[1000] flex justify-center items-center p-4">
           
-          <div className="bg-white w-full max-w-[480px] rounded-[20px] border border-slate-200 shadow-2xl flex flex-col max-h-[85vh] relative overflow-hidden animate-in zoom-in duration-300">
+          <div className="bg-[#0f172a]/80 backdrop-blur-2xl w-full max-w-[480px] rounded-[24px] border border-cyan-500/20 shadow-[0_0_50px_-12px_rgba(34,211,238,0.3)] flex flex-col max-h-[85vh] relative overflow-hidden animate-in zoom-in-95 duration-300">
             
-            <div className="absolute top-0 right-0 w-32 h-32 bg-green-100 blur-[50px] pointer-events-none rounded-full"></div>
+            <div className="absolute top-0 right-0 w-40 h-40 bg-cyan-500/20 blur-[60px] pointer-events-none rounded-full"></div>
+            <div className="absolute bottom-0 left-0 w-40 h-40 bg-indigo-500/20 blur-[60px] pointer-events-none rounded-full"></div>
 
-            {/* Header */}
-            <div className="px-4 py-3 border-b border-slate-200 bg-slate-50 flex justify-between items-center z-10 shrink-0">
-              <h2 className="text-[12px] md:text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2 m-0">
-                <div className="bg-green-100 p-1.5 rounded-lg">
-                  <ArrowRightLeft size={14} className="text-green-600" /> 
+            {/* 🟢 Header */}
+            <div className="px-5 py-4 border-b border-white/5 bg-black/20 flex justify-between items-center z-10 shrink-0">
+              <h2 className="text-[12px] md:text-sm font-black text-white uppercase tracking-widest flex items-center gap-2 m-0">
+                <div className="bg-cyan-500/10 p-1.5 rounded-lg border border-cyan-500/20">
+                  <ArrowRightLeft size={16} className="text-cyan-400" /> 
                 </div>
-                Credit To Wallet
+                Internal Asset Transfer
               </h2>
-              <button onClick={onClose} className="group bg-white hover:bg-red-50 p-1.5 rounded-full transition-all border border-slate-200 hover:border-red-200 shadow-sm cursor-pointer">
-                 <X size={16} className="text-slate-400 group-hover:text-red-500" />
+              <button onClick={onClose} className="group bg-white/5 hover:bg-rose-500/20 p-2 rounded-full transition-all border border-white/10 hover:border-rose-500/30 shadow-sm cursor-pointer active:scale-95">
+                 <X size={16} className="text-slate-400 group-hover:text-rose-400" />
               </button>
             </div>
 
-            {/* Body */}
-            <div className="p-3 overflow-y-auto custom-scroll flex-1 flex flex-col gap-3 bg-white relative z-10">
+            {/* 🟢 Body */}
+            <div className="p-4 overflow-y-auto custom-scroll flex-1 flex flex-col gap-4 bg-transparent relative z-10">
               
               {/* Balance Card */}
-              <div className="bg-slate-50 border border-slate-200 p-2.5 rounded-xl flex items-center justify-between shadow-sm">
+              <div className="bg-black/40 border border-white/10 p-4 rounded-2xl flex items-center justify-between shadow-inner">
                  <div className="text-right w-full">
-                    <p className="text-black text-[9px] font-bold uppercase tracking-widest">Withdrawable Balance</p>
-                    <h3 className="text-xl font-black text-emerald-600">${totalAvailableToWithdraw.toFixed(2)}</h3>
+                    <p className="text-cyan-400/80 text-[10px] font-bold uppercase tracking-widest mb-1">Total Available Yield</p>
+                    <h3 className="text-2xl font-black text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.4)] font-mono">${totalAvailableToWithdraw.toFixed(2)}</h3>
                  </div>
               </div>
 
               {/* MAIN INCOMES */}
-              {(hasMainIncome || isLeader) && (
+              {(hasMainIncome || isLeader || isSetupUser) && (
                   <div className="flex flex-col gap-3">
-                    {balances.direct > 0 && <MainIncomeBox title="Direct Income" icon={Zap} iconColor="text-amber-500" source="direct" balance={balances.direct} val={credits.direct || ""} onChange={handleInputChange} isLeader={isLeader} />}
-                    {balances.level > 0 && <MainIncomeBox title="Level Income" icon={Users} iconColor="text-blue-500" source="level" balance={balances.level} val={credits.level || ""} onChange={handleInputChange} isLeader={isLeader} />}
-                    {balances.reward > 0 && <MainIncomeBox title="Team Reward" icon={Trophy} iconColor="text-indigo-500" source="reward" balance={balances.reward} val={credits.reward || ""} onChange={handleInputChange} isLeader={isLeader} />}
+                    {renderInputRow("Direct Reward", <Zap size={14} className="text-amber-400" />, "text-amber-400", balances.direct, "direct")}
+                    {renderInputRow("Level Yield", <Users size={14} className="text-cyan-400" />, "text-cyan-400", balances.level, "level")}
+                    {renderInputRow("Crowd Donation (Pool)", <Layers size={14} className="text-emerald-400" />, "text-emerald-400", balances.pool, "pool")}
+                    {renderInputRow("Fast Track (Get Pass)", <Trophy size={14} className="text-indigo-400" />, "text-indigo-400", balances.getPass, "getPass")}
+                    {renderInputRow("Account Roll-up", <Zap size={14} className="text-purple-400" />, "text-purple-400", balances.upgradeBounceBack, "upgradeBounceBack")}
+                    {renderInputRow("Team Bonus", <Trophy size={14} className="text-rose-400" />, "text-rose-400", balances.reward, "reward")}
                   </div>
               )}
 
-              {/* COMMUNITY POOL BOXES */}
-              <div className="flex flex-col gap-3 mt-2">
-                {unlockedLevels.length > 0 && (
-                  <div className="flex justify-between items-center px-1 mt-1">
-                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Community Levels</span>
-                  </div>
-                )}
-
-                {unlockedLevels.length > 0 && unlockedLevels.map(lvl => (
-                    <div key={lvl.level} className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 shadow-sm transition-all hover:border-slate-300 relative overflow-hidden">
-                        
-                        <div className="flex justify-between items-center mb-2 px-1">
-                            <h3 className="text-slate-700 text-[11px] font-black uppercase tracking-widest flex items-center gap-1.5">
-                                <Layers size={14} className="text-emerald-500" /> Community Level {lvl.level}
-                                {!lvl.isDirectMet && (
-                                    <span className="text-[8px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded ml-2 shadow-sm font-bold"></span>
-                                )}
-                            </h3>
-                        </div>
-
-                        <div className="flex flex-row gap-1.5 items-stretch">
-                            <div className="w-[22%] bg-white p-1 rounded-lg border border-slate-200 shadow-sm flex flex-col justify-center items-center">
-                                <span className="text-[11px] font-black text-emerald-600">${lvl.earning}</span>
-                            </div>
-                            
-                            <div className="w-[22%] bg-white p-1 rounded-lg border border-slate-200 shadow-sm flex flex-col justify-center items-center">
-                                <span className="text-[11px] font-black text-purple-500">${lvl.generated.toFixed(2)}</span>
-                            </div>
-                            
-                            <div className={`w-[22%] bg-white p-1 rounded-lg border shadow-sm flex flex-col justify-center items-center ${!lvl.isDirectMet ? 'border-red-200 bg-red-50' : 'border-slate-200'}`}>
-                                <span className={`text-[11px] font-black ${!lvl.isDirectMet ? 'text-red-400 line-through decoration-red-400/50' : 'text-blue-500'}`}>
-                                    ${lvl.available.toFixed(2)}
-                                </span>
-                            </div>
-                            
-                            <div className={`w-[34%] flex items-center gap-1 bg-white p-1 rounded-lg border shadow-inner ${!lvl.isDirectMet ? 'border-red-200 opacity-60 bg-slate-100' : 'border-slate-200'}`}>
-                                <span className="text-emerald-500 font-bold text-sm pl-2">$</span>
-                                <input 
-                                    type="number" 
-                                    placeholder="0.00" 
-                                    autoComplete="off"
-                                    data-lpignore="true"
-                                    className="flex-1 bg-transparent border-none text-slate-800 text-[12px] font-black outline-none w-full placeholder-slate-300 py-1 px-1 disabled:bg-transparent"
-                                    value={credits[`pool_${lvl.level}`] || ""} 
-                                    onChange={e => handleInputChange(e, `pool_${lvl.level}`)} 
-                                    disabled={isLeader || !lvl.isDirectMet} 
-                                />
-                            </div>
-                        </div>
-                    </div>
-                ))}
-              </div>
-
               {/* 🔥 TOTAL ENTERED AMOUNT BOX 🔥 */}
-              <div className="bg-indigo-50 border border-indigo-200 p-3 rounded-xl flex items-center justify-between mt-2 shadow-sm">
-                 <p className="text-[10px] text-indigo-800 font-black uppercase tracking-widest m-0">Total Entered Amount</p>
-                 <h3 className="text-lg font-black text-indigo-600 m-0">${totalEnteredAmount.toFixed(2)}</h3>
+              <div className="bg-indigo-500/10 border border-indigo-500/30 p-3.5 rounded-xl flex items-center justify-between mt-2 shadow-[0_0_15px_rgba(99,102,241,0.1)]">
+                 <p className="text-[10px] text-indigo-300 font-black uppercase tracking-widest m-0">Gross Transfer Amount</p>
+                 <h3 className="text-lg font-black text-indigo-400 m-0 font-mono">${totalEnteredAmount.toFixed(2)}</h3>
               </div>
 
               {/* 🔥 SECURITY PASSWORD (WITH EYE ICON) 🔥 */}
-              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 mt-1 relative">
-                  <label className="text-[9px] text-black block mb-1 font-bold uppercase tracking-widest ml-1">SECURITY PASSWORD</label>
+              <div className="bg-black/40 p-3 rounded-xl border border-white/5 mt-1 relative shadow-inner">
+                  <label className="text-[9px] text-cyan-400 block mb-1.5 font-bold uppercase tracking-widest ml-1">SECURE TX-PIN</label>
                   
                   <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', opacity: 0 }}>
                       <input type="text" name="dummy_username_trap" tabIndex="-1" autoComplete="username" />
@@ -389,51 +261,51 @@ const CreditToWalletModal = ({ userId, onClose, onSuccess }) => {
                         type={showPassword ? "text" : "password"} 
                         autoComplete="new-password"
                         data-lpignore="true"
-                        placeholder="Enter Transaction Password" 
-                        className="w-full bg-white border border-slate-200 text-slate-800 p-2.5 pr-10 rounded-lg outline-none font-mono text-xs transition-all shadow-inner focus:border-green-400 focus:ring-2 focus:ring-green-100 placeholder-slate-400"
+                        placeholder="Enter Transaction PIN" 
+                        className="w-full bg-white/5 border border-white/10 text-white p-3.5 pr-10 rounded-lg outline-none font-mono text-sm transition-all shadow-inner focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/20 placeholder-slate-600"
                         value={transactionPassword} 
                         onChange={e => setTransactionPassword(e.target.value)} 
-                        disabled={isLeader} 
+                        disabled={isLeader || isSetupUser} 
                       />
                       <button 
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors focus:outline-none"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-cyan-400 transition-colors focus:outline-none"
                       >
-                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                       </button>
                   </div>
               </div>
 
             </div>
 
-            {/* ACTION BUTTONS */}
-            <div className="p-3 border-t border-slate-200 bg-slate-50 z-10 shrink-0">
-              {isLeader ? (
+            {/* 🟢 ACTION BUTTONS */}
+            <div className="p-4 border-t border-white/5 bg-black/20 z-10 shrink-0">
+              {isLeader || isSetupUser ? (
                  <button 
                    onClick={onClose} 
-                   className="w-full py-2.5 rounded-lg font-bold text-[11px] bg-slate-200 hover:bg-slate-300 text-slate-700 transition-colors shadow-sm uppercase tracking-wider"
+                   className="w-full py-3.5 rounded-xl font-bold text-xs bg-white/5 hover:bg-white/10 text-slate-400 transition-colors shadow-sm uppercase tracking-wider border border-white/10"
                  >
-                    Cancel
+                    Close Interface
                  </button>
               ) : (
-                 <div className="flex gap-2">
+                 <div className="flex gap-3">
                    <button 
                      onClick={onClose} 
-                     className="w-1/3 py-2.5 rounded-lg font-bold text-[11px] bg-slate-200 hover:bg-slate-300 text-slate-700 transition-colors shadow-sm uppercase tracking-wider"
+                     className="w-1/3 py-3.5 rounded-xl font-bold text-xs bg-white/5 hover:bg-white/10 text-slate-400 transition-colors shadow-sm uppercase tracking-wider border border-white/10 active:scale-95"
                    >
-                      Cancel
+                      Abort
                    </button>
                    <button 
                      onClick={handleCredit} 
                      disabled={loading} 
-                     className={`w-2/3 py-2.5 rounded-lg font-black text-[11px] md:text-xs uppercase tracking-widest transition-all ${
+                     className={`w-2/3 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${
                        loading
-                         ? 'bg-slate-200 text-slate-500 cursor-not-allowed border border-slate-300' 
-                         : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-[0_4px_10px_rgba(34,197,94,0.3)] hover:-translate-y-0.5 active:scale-95'
+                         ? 'bg-white/5 text-slate-500 cursor-not-allowed border border-white/5' 
+                         : 'bg-gradient-to-r from-cyan-500 to-indigo-500 hover:shadow-[0_0_20px_rgba(34,211,238,0.4)] text-white shadow-lg active:scale-95'
                      }`}
                    >
-                     {loading ? "PROCESSING..." : "CREDIT TO WALLET"}
+                     {loading ? <><Activity size={16} className="animate-pulse" /> PROCESSING...</> : "CREDIT TO VAULT"}
                    </button>
                  </div>
               )}

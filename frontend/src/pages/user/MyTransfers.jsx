@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
-import api from "../../api/axios";
-import { useAuth } from '../../context/AuthContext';
-import { Search, ChevronLeft, ChevronRight, ArrowRightLeft, ArrowUpRight, ArrowDownLeft, Wallet } from "lucide-react";
+import api from "../../api/axios"; 
+import { useAuth } from "../../context/AuthContext"; 
+import { Search, ChevronLeft, ChevronRight, ArrowRightLeft, ArrowUpRight, ArrowDownLeft, Wallet, Activity, ArrowLeftRight } from "lucide-react";
 
 const MyTransfers = () => {
   const { user } = useAuth();
@@ -23,24 +23,17 @@ const MyTransfers = () => {
       );
       
       const rawData = res.data || [];
-
-      // 🔥 DUPLICATE FIX LOGIC: Ek hi transfer ki 2 entry aane par use 1 bana dega
       const uniqueData = rawData.reduce((acc, current) => {
-        // Check karega ki kya same amount, same sender aur same receiver ki entry pehle se hai (within 10 seconds)
         const isDuplicate = acc.find(item => 
           item.amount === current.amount && 
           item.toUserId === current.toUserId && 
           item.fromUserId === current.fromUserId &&
           Math.abs(new Date(item.createdAt).getTime() - new Date(current.createdAt).getTime()) < 10000 
         );
-        
-        if (!isDuplicate) {
-          acc.push(current);
-        }
+        if (!isDuplicate) acc.push(current);
         return acc;
       }, []);
 
-      // Ensure the newest transfers are on top
       const sortedData = uniqueData.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       setTransfers(sortedData);
     } catch (err) {
@@ -59,7 +52,7 @@ const MyTransfers = () => {
   
   const filtered = view === "sent" ? sentTransfers : receivedTransfers;
 
-  // 🔥 TOTALS CALCULATION
+  // 🔥 TOTALS
   const totalSentAmount = sentTransfers.reduce((sum, txn) => sum + Number(txn.amount || 0), 0);
   const totalReceivedAmount = receivedTransfers.reduce((sum, txn) => sum + Number(txn.amount || 0), 0);
 
@@ -76,141 +69,106 @@ const MyTransfers = () => {
     currentPage * itemsPerPage
   );
 
-  const handlePrev = () => currentPage > 1 && setCurrentPage(p => p - 1);
-  const handleNext = () => currentPage < totalPages && setCurrentPage(p => p + 1);
-
   return (
-    <div className="w-full max-w-7xl mx-auto pb-10 relative z-10 animate-in fade-in duration-500">
+    <div className="w-full max-w-7xl mx-auto pb-10 relative z-10 animate-in fade-in duration-500 font-sans">
       
-      {/* Scrollbar CSS */}
       <style>{`
         .custom-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
-        .custom-scroll::-webkit-scrollbar-track { background: #050505; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: #f97316; border-radius: 10px; }
+        .custom-scroll::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
+        .custom-scroll::-webkit-scrollbar-thumb { background: rgba(34, 211, 238, 0.3); border-radius: 10px; }
       `}</style>
 
       {/* Header */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 gap-4">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
         <div>
-          <h2 className="text-2xl md:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-500 uppercase tracking-wide flex items-center gap-3">
-             <ArrowRightLeft className="text-green-500" size={28} /> P2P Transfers
+          <h2 className="text-2xl md:text-3xl font-black text-white uppercase tracking-wide flex items-center gap-3">
+             <div className="p-2.5 bg-cyan-500/10 border border-cyan-500/20 rounded-2xl shadow-[0_0_15px_rgba(34,211,238,0.1)]">
+               <ArrowRightLeft className="text-cyan-400" size={24} /> 
+             </div>
+             P2P Asset Transfer
           </h2>
-          <p className="text-black text-xs md:text-sm font-bold tracking-widest uppercase mt-1">
-            Manage your sent and received funds
+          <p className="text-cyan-400/60 text-[10px] md:text-xs font-bold tracking-widest uppercase mt-2 ml-1">
+            Manage peer-to-peer asset movement
           </p>
         </div>
       </div>
 
-      {/* 🔥 SUMMARY BOXES (TOTAL SENT & RECEIVED) */}
+      {/* 🔥 SUMMARY BOXES */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <div className="bg-white shadow-sm border border-slate-200 rounded-2xl p-5 flex items-center justify-between group hover:shadow-md transition-all">
+        <div className="bg-[#0f172a]/60 backdrop-blur-xl border border-rose-500/20 rounded-3xl p-6 flex items-center justify-between group shadow-inner">
           <div>
-            <p className="text-gray-500 text-xs font-black uppercase tracking-widest mb-1">Total Sent</p>
-            <h3 className="text-2xl font-black text-red-500">${totalSentAmount.toFixed(2)}</h3>
+            <p className="text-rose-400/70 text-[10px] font-black uppercase tracking-widest mb-1">Total Assets Sent</p>
+            <h3 className="text-2xl font-black text-white font-mono drop-shadow-[0_0_8px_rgba(244,63,94,0.4)]">${totalSentAmount.toFixed(2)}</h3>
           </div>
-          <div className="h-12 w-12 bg-red-50 rounded-xl flex items-center justify-center text-red-500 group-hover:scale-110 transition-transform">
+          <div className="h-12 w-12 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex items-center justify-center text-rose-400">
             <ArrowUpRight size={24} strokeWidth={3} />
           </div>
         </div>
         
-        <div className="bg-white shadow-sm border border-slate-200 rounded-2xl p-5 flex items-center justify-between group hover:shadow-md transition-all">
+        <div className="bg-[#0f172a]/60 backdrop-blur-xl border border-emerald-500/20 rounded-3xl p-6 flex items-center justify-between group shadow-inner">
           <div>
-            <p className="text-gray-500 text-xs font-black uppercase tracking-widest mb-1">Total Received</p>
-            <h3 className="text-2xl font-black text-green-500">${totalReceivedAmount.toFixed(2)}</h3>
+            <p className="text-emerald-400/70 text-[10px] font-black uppercase tracking-widest mb-1">Total Assets Received</p>
+            <h3 className="text-2xl font-black text-white font-mono drop-shadow-[0_0_8px_rgba(16,185,129,0.4)]">${totalReceivedAmount.toFixed(2)}</h3>
           </div>
-          <div className="h-12 w-12 bg-green-50 rounded-xl flex items-center justify-center text-green-500 group-hover:scale-110 transition-transform">
+          <div className="h-12 w-12 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center justify-center text-emerald-400">
             <ArrowDownLeft size={24} strokeWidth={3} />
           </div>
         </div>
       </div>
 
-      {/* Toggle View (Sent / Received) */}
-      <div className="flex gap-4 mb-6 bg-white shadow-sm p-2 w-fit rounded-xl border border-slate-200">
+      {/* Toggle View */}
+      <div className="flex gap-2 mb-6 bg-black/20 p-2 w-fit rounded-2xl border border-white/5">
         <button
           onClick={() => { setView("sent"); setSearchTerm(""); setCurrentPage(1); }}
-          className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-xs md:text-sm font-black tracking-widest uppercase transition-all ${
+          className={`flex items-center gap-2 px-8 py-3 rounded-xl text-[10px] font-black tracking-widest uppercase transition-all ${
             view === "sent" 
-              ? "bg-green-500 text-slate-900 shadow-[0_0_15px_rgba(249,115,22,0.4)]" 
-              : "bg-transparent text-gray-500 hover:text-slate-900"
+              ? "bg-gradient-to-r from-rose-500 to-red-600 text-white shadow-[0_0_20px_rgba(244,63,94,0.3)]" 
+              : "text-slate-400 hover:text-white"
           }`}
         >
-          <ArrowUpRight size={16} /> Sent
+          <ArrowUpRight size={14} /> Sent
         </button>
         <button
           onClick={() => { setView("received"); setSearchTerm(""); setCurrentPage(1); }}
-          className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-xs md:text-sm font-black tracking-widest uppercase transition-all ${
+          className={`flex items-center gap-2 px-8 py-3 rounded-xl text-[10px] font-black tracking-widest uppercase transition-all ${
             view === "received" 
-              ? "bg-green-500 text-slate-900 shadow-[0_0_15px_rgba(34,197,94,0.4)]" 
-              : "bg-transparent text-gray-500 hover:text-slate-900"
+              ? "bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-[0_0_20px_rgba(16,185,129,0.3)]" 
+              : "text-slate-400 hover:text-white"
           }`}
         >
-          <ArrowDownLeft size={16} /> Received
+          <ArrowDownLeft size={14} /> Received
         </button>
       </div>
 
-      {/* Filters (Search & Entries) */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-6 justify-between items-center bg-white shadow-sm p-4 rounded-2xl border border-slate-200">
-        
-        <div className="relative w-full sm:w-80 group">
-           <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-             <Search size={16} className="text-gray-500 group-focus-within:text-green-500 transition-colors" />
-           </div>
-           <input
-             type="text"
-             placeholder={view === "sent" ? "Search Receiver ID..." : "Search Sender ID..."}
-             value={searchTerm}
-             onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-             className="w-full bg-white border border-slate-200 text-slate-900 text-sm font-bold tracking-wide rounded-xl px-4 py-3 pl-10 focus:border-green-500 focus:outline-none transition-all placeholder-slate-400"
-           />
-        </div>
-
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-           <span className="text-xs font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">Show:</span>
-           <select
-             value={itemsPerPage}
-             onChange={(e) => {
-               setItemsPerPage(Number(e.target.value));
-               setCurrentPage(1);
-             }}
-             className="w-full sm:w-auto bg-white border border-slate-200 text-slate-900 text-sm font-bold rounded-xl px-4 py-3 focus:border-green-500 focus:outline-none transition-all appearance-none cursor-pointer"
-           >
-             <option value={10}>10 Rows</option>
-             <option value={20}>20 Rows</option>
-             <option value={50}>50 Rows</option>
-             <option value={100}>100 Rows</option>
-           </select>
-        </div>
-      </div>
-
       {/* Table Box */}
-      <div className="bg-white shadow-sm backdrop-blur-xl rounded-2xl border border-slate-200 overflow-hidden shadow-2xl relative">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-green-600/5 blur-[100px] pointer-events-none rounded-full"></div>
+      <div className="bg-[#0f172a]/60 backdrop-blur-xl shadow-[0_0_30px_rgba(0,0,0,0.3)] rounded-3xl border border-white/5 overflow-hidden relative">
         
         <div className="overflow-x-auto custom-scroll w-full relative z-10">
           <table className="w-full text-xs sm:text-sm text-left whitespace-nowrap">
-            <thead className="bg-slate-50 text-green-500 text-[10px] md:text-xs uppercase tracking-widest border-b border-slate-200">
+            <thead className="bg-black/40 text-cyan-400 text-[10px] md:text-xs uppercase tracking-widest border-b border-white/5">
               <tr>
-                <th className="p-4 font-black text-center w-16">Sr.</th>
-                                <th className="p-4 font-black text-right">Date & Time</th>
-
-                <th className="p-4 font-black">Type</th>
-                <th className="p-4 font-black">{view === "sent" ? "To User" : "From User"}</th>
-                <th className="p-4 font-black text-center">Amount</th>
+                <th className="p-5 font-black text-center w-16">Sr.</th>
+                <th className="p-5 font-black text-right">Date & Time</th>
+                <th className="p-5 font-black">Transaction Type</th>
+                <th className="p-5 font-black">{view === "sent" ? "Receiver  UserId" : "Sender  UserId"}</th>
+                <th className="p-5 font-black text-center">Amount</th>
               </tr>
             </thead>
-            <tbody className="text-slate-600">
+            <tbody className="text-slate-300">
               {loading ? (
                 <tr>
-                  <td colSpan="5" className="text-center py-12">
-                    <svg className="animate-spin h-8 w-8 text-green-500 mx-auto mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                    <span className="text-xs font-bold uppercase tracking-widest text-gray-500">Loading Transfers...</span>
+                  <td colSpan="5" className="text-center py-16">
+                     <div className="flex flex-col items-center justify-center gap-3">
+                        <Activity size={28} className="text-cyan-400 animate-pulse" />
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400/70">Syncing P2P Ledger...</span>
+                     </div>
                   </td>
                 </tr>
               ) : paginatedTransfers.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="text-center py-12">
-                    <span className="text-gray-500 font-bold text-sm uppercase tracking-widest">
-                      No {view} transfers found
+                  <td colSpan="5" className="text-center py-16">
+                    <span className="text-slate-500 font-bold text-xs uppercase tracking-widest bg-black/40 px-6 py-3 rounded-xl border border-white/5">
+                      No {view} transactions found
                     </span>
                   </td>
                 </tr>
@@ -220,42 +178,36 @@ const MyTransfers = () => {
                   const isSent = view === "sent";
                   
                   return (
-                    <tr key={txn._id || idx} className="border-b border-slate-100 hover:bg-white/5 transition-colors bg-white">
-                      
-                      <td className="p-4 font-bold text-gray-500 text-center">
-                        {(currentPage - 1) * itemsPerPage + idx + 1}
-                      </td>
+                    <tr key={txn._id || idx} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                      <td className="p-5 font-bold text-slate-500 text-center">{(currentPage - 1) * itemsPerPage + idx + 1}</td>
 
-                      <td className="p-4 text-gray-500 font-mono text-[10px] sm:text-xs text-right">
+                      <td className="p-5 text-slate-400 font-mono text-[11px]">
                         <div className="flex flex-col items-end">
-                           <span className="text-slate-600">{date.toLocaleDateString("en-GB", { day: '2-digit', month: 'short', year: 'numeric' })}</span>
-                           <span>{date.toLocaleTimeString("en-US", { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
+                            <span className="text-white font-bold">{date.toLocaleDateString("en-GB", { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                            <span className="text-slate-500 text-[10px]">{date.toLocaleTimeString("en-US", { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
                         </div>
                       </td>
 
-                      <td className="p-4">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-black tracking-widest uppercase border ${
-                          isSent 
-                            ? "bg-red-50 text-red-500 border-red-200" 
-                            : "bg-green-50 text-green-500 border-green-200"
-                        }`}>
-                          {isSent ? <ArrowUpRight size={12} strokeWidth={3} /> : <ArrowDownLeft size={12} strokeWidth={3} />}
-                          {isSent ? "Sent" : "Received"}
-                        </span>
-                      </td>
-
-                      <td className="p-4 font-black text-slate-900">
-                         <span className="bg-slate-50 px-3 py-1.5 border border-slate-200 rounded-lg">
-                           {isSent ? txn.toUserId : txn.fromUserId}
+                      <td className="p-5">
+                         <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black tracking-widest uppercase border ${
+                           isSent 
+                             ? "bg-rose-500/10 border-rose-500/20 text-rose-400" 
+                             : "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+                         }`}>
+                            {isSent ? <ArrowUpRight size={12} strokeWidth={3} /> : <ArrowDownLeft size={12} strokeWidth={3} />}
+                            {isSent ? "Transfer Sent" : "Transfer Received"}
                          </span>
                       </td>
 
-                      <td className="p-4 font-black text-center">
-                        <span className={`text-base drop-shadow-md ${isSent ? "text-red-500" : "text-green-500"}`}>
+                      <td className="p-5 font-mono text-white text-xs">
+                         <span className="bg-black/40 px-3 py-1.5 border border-white/10 rounded-lg">{isSent ? txn.toUserId : txn.fromUserId}</span>
+                      </td>
+
+                      <td className="p-5 font-black text-center text-sm font-mono">
+                        <span className={isSent ? "text-rose-400" : "text-emerald-400"}>
                           {isSent ? "-" : "+"} ${Number(txn.amount || 0).toFixed(2)}
                         </span>
                       </td>
-                    
                     </tr>
                   );
                 })
@@ -266,8 +218,8 @@ const MyTransfers = () => {
 
         {/* Pagination Footer */}
         {!loading && searchedTransfers.length > 0 && (
-           <div className="p-4 border-t border-slate-100 bg-slate-50 flex flex-col sm:flex-row justify-between items-center gap-4 relative z-10">
-              <span className="text-gray-500 text-[10px] md:text-xs font-black uppercase tracking-widest">
+           <div className="p-5 border-t border-white/5 bg-black/20 flex flex-col sm:flex-row justify-between items-center gap-4 relative z-10">
+              <span className="text-cyan-400/60 text-[10px] font-black uppercase tracking-widest">
                 Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, searchedTransfers.length)} of {searchedTransfers.length} Entries
               </span>
               
@@ -275,21 +227,21 @@ const MyTransfers = () => {
                  <button
                    onClick={handlePrev}
                    disabled={currentPage === 1}
-                   className={`p-2 rounded-lg flex items-center justify-center transition-all ${currentPage === 1 ? 'bg-white/5 text-gray-400 cursor-not-allowed border border-transparent' : 'bg-white text-slate-900 hover:bg-green-50 hover:text-green-500 border border-slate-200 hover:border-green-500/30 shadow-sm'}`}
+                   className={`p-2.5 rounded-xl flex items-center justify-center transition-all ${currentPage === 1 ? 'bg-white/5 text-slate-600 cursor-not-allowed border border-transparent' : 'bg-white/5 text-cyan-400 border border-white/10 hover:bg-white/10 hover:border-cyan-500/30 active:scale-95'}`}
                  >
-                   <ChevronLeft size={18} />
+                   <ChevronLeft size={16} strokeWidth={2.5} />
                  </button>
                  
-                 <span className="bg-white border border-slate-200 text-slate-900 text-xs font-bold px-4 py-2 rounded-lg shadow-sm">
+                 <span className="bg-black/40 border border-white/10 text-white text-[11px] font-black font-mono px-4 py-2.5 rounded-xl shadow-inner">
                     {currentPage} / {totalPages}
                  </span>
                  
                  <button
                    onClick={handleNext}
                    disabled={currentPage === totalPages}
-                   className={`p-2 rounded-lg flex items-center justify-center transition-all ${currentPage === totalPages ? 'bg-white/5 text-gray-400 cursor-not-allowed border border-transparent' : 'bg-white text-slate-900 hover:bg-green-50 hover:text-green-500 border border-slate-200 hover:border-green-500/30 shadow-sm'}`}
+                   className={`p-2.5 rounded-xl flex items-center justify-center transition-all ${currentPage === totalPages ? 'bg-white/5 text-slate-600 cursor-not-allowed border border-transparent' : 'bg-white/5 text-cyan-400 border border-white/10 hover:bg-white/10 hover:border-cyan-500/30 active:scale-95'}`}
                  >
-                   <ChevronRight size={18} />
+                   <ChevronRight size={16} strokeWidth={2.5} />
                  </button>
               </div>
            </div>

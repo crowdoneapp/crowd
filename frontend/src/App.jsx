@@ -114,7 +114,7 @@ function AppContent() {
 
   const isAdmin = !!localStorage.getItem('adminToken');
   const hostname = window.location.hostname;
-  const isGoodSubdomain = hostname.startsWith('good.');
+  const issoulSubdomain = hostname.startsWith('soul.');
 
   useEffect(() => {
     // 🔥 MAINTENANCE BYPASS: Network Errors se bachne ke liye 🔥
@@ -127,15 +127,48 @@ function AppContent() {
   const isAllowed = !maintenance || whitelist.includes(currentUserId) || isAdmin;
 
   // 🔥 Loading Screen Updated to Light Theme
-  if (!checked) return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-900">
-      <div className="flex flex-col items-center gap-4">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-500"></div>
-        <p className="text-black text-sm font-medium">Initializing Crypto Network...</p>
+ if (!checked) return (
+    <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center relative overflow-hidden font-sans">
+      
+      {/* 🟢 Background Glowing Blobs (Neo-Banking Vibe) */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-400/20 rounded-full blur-[100px] animate-pulse"></div>
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-indigo-500/20 rounded-full blur-[80px]"></div>
+
+      {/* 🟢 Glassmorphism Card */}
+      <div className="relative z-10 flex flex-col items-center gap-8 p-10 bg-white/40 backdrop-blur-xl border border-white/60 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] rounded-[2rem]">
+        
+        {/* 🟢 Advanced Crypto Spinner */}
+        <div className="relative w-24 h-24 flex items-center justify-center">
+          {/* Outer Dashed Slow Spin */}
+          <div className="absolute inset-0 rounded-full border-[3px] border-dashed border-indigo-300/50 animate-[spin_4s_linear_infinite]"></div>
+          
+          {/* Inner Solid Fast Spin */}
+          <div className="absolute inset-3 rounded-full border-[3px] border-t-blue-600 border-r-transparent border-b-blue-600 border-l-transparent animate-[spin_1s_cubic-bezier(0.5,0.1,0.5,0.9)_infinite]"></div>
+          
+          {/* Center Pulsing Core */}
+          <div className="w-5 h-5 bg-[#0b1c3c] rounded-full animate-pulse shadow-[0_0_20px_rgba(11,28,60,0.6)] relative">
+             <div className="absolute inset-0 bg-[#0b1c3c] rounded-full animate-ping opacity-75"></div>
+          </div>
+        </div>
+        
+        {/* 🟢 Text Area */}
+        <div className="flex flex-col items-center gap-2">
+          <h3 className="text-[#0b1c3c] text-lg sm:text-xl font-black tracking-[0.2em] uppercase">
+            Initializing
+          </h3>
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+            <span className="text-slate-500 text-[10px] sm:text-xs font-bold tracking-widest uppercase ml-1">
+              Securing Crypto Network
+            </span>
+          </div>
+        </div>
+
       </div>
     </div>
   );
-
   if (!isAllowed) return <MaintenancePage />;
 
   return (
@@ -155,7 +188,7 @@ function AppContent() {
       <div className="min-h-screen relative z-10">
         <ScrollToTop />
         
-        {isGoodSubdomain ? (
+        {issoulSubdomain ? (
           /* ================= ADMIN ================= */
           <Routes>
             <Route path="/" element={<Navigate to="/community-access" />} />
@@ -204,7 +237,8 @@ function AppContent() {
         ) : (
           /* ================= USER / PUBLIC ================= */
           <Routes>
-            <Route path="/" element={<Home />} />
+            {/* <Route path="/" element={<Home />} /> */}
+            <Route path="/" element={<Login />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/maintenance" element={<MaintenancePage />} />
@@ -272,7 +306,7 @@ function AppWithAuthReady() {
     <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-900">
       <div className="flex flex-col items-center gap-4">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-500"></div>
-        <p className="text-black text-sm">Authenticating Node...</p>
+        <p className="text-black text-sm">Authenticating ...</p>
       </div>
     </div>
   );

@@ -50,7 +50,6 @@ const customStyles = `
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
-  /* Flyer specific dark blue header */
   .flyer-header {
     background-color: #0b1c3c;
     color: #ffffff;
@@ -74,7 +73,7 @@ const generateLevelsData = (pkgAmount) => {
       totalEarning: totalReturnPerLevel,
       dailyEarning: dailyReturnPerLevel,
       days: ROI_DAYS,
-      reqDirectsActual: i, 
+      reqDirectsActual: i,  // Backend/Logic checking ke liye (level 1=1, level 2=2)
       reqTeamActual: i * 100, // 100, 200, 300...
     });
   }
@@ -89,11 +88,13 @@ export default function Plan() {
   
   const [showGrowthInfo, setShowGrowthInfo] = useState(false);
 
-  // 🔥 User Data from Context
-  const userHighestPackage = user?.highestPackage || 0; 
+  // 🔥 100% FIXED: Aapke MongoDB JSON ke hisaab se exact fields fetch ho rahi hain
+  // Agar highestPackage nahi mila toh packages array se max amount uthayega
+  const userHighestPackage = user?.highestPackage || user?.topUpAmount || (user?.packages?.length > 0 ? Math.max(...user.packages.map(p => p.amount)) : 0);
+  
   const userDirects = user?.directCount || 0;
   const userGlobalTeam = user?.globalTeamCount || 0;
-  const isToppedUp = user?.isToppedUp || false;
+  const isToppedUp = user?.isToppedUp || userHighestPackage > 0;
 
   useEffect(() => {
     setCurrentPage(1); 
@@ -246,7 +247,7 @@ export default function Plan() {
                 <tbody>
                   {currentLevels.map((lvl) => {
                     const isPackageUnlocked = userHighestPackage >= selectedPackage;
-                    // 🔥 LOCK/UNLOCK LOGIC BASED ON ACTUAL DB VALUES
+                    // 🔥 LOCK/UNLOCK LOGIC: Level unlock requires direct AND team
                     const isLevelUnlocked = isPackageUnlocked && userDirects >= lvl.reqDirectsActual && userGlobalTeam >= lvl.reqTeamActual;
 
                     return (
@@ -262,9 +263,9 @@ export default function Plan() {
                           ${lvl.totalEarning.toFixed(2)} USDT
                         </td>
 
-                        {/* DIRECT REQUIRED */}
+                        {/* 🔥 DIRECT REQUIRED (Hardcoded as "1 Direct" visually as requested) */}
                         <td className="py-4 px-3 sm:py-5 sm:px-6 font-bold text-slate-600 text-xs sm:text-sm">
-                          {lvl.reqDirectsActual} Direct{lvl.reqDirectsActual > 1 ? 's' : ''}
+                          1 Direct
                         </td>
 
                         {/* DAILY INCOME (USDT) */}
@@ -347,50 +348,7 @@ export default function Plan() {
           </div>
         </div>
 
-        {/* 🔥 INFO SECTION */}
-        <div className="neo-card overflow-hidden mb-10 border border-indigo-100">
-          <button
-            onClick={() => setShowGrowthInfo(!showGrowthInfo)}
-            className="w-full flex items-center justify-between p-4 sm:p-5 hover:bg-slate-50 transition-colors focus:outline-none"
-          >
-            <div className="flex items-center gap-3">
-              <div className="p-1.5 sm:p-2 bg-indigo-50 border border-indigo-100 rounded-lg">
-                 <Info size={16} className="text-indigo-600 sm:w-5 sm:h-5" />
-              </div>
-              <span className="font-bold text-slate-700 uppercase tracking-widest text-[10px] sm:text-xs">
-                How Level Progression Works
-              </span>
-            </div>
-            <div className="text-slate-400">
-              {showGrowthInfo ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-            </div>
-          </button>
-
-          {showGrowthInfo && (
-            <div className="p-4 sm:p-6 border-t border-slate-100 bg-slate-50/50 animate-in slide-in-from-top-2 duration-300">
-              <div className="space-y-3 sm:space-y-4">
-                <div className="flex gap-3">
-                   <div className="w-1.5 h-1.5 rounded-full bg-[#0b1c3c] mt-1.5 sm:mt-2 shrink-0"></div>
-                   <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                     <strong className="text-slate-800">Tier Requirement:</strong> To earn income from a specific tier, your active package must be <span className="text-blue-600 font-bold">equal to or higher</span> than that tier.
-                   </p>
-                </div>
-                <div className="flex gap-3">
-                   <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-1.5 sm:mt-2 shrink-0"></div>
-                   <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                     <strong className="text-slate-800">Unlock Rule:</strong> Opening each new level strictly requires <strong className="text-indigo-600">+1 New Direct Referral</strong> and <strong className="text-indigo-600">+100 New Global Team Members</strong>.
-                   </p>
-                </div>
-                <div className="flex gap-3">
-                   <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 sm:mt-2 shrink-0"></div>
-                   <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                     <strong className="text-slate-800">2x Return System:</strong> Once a level is unlocked, you receive exactly <strong className="text-emerald-600">Double (2x)</strong> the package amount for that level, distributed smoothly over 90 days.
-                   </p>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+        
 
       </div>
     </div>

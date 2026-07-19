@@ -47,7 +47,7 @@ const CommunityEarning = () => {
         
         setTransactions(sorted);
       })
-      .catch((err) => console.error("Failed to fetch community earnings", err))
+      .catch((err) => console.error("Failed to fetch  Crowd Donation Earnings", err))
       .finally(() => setLoading(false));
   }, [userId]);
 
@@ -112,10 +112,10 @@ const CommunityEarning = () => {
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 gap-4">
         <div>
           <h2 className="text-2xl md:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-indigo-600 uppercase tracking-wide flex items-center gap-3">
-             <Users className="text-purple-500" size={28} /> Community Earning
+             <Users className="text-purple-500" size={28} />  Crowd Donation Earning
           </h2>
           <p className="text-slate-500 text-xs md:text-sm font-bold tracking-widest uppercase mt-1">
-            Track your Community Earning & Daily Progress
+            Track your  Crowd Donation Earning & Daily Progress
           </p>
         </div>
       </div>
@@ -124,7 +124,7 @@ const CommunityEarning = () => {
       <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl p-5 md:p-6 mb-8 text-white shadow-xl shadow-purple-500/20 flex flex-col sm:flex-row items-center justify-between gap-4 border border-purple-400/30 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 blur-[80px] rounded-full pointer-events-none"></div>
         <div className="text-center sm:text-left z-10">
-          <p className="text-purple-100 text-xs md:text-sm font-bold tracking-widest uppercase mb-1">Total Community Earning</p>
+          <p className="text-purple-100 text-xs md:text-sm font-bold tracking-widest uppercase mb-1">Total  Crowd Donation Earning</p>
           <h3 className="text-4xl md:text-5xl font-black flex items-center justify-center sm:justify-start gap-1">
             <span className="text-purple-300 text-2xl md:text-3xl">$</span>{totalCommunityIncome.toFixed(2)}
           </h3>
@@ -138,7 +138,7 @@ const CommunityEarning = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-8">
         {loading ? (
            <div className="col-span-full text-center py-5 text-purple-500 font-bold tracking-widest uppercase text-sm">
-             Loading Active Community Earning ...
+             Loading Active  Crowd Donation Earning ...
            </div>
         ) : pools.length === 0 ? (
            <div className="col-span-full bg-white p-6 md:p-8 rounded-2xl border border-slate-200 text-center shadow-sm">

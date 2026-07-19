@@ -144,7 +144,7 @@ const CreditToWalletHistory = () => {
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
         <div>
           <h2 className="text-2xl md:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-cyan-500 uppercase tracking-wide flex items-center gap-3">
-            <Wallet className="text-blue-500" size={28} /> Credit To Wallet
+            <Wallet className="text-blue-500" size={28} /> Move To Wallet
           </h2>
           <p className="text-slate-500 text-xs md:text-sm font-bold tracking-widest uppercase mt-1">
             Track your internal fund credits and binary income

@@ -20,17 +20,17 @@ const allowedOrigins = [
   // --- Local Testing ke liye ---
   'http://localhost:3000',
   'http://127.0.0.1:3000',
-  'http://good.localhost:3000',
+  'http://soul.localhost:3000',
   'http://localhost:5000',       
   'http://127.0.0.1:5000',
   'http://localhost:5173',       
   'http://127.0.0.1:5173',
-  'http://good.localhost:5173', 
+  'http://soul.localhost:5173', 
 
   // --- LIVE SERVER KE LIYE (Ye sabse zaroori hain) ---
   'https://crowdone.live',        // 🔥 Live Main Website
   'https://www.crowdone.live',    // 🔥 Live Main Website (www wali)
-  'https://good.crowdone.live'   // 🔥 Live Admin Panel (good.localhost ki jagah)
+  'https://soul.crowdone.live'   // 🔥 Live Admin Panel (soul.localhost ki jagah)
 ];
 app.use(cors({
   origin: function (origin, callback) {

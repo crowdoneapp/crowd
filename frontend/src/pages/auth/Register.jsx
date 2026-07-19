@@ -548,47 +548,75 @@ function Register() {
       </div>
 
       {/* ===== SUCCESS MODAL — same aurora/glass theme ===== */}
-      {showPopup && registeredData && (
-        <div className="fixed inset-0 bg-[#0a0e1a]/85 backdrop-blur-md flex justify-center items-center z-[2000] p-4">
-          <div className="animate-in zoom-in duration-300 relative overflow-hidden bg-white/[0.06] backdrop-blur-2xl border border-white/10 rounded-[28px] w-full max-w-[400px] p-6 sm:p-8 text-center shadow-[0_25px_70px_-15px_rgba(0,0,0,0.7)]">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-400/10 blur-[50px]"></div>
+    {showPopup && registeredData && (
+  <div className="fixed inset-0 z-[9999] bg-[#020617]/90 backdrop-blur-md flex justify-center items-center p-4">
+    <div className="animate-in zoom-in-95 duration-300 relative overflow-hidden bg-[#0f172a]/80 backdrop-blur-xl border border-cyan-500/20 rounded-3xl w-full max-w-md p-6 sm:p-8 text-center shadow-[0_0_50px_-12px_rgba(34,211,238,0.3)]">
+      
+      {/* 🟢 Glowing Background Orbs */}
+      <div className="absolute -top-10 -right-10 w-40 h-40 bg-cyan-500/20 blur-[60px] rounded-full"></div>
+      <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-indigo-500/20 blur-[60px] rounded-full"></div>
 
-            <div className="w-20 h-20 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-6 relative border border-white/10">
-              <div className="absolute inset-0 bg-cyan-400/10 rounded-2xl animate-ping opacity-50"></div>
-              <CheckCircle2 size={40} className="text-cyan-400 relative z-10" strokeWidth={2.5} />
-            </div>
+      {/* 🟢 Success Icon */}
+      <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-cyan-500/10 to-indigo-500/10 flex items-center justify-center mx-auto mb-6 relative border border-cyan-500/20 shadow-[0_0_20px_rgba(34,211,238,0.2)]">
+        <div className="absolute inset-0 bg-cyan-400/20 rounded-2xl animate-ping opacity-30"></div>
+        <CheckCircle2 size={40} className="text-cyan-400 relative z-10" strokeWidth={2.5} />
+      </div>
 
-            <h2 className="text-2xl font-black text-white mb-1 tracking-tight">ACCOUNT <span className="text-cyan-400">CREATED</span></h2>
-            <p className="text-slate-400 text-xs uppercase tracking-widest mb-6 font-bold truncate px-2">Welcome, {registeredData.name}</p>
+      <h2 className="text-2xl sm:text-3xl font-black text-white mb-1 tracking-tight">
+        ACCOUNT <span className="bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-indigo-400">CREATED</span>
+      </h2>
+      <p className="text-slate-400 text-xs sm:text-sm uppercase tracking-widest mb-8 font-bold truncate px-2">
+        Welcome, <span className="text-white">{registeredData.name}</span>
+      </p>
 
-            <div className="bg-white/[0.04] border border-white/10 p-4 sm:p-5 rounded-2xl mb-6 text-left relative z-10">
-              <div className="flex justify-between items-center mb-4 pb-4 border-b border-white/10">
-                <span className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">User ID</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-cyan-300 font-black text-lg sm:text-xl tracking-wider font-mono">{registeredData.userId}</span>
-                  <button onClick={() => copyToClipboard(registeredData.userId)} className="text-slate-400 hover:text-cyan-300 bg-white/5 border border-white/10 p-1.5 rounded shadow-sm transition-colors"><Copy size={14} /></button>
-                </div>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">Password</span>
-                <div className="flex items-center gap-2 max-w-[60%]">
-                  <span className="text-white font-black font-mono bg-white/5 border border-white/10 px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm truncate">{registeredData.password}</span>
-                  <button onClick={() => copyToClipboard(registeredData.password)} className="text-slate-400 hover:text-cyan-300 bg-white/5 border border-white/10 p-1.5 rounded shadow-sm flex-shrink-0 transition-colors"><Copy size={14} /></button>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-amber-400/10 border border-amber-400/30 text-amber-300 text-[9px] sm:text-[10px] p-3 rounded-xl font-bold mb-6 flex items-center justify-center gap-2 uppercase tracking-widest">
-              ⚠️ Take a screenshot of these details
-            </div>
-
-            <button onClick={handlePopupClose} className="w-full py-4 rounded-xl bg-gradient-to-r from-cyan-400 to-violet-500 text-[#0a0e1a] font-black tracking-widest uppercase hover:shadow-[0_10px_30px_-8px_rgba(34,211,238,0.5)] transition-all">
-              PROCEED TO LOGIN
+      {/* 🟢 Credentials Box */}
+      <div className="bg-black/40 border border-white/5 p-5 rounded-2xl mb-6 text-left relative z-10 shadow-inner">
+        
+        {/* User ID */}
+        <div className="flex justify-between items-center mb-4 pb-4 border-b border-white/10">
+          <span className="text-slate-400 font-bold text-[10px] sm:text-xs uppercase tracking-widest">User ID</span>
+          <div className="flex items-center gap-3">
+            <span className="text-cyan-400 font-black text-lg sm:text-xl tracking-wider font-mono drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]">
+              {registeredData.userId}
+            </span>
+            <button 
+              onClick={() => copyToClipboard(registeredData.userId)} 
+              className="text-slate-400 hover:text-cyan-300 bg-white/5 hover:bg-white/10 border border-white/10 p-2 rounded-lg transition-all active:scale-95"
+            >
+              <Copy size={16} />
             </button>
           </div>
-          {showConfetti && <Confetti width={window.innerWidth} height={window.innerHeight} />}
         </div>
-      )}
+
+        {/* Password */}
+        <div className="flex justify-between items-center">
+          <span className="text-slate-400 font-bold text-[10px] sm:text-xs uppercase tracking-widest">Password</span>
+          <div className="flex items-center gap-3 max-w-[65%]">
+            <span className="text-white font-bold font-mono bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg text-sm truncate tracking-wider">
+              {registeredData.password}
+            </span>
+            <button 
+              onClick={() => copyToClipboard(registeredData.password)} 
+              className="text-slate-400 hover:text-cyan-300 bg-white/5 hover:bg-white/10 border border-white/10 p-2 rounded-lg transition-all flex-shrink-0 active:scale-95"
+            >
+              <Copy size={16} />
+            </button>
+          </div>
+        </div>
+      </div>
+
+     
+      {/* 🟢 Action Button */}
+      <button 
+        onClick={handlePopupClose} 
+        className="w-full py-4 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-500 text-white font-black tracking-widest uppercase hover:shadow-[0_0_30px_rgba(34,211,238,0.4)] transition-all relative z-10 overflow-hidden group"
+      >
+        <div className="absolute inset-0 bg-white/20 group-hover:translate-x-full -translate-x-full transition-transform duration-700 ease-out skew-x-12"></div>
+        Proceed to Login
+      </button>
+    </div>
+  </div>
+)}
     </div>
   );
 }

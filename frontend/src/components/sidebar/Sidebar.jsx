@@ -91,8 +91,7 @@ const Sidebar = ({ user, isOpen, setIsOpen }) => {
       title: "Help & Support",
       icon: HelpCircle,
       items: [
-        { label: "Frequently ask questions", icon: FileQuestion, path: "/faq" },
-        { label: "Support Help Center", icon: ShieldCheck, path: "/support" },
+         { label: "Support Help Center", icon: ShieldCheck, path: "/support" },
       ]
     }
   ];

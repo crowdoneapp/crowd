@@ -3,7 +3,7 @@ import api from "../../api/axios";
 import { useAuth } from "../../context/AuthContext"; 
 import SuccessModal from "./SuccessModal";
 import MessageModal from "./MessageModal";
-import { Send, User, Lock, Wallet, ArrowRightLeft, X, XCircle, CheckCircle2, ShieldCheck } from "lucide-react";
+import { Send, User, Lock, Wallet, ArrowRightLeft, X, XCircle, CheckCircle2, ShieldCheck, Activity } from "lucide-react";
 
 const WalletTransferModal = ({ onClose }) => {
   // --- STATE ---
@@ -66,24 +66,24 @@ const WalletTransferModal = ({ onClose }) => {
     const amt = Number(amount);
 
     // Common Checks
-    if (!transactionPassword) return showMessage("Error", "Enter transaction password.", "error");
+    if (!transactionPassword) return showMessage("Security Alert", "Enter your Tx-PIN to authorize this transfer.", "error");
 
     // 🔥 PROMO USER VALIDATION
     if (isPromoUser) {
       if (amt < 10 || amt > 1000) {
-        return showMessage("Error", "Promo transfer amount must be between $10 and $1000.", "error");
+        return showMessage("Invalid Amount", "Promo transfer amount must be between $10 and $1000.", "error");
       }
     } 
     // 🛡️ NORMAL/LEADER USER VALIDATION
     else {
       const trimmedId = userId.trim();
       if (!trimmedId || amt <= 0 || !userName || userName === "User not found")
-        return showMessage("Error", "Provide a valid recipient and amount.", "error");
+        return showMessage("Validation Error", "Provide a valid recipient ID and amount.", "error");
       if (trimmedId === String(loggedInUser.userId))
-        return showMessage("Error", "You cannot transfer to yourself.", "error");
+        return showMessage("Action Denied", "You cannot transfer assets to yourself.", "error");
       if (amt > senderBalance) 
-return showMessage("Error", `Insufficient balance ($${(Math.floor(Number(senderBalance) * 100) / 100).toFixed(2)})`, "error");
-        }
+        return showMessage("Insufficient Funds", `Your available balance is $${(Math.floor(Number(senderBalance) * 100) / 100).toFixed(2)}`, "error");
+    }
 
     setLoading(true);
     try {
@@ -92,15 +92,14 @@ return showMessage("Error", `Insufficient balance ($${(Math.floor(Number(senderB
       let payload = { fromUserId: loggedInUser.userId, toUserId: userId.trim(), amount: amt, transactionPassword };
 
       if (isPromoUser) {
-        endpoint = "/wallet/promo-transfer"; // Naya Backend Route
-        payload = { amount: amt, transactionPassword }; // Sirf amount jayega
+        endpoint = "/wallet/promo-transfer"; 
+        payload = { amount: amt, transactionPassword }; 
       } else if (isLeaderUser) {
         endpoint = "/wallet/leader-transfer";
       }
 
       const res = await api.post(endpoint, payload, { headers: { Authorization: `Bearer ${token}` } });
       
-      // Promo User ka response auto set karna Success modal ke liye
       if (isPromoUser) {
         setUserId(res.data.generatedId);
         setUserName(res.data.name);
@@ -108,7 +107,7 @@ return showMessage("Error", `Insufficient balance ($${(Math.floor(Number(senderB
 
       setSuccessOpen(true);
     } catch (error) {
-      const errorMsg = error.response?.data?.message || "Transfer failed due to a server error.";
+      const errorMsg = error.response?.data?.message || "Transfer failed due to a network or contract error.";
       showMessage("Transfer Failed", errorMsg, "error");
     } finally {
       setLoading(false);
@@ -127,114 +126,116 @@ return showMessage("Error", `Insufficient balance ($${(Math.floor(Number(senderB
   return (
     <>
       {!successOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[1000] flex justify-center items-center p-4 overflow-hidden animate-in fade-in duration-300">
+        <div className="fixed inset-0 bg-[#020617]/90 backdrop-blur-md z-[1000] flex justify-center items-center p-4 overflow-hidden animate-in fade-in duration-300">
           
           <style>{`
             input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
             input[type=number] { -moz-appearance: textfield; }
             .custom-scroll::-webkit-scrollbar { width: 4px; }
             .custom-scroll::-webkit-scrollbar-track { background: transparent; }
-            .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-            .custom-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+            .custom-scroll::-webkit-scrollbar-thumb { background: rgba(34, 211, 238, 0.3); border-radius: 10px; }
+            .custom-scroll::-webkit-scrollbar-thumb:hover { background: rgba(34, 211, 238, 0.6); }
           `}</style>
 
-          <div className="bg-white mt-8 w-full max-w-md rounded-3xl border border-slate-200 shadow-2xl flex flex-col max-h-[90vh] relative overflow-hidden animate-in zoom-in duration-300 transform scale-100">
+          {/* 🟢 Premium Glassmorphism Modal Container */}
+          <div className="bg-[#0f172a]/80 backdrop-blur-2xl mt-8 w-full max-w-md rounded-[32px] border border-cyan-500/20 shadow-[0_0_50px_-12px_rgba(34,211,238,0.3)] flex flex-col max-h-[90vh] relative overflow-hidden animate-in zoom-in-95 duration-300">
             
-            {/* Ambient Glow */}
-            <div className="absolute top-0 right-0 w-32 h-32 bg-green-100 blur-[60px] pointer-events-none rounded-full"></div>
+            {/* 🟢 Ambient Glow */}
+            <div className="absolute top-0 right-0 w-40 h-40 bg-cyan-500/20 blur-[60px] pointer-events-none rounded-full"></div>
+            <div className="absolute bottom-0 left-0 w-40 h-40 bg-indigo-500/20 blur-[60px] pointer-events-none rounded-full"></div>
 
-            {/* Header */}
-            <div className="p-5 border-b border-slate-200 bg-slate-50 flex justify-between items-center relative z-10 shrink-0">
-               <div className="flex items-center gap-3">
-                  <div className="p-2 bg-green-50 rounded-xl border border-green-100 text-green-600">
-                      <Send size={20} />
+            {/* 🟢 Header */}
+            <div className="p-5 border-b border-white/5 bg-black/20 flex justify-between items-center relative z-10 shrink-0">
+               <div className="flex items-center gap-3.5">
+                  <div className="p-2.5 bg-gradient-to-br from-cyan-500/10 to-indigo-500/10 rounded-2xl border border-cyan-500/30 text-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.2)]">
+                      <Send size={20} strokeWidth={2.5} />
                   </div>
                   <div>
-                    <h2 className="text-slate-800 font-black text-lg uppercase tracking-wide">P2P Transfer</h2>
-                    <p className="text-black text-[10px] font-bold uppercase tracking-widest mt-0.5">Send funds to user</p>
+                    <h2 className="text-white font-black text-lg tracking-tight">P2P Asset Transfer</h2>
+                    <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-0.5">Secure Internal Gateway</p>
                   </div>
                </div>
-               <button onClick={onClose} className="group bg-slate-100 hover:bg-red-50 p-2 rounded-full transition-all border border-slate-200 hover:border-red-200 shadow-sm cursor-pointer">
-                  <X size={20} className="text-slate-400 group-hover:text-red-500" />
+               <button onClick={onClose} className="bg-white/5 hover:bg-rose-500/20 p-2 rounded-full transition-all border border-white/10 hover:border-rose-500/30 shadow-sm cursor-pointer active:scale-95 group">
+                  <X size={18} className="text-slate-400 group-hover:text-rose-400" strokeWidth={2.5} />
                </button>
             </div>
 
-            {/* Body */}
-            <div className="p-5 overflow-y-auto custom-scroll flex-1 space-y-5 relative z-10 bg-white">
+            {/* 🟢 Body */}
+            <div className="p-5 md:p-6 overflow-y-auto custom-scroll flex-1 space-y-5 relative z-10 bg-transparent">
 
                {/* Balance Card */}
-               <div className="bg-green-50 border border-green-200 p-4 rounded-2xl flex justify-between items-center shadow-sm transition-all hover:border-green-300">
+               <div className="bg-black/40 border border-white/10 p-4.5 rounded-2xl flex justify-between items-center shadow-inner transition-all hover:border-cyan-500/30 group">
                  <div>
-                    <div className="text-[10px] text-green-700 font-bold uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
-                       <Wallet size={12} /> Available Balance
+                    <div className="text-[10px] text-cyan-400 font-bold uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                       <Wallet size={14} className="group-hover:text-cyan-300 transition-colors" /> Available Asset Balance
                     </div>
-                   <div className="text-2xl font-black text-slate-800 font-mono">
-  {senderBalance !== null ? `$${(Math.floor(Number(senderBalance) * 100) / 100).toFixed(2)}` : "..."}
-</div>
+                    <div className="text-2xl font-black text-white font-mono drop-shadow-[0_0_8px_rgba(34,211,238,0.4)]">
+                      {senderBalance !== null ? `$${(Math.floor(Number(senderBalance) * 100) / 100).toFixed(2)}` : "..."}
+                    </div>
                  </div>
                </div>
 
-               {/* Inputs */}
-               <div className="space-y-4 mt-2">
+               {/* Inputs Section */}
+               <div className="space-y-4">
                  
-                 {/* Recipient User ID (Logic for Promo/Normal) */}
+                 {/* Recipient User ID */}
                  <div>
-                   <label className="block text-[10px] font-bold text-black mb-1.5 ml-1 uppercase tracking-wider">Recipient User ID</label>
+                   <label className="block text-[10px] font-black text-cyan-400 mb-1.5 ml-1 uppercase tracking-widest">Target Account ID</label>
                    <div className="relative group">
                      {isPromoUser ? (
-                        <div className="w-full bg-amber-50 border border-amber-200 text-amber-700 rounded-xl px-3 py-3.5 font-bold flex items-center justify-center gap-2 shadow-sm text-sm">
-                          <ShieldCheck size={18} /> System will Auto-Pick a Recipient
+                        <div className="w-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 rounded-xl px-4 py-3.5 font-bold flex items-center justify-center gap-2 shadow-inner text-sm">
+                          <ShieldCheck size={18} /> Protocol Will Auto-Allocate Recipient
                         </div>
                      ) : (
-                       <>
-                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                           <User className="h-4 w-4 text-slate-400 group-focus-within:text-green-600 transition-colors" />
-                         </div>
-                         <input 
-                           type="number" 
-                           placeholder="Enter User ID" 
-                           value={userId} 
-                           onChange={e => {
-                             setUserId(e.target.value);
-                             if(e.target.value.length >= 6) fetchUserName(e.target.value);
-                           }} 
-                           onBlur={() => fetchUserName()}
-                           className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3.5 pl-11 text-slate-800 text-sm focus:border-green-400 focus:ring-2 focus:ring-green-100 focus:outline-none transition-all font-bold tracking-wider shadow-inner placeholder-slate-400"
-                         />
-                       </>
+                        <>
+                          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <User className="h-4 w-4 text-slate-500 group-focus-within:text-cyan-400 transition-colors" />
+                          </div>
+                          <input 
+                            type="number" 
+                            placeholder="Enter Account ID" 
+                            value={userId} 
+                            onChange={e => {
+                              setUserId(e.target.value);
+                              if(e.target.value.length >= 6) fetchUserName(e.target.value);
+                            }} 
+                            onBlur={() => fetchUserName()}
+                            className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3.5 pl-11 text-cyan-100 text-sm focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/20 focus:outline-none transition-all font-mono font-black tracking-wider shadow-inner placeholder-slate-600"
+                          />
+                        </>
                      )}
                    </div>
                  </div>
 
-                 {/* Recipient Name (Auto-fetched for Normal Only) */}
+                 {/* Recipient Name Verification Result */}
                  {!isPromoUser && userName && (
-                    <div className={`p-3 rounded-xl border flex items-center gap-2 shadow-sm ${userName === 'User not found' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-green-50 border-green-200 text-green-700'}`}>
-                        {userName === 'User not found' ? <XCircle size={16} /> : <CheckCircle2 size={16} />}
-                        <span className="text-xs font-black uppercase tracking-widest">
-                            {userName === 'User not found' ? 'Invalid User ID' : `Verified: ${userName}`}
+                    <div className={`p-3.5 rounded-xl border flex items-center gap-2.5 shadow-inner transition-all duration-300 ${userName === 'User not found' ? 'bg-rose-500/10 border-rose-500/30 text-rose-400 shadow-[0_0_15px_rgba(225,29,72,0.1)]' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.1)]'}`}>
+                        {userName === 'User not found' ? <XCircle size={18} /> : <CheckCircle2 size={18} />}
+                        <span className="text-[11px] font-black uppercase tracking-widest">
+                            {userName === 'User not found' ? 'Unidentified Account' : `Verified: ${userName}`}
                         </span>
                     </div>
                  )}
 
-                 {/* Amount */}
+                 {/* Amount Field */}
                  <div>
-                   <label className="block text-[10px] font-bold text-black mb-1.5 ml-1 uppercase tracking-wider">Amount ($)</label>
+                   <label className="block text-[10px] font-black text-cyan-400 mb-1.5 ml-1 uppercase tracking-widest">Transfer Amount ($)</label>
                    <div className="relative group">
                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                       <span className="text-slate-400 group-focus-within:text-green-600 font-black text-lg">$</span>
+                       <span className="text-slate-500 group-focus-within:text-cyan-400 font-black text-lg transition-colors">$</span>
                      </div>
                      <input 
                        type="number" 
                        placeholder={isPromoUser ? "10 - 1000" : "0.00"} 
                        value={amount} 
                        onChange={e => setAmount(e.target.value)}
-                       className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 pl-11 text-slate-800 text-sm md:text-lg focus:border-green-400 focus:ring-2 focus:ring-green-100 focus:outline-none transition-all font-black shadow-inner placeholder-slate-400"
+                       className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3.5 pl-11 text-white text-sm md:text-lg focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/20 focus:outline-none transition-all font-black shadow-inner placeholder-slate-600"
                      />
                      {!isPromoUser && (
                        <button 
                            onClick={() => setAmount(senderBalance)}
                            disabled={!senderBalance}
-                           className="absolute right-3 top-3.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10px] font-bold px-3 py-1.5 rounded-lg transition-colors border border-slate-200 disabled:opacity-50"
+                           className="absolute right-3 top-3.5 bg-white/5 hover:bg-white/10 text-cyan-400 text-[10px] font-black px-3 py-1.5 rounded-lg transition-colors border border-white/10 disabled:opacity-30 disabled:hover:bg-white/5 cursor-pointer active:scale-95"
                        >MAX</button>
                      )}
                    </div>
@@ -242,18 +243,18 @@ return showMessage("Error", `Insufficient balance ($${(Math.floor(Number(senderB
 
                  {/* Transaction Password */}
                  <div>
-                   <label className="block text-[10px] font-bold text-black mb-1.5 ml-1 uppercase tracking-wider">Transaction Password</label>
+                   <label className="block text-[10px] font-black text-cyan-400 mb-1.5 ml-1 uppercase tracking-widest">Secure Tx-PIN</label>
                    <div className="relative group">
                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                       <Lock className="h-4 w-4 text-slate-400 group-focus-within:text-green-600 transition-colors" />
+                       <Lock className="h-4 w-4 text-slate-500 group-focus-within:text-cyan-400 transition-colors" />
                      </div>
                      <input 
                        type="password" 
-                       placeholder="Enter Security Password" 
+                       placeholder="Enter Transaction PIN" 
                        value={transactionPassword} 
                        autoComplete="new-password"
                        onChange={e => setTransactionPassword(e.target.value)}
-                       className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3.5 pl-11 text-slate-800 focus:border-green-400 focus:ring-2 focus:ring-green-100 focus:outline-none transition-all font-mono tracking-widest shadow-inner placeholder-slate-400"
+                       className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3.5 pl-11 text-white focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/20 focus:outline-none transition-all font-mono font-black tracking-widest shadow-inner placeholder-slate-600 text-sm"
                      />
                    </div>
                  </div>
@@ -261,20 +262,24 @@ return showMessage("Error", `Insufficient balance ($${(Math.floor(Number(senderB
                </div>
             </div>
 
-            {/* Footer */}
-            <div className="p-5 border-t border-slate-200 bg-slate-50 flex gap-3 relative z-10 shrink-0">
+            {/* 🟢 Footer */}
+            <div className="p-5 border-t border-white/5 bg-black/20 flex gap-3 relative z-10 shrink-0">
                <button 
                   onClick={onClose} 
-                  className="flex-1 py-3.5 rounded-xl bg-white hover:bg-slate-100 text-slate-600 font-bold text-xs uppercase tracking-widest transition-colors border border-slate-200 shadow-sm active:scale-95"
+                  className="flex-1 py-4 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-bold text-xs uppercase tracking-widest transition-colors border border-white/10 shadow-sm active:scale-95"
                >
-                 Cancel
+                 Abort
                </button>
                <button 
                  onClick={handleTransfer} 
                  disabled={loading}
-                 className={`flex-1 py-3.5 rounded-xl text-white font-black text-xs uppercase tracking-widest shadow-[0_4px_15px_rgba(34,197,94,0.4)] transition-all flex justify-center items-center gap-2 ${loading ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200' : 'bg-green-600 hover:bg-green-700 hover:-translate-y-0.5 active:scale-95'}`}
+                 className={`flex-1 py-4 rounded-xl text-white font-black text-xs uppercase tracking-widest transition-all flex justify-center items-center gap-2 relative overflow-hidden group shadow-[0_0_15px_rgba(34,211,238,0.2)]
+                    ${loading ? 'bg-white/5 text-slate-500 cursor-not-allowed border border-white/5' : 'bg-gradient-to-r from-cyan-500 to-indigo-500 hover:shadow-[0_0_30px_rgba(34,211,238,0.4)] active:scale-95'}`}
                >
-                 {loading ? "PROCESSING..." : <>TRANSFER NOW <ArrowRightLeft size={14} strokeWidth={3} /></>}
+                 {!(loading) && (
+                     <div className="absolute inset-0 bg-white/20 group-hover:translate-x-full -translate-x-full transition-transform duration-700 ease-out skew-x-12 hidden group-hover:block"></div>
+                 )}
+                 {loading ? <><Activity size={16} className="animate-pulse" /> PROCESSING...</> : <>EXECUTE TRANSFER <ArrowRightLeft size={16} strokeWidth={2.5} className="relative z-10" /></>}
                </button>
             </div>
 

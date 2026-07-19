@@ -34,7 +34,7 @@ const WalletBalance = ({ income = {} }) => {
   const cctStakingDirectIncome = Number(income.cctStakingDirectIncome) || Number(user?.cctStakingDirectIncome) || 0;
   const cctStakingLevelIncome = Number(income.cctStakingLevelIncome) || Number(user?.cctStakingLevelIncome) || 0;
 
-  // 3. COMMUNITY EARNING (Global Growth) CALCULATION
+  // 3.  Crowd Donation Earning (Global Growth) CALCULATION
   useEffect(() => {
     if (!user) return;
 

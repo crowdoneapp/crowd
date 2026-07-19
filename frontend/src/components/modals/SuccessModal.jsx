@@ -194,8 +194,7 @@ const SuccessModal = ({
           </SuccessLayout>
         );
 
-      // 🔥 UPDATED TOPUP (No "Node Activated", Pure Premium Fintech feel)
-      case "topup":
+       case "topup":
         return (
           <SuccessLayout title="Tier Elevated" icon={ArrowUpCircle}>
             <div className="w-full mt-4">

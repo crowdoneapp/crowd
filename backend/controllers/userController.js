@@ -4,11 +4,9 @@ const sanitizeUser = require('../utils/sanitizeUser');
 const SystemStat = require('../models/SystemStat'); // 👈 SystemStat import kiya hai fake count ke liye
 
 // 🔍 1. Get User By ID (Ye function frontend Dashboard se call hota hai)
-// 🔍 1. Get User By ID (Ye function frontend Dashboard se call hota hai)
 exports.getUserById = async (req, res) => {
   try {
     // 🔥 BUG 1 & 2 FIX: Route se ID nikal kar usko thik se NUMBER mein convert karna
-    // req.params.userId aur req.params.id dono check kar lete hain taaki koi error na aaye
     const rawId = req.params.userId || req.params.id; 
     const targetUserId = Number(rawId);
 
@@ -18,7 +16,6 @@ exports.getUserById = async (req, res) => {
     }
 
     const user = await User.findOne({ userId: targetUserId }).select("+usdtBep20Balance");
-    //const user = await User.findOne({ userId: targetUserId });
     
     if (!user) {
         return res.status(404).json({ message: 'User not found' });
@@ -29,14 +26,23 @@ exports.getUserById = async (req, res) => {
 
     // 🔥 Total Fake Users (Cron wala) ka count nikalna
     const stat = await SystemStat.findOne();
-    const globalFakeCount = stat ? stat.globalFakeCount : 0; // Agar abhi tak cron nahi chala, toh 0 bhejo
+    const globalFakeCount = stat ? stat.globalFakeCount : 0; 
+
+    // ✅ FIX: sanitizeUser package details hata raha tha, isliye hum manually attach kar rahe hain
+    const sanitizedUserData = sanitizeUser(user);
+    sanitizedUserData.highestPackage = user.highestPackage || 0;
+    sanitizedUserData.topUpAmount = user.topUpAmount || 0;
+    sanitizedUserData.packages = user.packages || [];
+    sanitizedUserData.directCount = user.directCount || 0;
+    sanitizedUserData.globalTeamCount = user.globalTeamCount || 0;
+    sanitizedUserData.isToppedUp = user.isToppedUp || false;
 
     // Frontend ko user data, real count, aur fake count ek sath bhejo
     res.json({
       success: true,
-      user: sanitizeUser(user),
-      totalRealUsers: totalRealUsers, // 👈 Asli log
-      globalFakeCount: globalFakeCount // 👈 Cron wale fake log
+      user: sanitizedUserData, // 👈 Ab sahi data jayega
+      totalRealUsers: totalRealUsers, 
+      globalFakeCount: globalFakeCount 
     });
   } catch (err) {
     console.error("Dashboard Fetch Error:", err);
@@ -66,7 +72,7 @@ exports.blockUser = async (req, res) => {
     const user = await User.findOneAndUpdate(
       { userId: req.params.id },
       { isBlocked: true },
-{ returnDocument: 'after' }
+      { returnDocument: 'after' }
     );
     if (!user) return res.status(404).json({ message: 'User not found' });
     res.json({ message: 'User blocked successfully' });
@@ -81,7 +87,7 @@ exports.unblockUser = async (req, res) => {
     const user = await User.findOneAndUpdate(
       { userId: req.params.id },
       { isBlocked: false },
-{ returnDocument: 'after' }
+      { returnDocument: 'after' }
     );
     if (!user) return res.status(404).json({ message: 'User not found' });
     res.json({ message: 'User unblocked successfully' });
