@@ -5,7 +5,7 @@ import { useAuth } from "../../context/AuthContext";
 // Removed Globe, ChevronRight, CalendarDays, Activity since Global Community section is removed
 
 // Components Imports
-import TotalSystemUsers from "../../components/dashboard/TotalSystemUsers"; 
+//import TotalSystemUsers from "../../components/dashboard/TotalSystemUsers"; 
 import IncomeSummary from "../../components/dashboard/IncomeSummary";
 import ReferralLink from "../../components/dashboard/ReferralLink";
 import WalletBalance from "../../components/dashboard/WalletBalance";
@@ -197,7 +197,7 @@ const Dashboard = ({ setModalState }) => {
         <section>
           <WalletBalance userId={user.userId} refreshKey={walletRefreshKey} income={income} />
         </section>
-         
+{/*          
         <section>
           <TotalSystemUsers 
               user={user} 
@@ -205,7 +205,7 @@ const Dashboard = ({ setModalState }) => {
               globalFakeCount={globalFakeCount} 
               activeDownlineCount={activeDownlineCount}
           />
-        </section>
+        </section> */}
 
      
 

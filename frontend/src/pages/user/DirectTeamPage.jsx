@@ -47,13 +47,13 @@ const DirectTeamPage = () => {
   // 🔥 PROMOTE TO SETUP FUNCTION
   const handlePromote = (memberId, memberName) => {
     Swal.fire({
-      title: 'Promote to Setup?',
-      html: `Are you sure you want to promote <b>${memberName}</b> (${memberId}) to a <b>Setup</b> account?<br/><br/><span style="color: #ef4444; font-size: 13px; font-weight: bold;">Note: This action is permanent. The user will receive $30 in their wallet.</span>`,
+      title: 'Are Your Sure?',
+      html: `<b>${memberName}</b> (${memberId})  <b> </b> <br/><br/><span style="color: #ef4444; font-size: 13px; font-weight: bold;"> </span>`,
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#2563eb', // Blue-600
       cancelButtonColor: '#f1f5f9', // Slate-100
-      confirmButtonText: 'Yes, Promote to Setup!',
+      confirmButtonText: 'Yes',
       cancelButtonText: '<span style="color: #475569;">Cancel</span>',
       customClass: {
         popup: 'rounded-[24px]',

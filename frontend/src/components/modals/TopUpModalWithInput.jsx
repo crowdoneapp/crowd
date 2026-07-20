@@ -190,7 +190,7 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
                   <>
                     <input 
                       type="number" 
-                      placeholder="Enter Target ID"
+                      placeholder="Enter User ID"
                       value={userId}
                       onChange={(e) => setUserId(e.target.value)}
                       className={`w-full bg-black/40 text-cyan-100 rounded-xl px-4 py-3.5 outline-none transition-all placeholder-slate-600 font-mono font-black shadow-inner border ${

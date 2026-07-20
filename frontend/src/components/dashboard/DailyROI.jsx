@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
-import { CheckCircle2, Lock, ArrowRight, ArrowLeft, ShieldAlert, Crown, ChevronDown, ChevronUp, Info, Users, CalendarDays, Wallet, BadgeDollarSign, UserPlus } from "lucide-react";
+import { CheckCircle2, Lock, ArrowRight, ArrowLeft, ShieldAlert, Crown, Users, CalendarDays, Wallet, BadgeDollarSign, UserPlus, Globe, UserCheck } from "lucide-react";
 
 // ✅ Neo-Banking Theme + Custom Flyer Table Styling
 const customStyles = `
@@ -68,13 +68,23 @@ const generateLevelsData = (pkgAmount) => {
   const dailyReturnPerLevel = Math.floor((totalReturnPerLevel / ROI_DAYS) * 100) / 100; 
 
   for (let i = 1; i <= TOTAL_LEVELS; i++) {
+    
+    // 🔥 Left Side (UI) me Table me kya dikhega
+    // Level 1 se 5 tak -> 100, 200, 300... Level 6 se 50 tak -> Sirf 500 dikhega
+    let displayTeamUI = i <= 5 ? i * 100 : 500;
+
+    // 🔥 Right Side (Status) me Unlock hone ke liye Asli calculation kya hogi
+    // Level 1 se 5 tak -> 100, 200, 300... Level 6 se aage -> 1000, 1500, 2000 (Pichla total + 500 extra)
+    let unlockTeamLogic = i <= 5 ? i * 100 : 500 + ((i - 5) * 500);
+
     levels.push({
       level: i,
       totalEarning: totalReturnPerLevel,
       dailyEarning: dailyReturnPerLevel,
       days: ROI_DAYS,
-      reqDirectsActual: i,  // Backend/Logic checking ke liye (level 1=1, level 2=2)
-      reqTeamActual: i * 100, // 100, 200, 300...
+      reqDirectsActual: 1,         // ✅ Har level me 1 Direct chahiye (Fixed)
+      reqTeamActual: displayTeamUI, // ✅ Left Side me dikhane ke liye
+      unlockTeamReq: unlockTeamLogic, // ✅ Status Locked/Unlocked check karne ke liye
     });
   }
   return levels;
@@ -85,16 +95,16 @@ export default function Plan() {
   const [selectedPackage, setSelectedPackage] = useState(30);
   const [currentPage, setCurrentPage] = useState(1);
   const [levelsData, setLevelsData] = useState([]);
-  
-  const [showGrowthInfo, setShowGrowthInfo] = useState(false);
 
-  // 🔥 100% FIXED: Aapke MongoDB JSON ke hisaab se exact fields fetch ho rahi hain
-  // Agar highestPackage nahi mila toh packages array se max amount uthayega
+  // Highest Package Fetch Logic
   const userHighestPackage = user?.highestPackage || user?.topUpAmount || (user?.packages?.length > 0 ? Math.max(...user.packages.map(p => p.amount)) : 0);
   
-  const userDirects = user?.directCount || 0;
-  const userGlobalTeam = user?.globalTeamCount || 0;
   const isToppedUp = user?.isToppedUp || userHighestPackage > 0;
+
+  // 🔥 Yahan aap apne backend se selectedPackage ke hisaab se actual values map kar lena
+  const currentPackageAllCrowd = user?.packageStats?.[selectedPackage]?.allCrowd || 0; 
+  const currentPackageYourCrowd = user?.packageStats?.[selectedPackage]?.yourCrowd || (userHighestPackage >= selectedPackage ? (user?.globalTeamCount || 0) : 0); 
+  const currentPackageDirects = user?.packageStats?.[selectedPackage]?.directs || (userHighestPackage >= selectedPackage ? (user?.directCount || 0) : 0);
 
   useEffect(() => {
     setCurrentPage(1); 
@@ -132,8 +142,8 @@ export default function Plan() {
            </div>
         )}
 
-        {/* ✅ NEO-BANKING STYLE SUMMARY CARDS */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8">
+        {/* ✅ SUMMARY CARDS */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-8">
            {/* Card 1: Active Package */}
            <div className="neo-card p-5 sm:p-6 flex items-center justify-between group">
               <div>
@@ -147,21 +157,7 @@ export default function Plan() {
               </div>
            </div>
 
-           {/* Card 2: User Status */}
-           <div className="neo-card p-5 sm:p-6 flex items-center justify-between group">
-              <div>
-                <p className="text-slate-500 text-[10px] sm:text-xs font-bold uppercase tracking-widest mb-1">Your Stats</p>
-                <h3 className="text-lg sm:text-xl font-black text-[#0b1c3c] tracking-tight">
-                  {userDirects} Directs
-                </h3>
-                <p className="text-xs font-bold text-emerald-600 mt-1">{userGlobalTeam.toLocaleString()} Global Team</p>
-              </div>
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
-                <Users className="w-6 h-6 sm:w-7 sm:h-7 text-emerald-600" />
-              </div>
-           </div>
-
-           {/* Card 3: Total Return Potential */}
+           {/* Card 2: Total Return Potential */}
            <div className="neo-card p-5 sm:p-6 flex items-center justify-between group">
               <div>
                 <p className="text-slate-500 text-[10px] sm:text-xs font-bold uppercase tracking-widest mb-1">50-Level Potential</p>
@@ -176,7 +172,7 @@ export default function Plan() {
         </div>
 
         {/* ✅ PACKAGE SELECTOR TABS */}
-        <div className="mb-6">
+        <div className="mb-4">
            <h4 className="text-slate-500 text-[10px] sm:text-xs font-bold uppercase tracking-widest mb-3 pl-1">Select Tier Level</h4>
            <div className="flex overflow-x-auto hide-scroll gap-2 sm:gap-3 bg-white p-2 rounded-2xl shadow-sm border border-slate-100">
               {PACKAGES.map((pkg) => (
@@ -195,13 +191,46 @@ export default function Plan() {
            </div>
         </div>
 
+        {/* ✅ PACKAGE SPECIFIC STATS BOXES */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 mb-8">
+            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">All Crowd (${selectedPackage})</p>
+                <h4 className="text-xl font-black text-[#0b1c3c]">{currentPackageAllCrowd.toLocaleString()}</h4>
+              </div>
+              <div className="bg-blue-50 p-2.5 rounded-lg border border-blue-100 text-blue-600">
+                <Globe size={20} />
+              </div>
+            </div>
+
+            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Your Crowd (${selectedPackage})</p>
+                <h4 className="text-xl font-black text-emerald-600">{currentPackageYourCrowd.toLocaleString()}</h4>
+              </div>
+              <div className="bg-emerald-50 p-2.5 rounded-lg border border-emerald-100 text-emerald-600">
+                <Users size={20} />
+              </div>
+            </div>
+
+            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Directs (${selectedPackage})</p>
+                <h4 className="text-xl font-black text-indigo-600">{currentPackageDirects}</h4>
+              </div>
+              <div className="bg-indigo-50 p-2.5 rounded-lg border border-indigo-100 text-indigo-600">
+                <UserCheck size={20} />
+              </div>
+            </div>
+        </div>
+
         {/* ✅ 50 LEVELS PAGINATED TABLE */}
         <div className="w-full mb-8">
           <div className="neo-table-wrapper overflow-hidden border-2 border-[#0b1c3c]/10">
             <div className="overflow-x-auto w-full custom-scroll">
               <table className="w-full text-center whitespace-nowrap">
                 
-                {/* 🔵 EXACT FLYER COLUMNS HEADER */}
+                {/* 🔵 HEADER */}
                 <thead className="flyer-header text-[10px] sm:text-xs font-bold uppercase tracking-wider">
                   <tr>
                     <th className="py-4 px-3 sm:py-5 sm:px-6">
@@ -247,13 +276,16 @@ export default function Plan() {
                 <tbody>
                   {currentLevels.map((lvl) => {
                     const isPackageUnlocked = userHighestPackage >= selectedPackage;
-                    // 🔥 LOCK/UNLOCK LOGIC: Level unlock requires direct AND team
-                    const isLevelUnlocked = isPackageUnlocked && userDirects >= lvl.reqDirectsActual && userGlobalTeam >= lvl.reqTeamActual;
+                    
+                    // 🔥 LOCK/UNLOCK LOGIC ab sahi se cumulative count check karegi
+                    const isLevelUnlocked = isPackageUnlocked && 
+                                            currentPackageDirects >= lvl.reqDirectsActual && 
+                                            currentPackageYourCrowd >= lvl.unlockTeamReq; // 👈 Ye 1000, 1500 check karega!
 
                     return (
                       <tr key={lvl.level} className="neo-row border-b border-slate-100 hover:bg-blue-50/50">
                         
-                        {/* TEAM */}
+                        {/* TEAM (Left Side UI - Shows 500 after level 5) */}
                         <td className="py-4 px-3 sm:py-5 sm:px-6 font-black text-slate-800 text-sm sm:text-base">
                           {lvl.reqTeamActual.toLocaleString()}
                         </td>
@@ -263,9 +295,9 @@ export default function Plan() {
                           ${lvl.totalEarning.toFixed(2)} USDT
                         </td>
 
-                        {/* 🔥 DIRECT REQUIRED (Hardcoded as "1 Direct" visually as requested) */}
+                        {/* DIRECT REQUIRED (Seedha 1 Direct) */}
                         <td className="py-4 px-3 sm:py-5 sm:px-6 font-bold text-slate-600 text-xs sm:text-sm">
-                          1 Direct
+                           1 Direct
                         </td>
 
                         {/* DAILY INCOME (USDT) */}
@@ -278,7 +310,7 @@ export default function Plan() {
                           {lvl.days} Days
                         </td>
 
-                        {/* STATUS BUTTON */}
+                        {/* STATUS BUTTON (Right Side Logic - Works perfectly now) */}
                         <td className="py-4 px-3 sm:py-5 sm:px-6">
                           {!isPackageUnlocked ? (
                              <button className="inline-flex items-center justify-center gap-1.5 text-rose-600 bg-rose-50 px-3 py-1.5 rounded-lg border border-rose-200 font-bold text-[9px] sm:text-[10px] uppercase tracking-wide whitespace-nowrap shadow-sm">
@@ -299,7 +331,7 @@ export default function Plan() {
                   })}
                 </tbody>
 
-                {/* ✅ TOTAL AMOUNT FOOTER FOR ALL 50 LEVELS */}
+                {/* ✅ TOTAL AMOUNT FOOTER */}
                 <tfoot className="bg-[#f8fafc] border-t-2 border-[#0b1c3c]/10">
                   <tr>
                     <td colSpan="3" className="py-4 px-4 sm:py-5 sm:px-6 text-right font-bold uppercase tracking-widest text-[10px] sm:text-xs text-slate-500">
@@ -313,7 +345,7 @@ export default function Plan() {
               </table>
             </div>
             
-            {/* ✅ PAGINATION CONTROLS (Mobile Friendly) */}
+            {/* ✅ PAGINATION CONTROLS */}
             <div className="bg-white border-t border-slate-100 p-3 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0">
                <div className="flex w-full sm:w-auto justify-between sm:justify-start gap-2">
                  <button 
@@ -347,8 +379,6 @@ export default function Plan() {
             </div>
           </div>
         </div>
-
-        
 
       </div>
     </div>

@@ -74,7 +74,7 @@ const MessageModal = ({ isOpen, onClose, title, message, type = 'info' }) => {
               onClick={onClose}
               className={`w-full py-3.5 rounded-xl font-black text-xs uppercase tracking-widest text-white shadow-md active:scale-95 transition-all ${theme.bg}`}
             >
-              Acknowledge
+              Close
             </button>
         </div>
 

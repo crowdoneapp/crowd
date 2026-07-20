@@ -256,7 +256,7 @@ const SuccessModal = ({
             onClick={onClose}
             className="w-full bg-[#0b1c3c] hover:bg-blue-900 text-white transition-all font-black uppercase tracking-widest text-[10px] sm:text-xs px-6 py-4 rounded-xl shadow-[0_10px_20px_-10px_rgba(11,28,60,0.5)] hover:shadow-[0_10px_30px_-10px_rgba(11,28,60,0.7)] hover:-translate-y-0.5 active:scale-95 border border-transparent"
           >
-            Acknowledge & Close
+            Close
           </button>
         </div>
       </div>
