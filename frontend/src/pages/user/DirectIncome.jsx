@@ -80,9 +80,7 @@ const DirectIncome = () => {
           <h2 className="text-2xl md:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-cyan-500 uppercase tracking-wide flex items-center gap-3">
             <DollarSign className="text-blue-500" size={28} /> Direct Income
           </h2>
-          <p className="text-slate-500 text-xs md:text-sm font-bold tracking-widest uppercase mt-1">
-            Track your earnings from direct referrals
-          </p>
+         
         </div>
       </div>
 

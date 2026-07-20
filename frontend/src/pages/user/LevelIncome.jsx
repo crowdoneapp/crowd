@@ -80,9 +80,7 @@ const LevelIncome = () => {
           <h2 className="text-2xl md:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-indigo-600 uppercase tracking-wide flex items-center gap-3">
             <Users className="text-blue-500" size={28} /> Level Income
           </h2>
-          <p className="text-slate-500 text-xs md:text-sm font-bold tracking-widest uppercase mt-1">
-            Track your earnings from your team levels
-          </p>
+         
         </div>
       </div>
 

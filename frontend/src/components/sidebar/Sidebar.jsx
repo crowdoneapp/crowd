@@ -88,13 +88,13 @@ const Sidebar = ({ user, isOpen, setIsOpen }) => {
         { label: "Transactions", icon: History, path: "/transaction-details" },
       ]
     },
-    {
-      title: "Help & Support",
-      icon: HelpCircle,
-      items: [
-         { label: "Support Help Center", icon: ShieldCheck, path: "/support" },
-      ]
-    }
+    // {
+    //   title: "Support",
+    //   icon: HelpCircle,
+    //   items: [
+    //      { label: "Support Help Center", icon: ShieldCheck, path: "/support" },
+    //   ]
+    // }
   ];
 
   // Auto-open the group that contains the current active route

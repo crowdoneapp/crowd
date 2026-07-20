@@ -956,14 +956,7 @@ router.get('/monthly-reward-stats/:userId', async (req, res) => {
     }
 });
    
- 
-// ==========================================
-// 🚀 1. STANDARD TOPUP ROUTE (Regular Users)
-// ==========================================
-// ==========================================
-// 🚀 1. STANDARD TOPUP ROUTE (With Bounce Back & 2 Direct Rule)
-// ==========================================
-router.put(
+ router.put(
   '/topup/:userId',
   authMiddleware, 
   async (req, res) => {
@@ -1021,7 +1014,7 @@ router.put(
           return res.status(400).json({ message: `Invalid upgrade. You must upgrade step-by-step. Your next required package is $${expectedNext}.` });
       }
 
-      // 🛑 2 DIRECTS REQUIRED FOR UPGRADE LOGIC (Strict Rule)
+      // 🛑 2 DIRECTS REQUIRED FOR UPGRADE LOGIC (Topup ke liye lagoo)
       if (currentHighest > 0 && !isFakeUser) {
           const activeDirectsCount = await User.countDocuments({
               sponsorId: targetUser.userId,
@@ -1131,9 +1124,8 @@ router.put(
                   let currentSponsorId = targetUser.sponsorId;
                   let directBonusReceiver = null;
                   let isBounceBack = false;
-                  let searchDepth = 100; // infinite loop se bachne ke liye
+                  let searchDepth = 100;
 
-                  // Agar First Topup hai toh hamesha immediate sponsor ka direct count badhao
                   if (isFirstTopup) {
                       const immediateSponsor = await User.findOne({ userId: targetUser.sponsorId });
                       if (immediateSponsor) {
@@ -1142,17 +1134,14 @@ router.put(
                       }
                   }
 
-                  // 🔄 Upline check karna Bounce Back ke liye
                   while (currentSponsorId && searchDepth > 0) {
                       const sp = await User.findOne({ userId: currentSponsorId });
                       if (!sp) break;
 
-                      // Agar Upline qualify karta hai (uski id active hai aur package >= amount hai)
                       if (sp.isToppedUp && sp.highestPackage >= amount) {
                           directBonusReceiver = sp;
                           break;
                       } else {
-                          // Qualify nahi karta toh Bounce Back Flag True kar do aur uske bhi upar wale ko check karo
                           isBounceBack = true;
                           currentSponsorId = sp.sponsorId;
                       }
@@ -1163,7 +1152,6 @@ router.put(
                       const directBonusAmount = (amount * 10) / 100; 
                       
                       if (isBounceBack) {
-                          // Bounce Back Income Deni Hai (Kyuki direct sponsor fail ho gaya)
                           directBonusReceiver.upgradeBounceBackIncome = (directBonusReceiver.upgradeBounceBackIncome || 0) + directBonusAmount;
                           directBonusReceiver.totalUpgradeBounceBackIncome = (directBonusReceiver.totalUpgradeBounceBackIncome || 0) + directBonusAmount;
                           
@@ -1175,7 +1163,6 @@ router.put(
                               description: `Upgrade Bounce Back (10%) from ${targetUser.name}'s $${amount} Package`, status: 'success'
                           });
                       } else {
-                          // Normal Direct Income (Kyunki Direct Sponsor hi qualify kar gaya)
                           directBonusReceiver.directIncome = (directBonusReceiver.directIncome || 0) + directBonusAmount;
                           directBonusReceiver.totalDirectIncome = (directBonusReceiver.totalDirectIncome || 0) + directBonusAmount;
                           
@@ -1238,13 +1225,13 @@ router.put(
               }
 
               // ==========================================================
-              // 🌟 UNIFIED 50-LEVEL ENGINE 
+              // 🌟 UNIFIED 20-LEVEL ENGINE (NORMAL TOPUP)
               // ==========================================================
               let currentUplineId = targetUser.sponsorId; 
               let currentLevel = 1;
               let isBreakawayHit = false;
 
-              while (currentUplineId && currentLevel <= 50) {
+              while (currentUplineId && currentLevel <= 20) {
                   const upline = await User.findOne({ userId: currentUplineId }).select('userId isToppedUp sponsorId role directCount highestPackage _id');
                   if (!upline) break;
 
@@ -1261,25 +1248,25 @@ router.put(
                       continue; // Compress breakaway
                   }
 
-                  if (currentLevel >= 2 && currentLevel <= 50) {
+                  if (currentLevel >= 2 && currentLevel <= 20) {
                       let percentage = 0;
                       if (currentLevel === 2) percentage = 5;
                       else if (currentLevel === 3) percentage = 3;
                       else if (currentLevel === 4) percentage = 2;
                       else if (currentLevel === 5) percentage = 1;
-                      else if (currentLevel >= 6 && currentLevel <= 10) percentage = 0.5;
-                      else if (currentLevel >= 11 && currentLevel <= 50) percentage = 0.25;
+                      else if (currentLevel >= 6 && currentLevel <= 10) percentage = 0.50;
+                      else if (currentLevel >= 11 && currentLevel <= 20) percentage = 0.25;
 
+                      // Level lene ke liye Upline ka package barabar ya bada hona chahiye, Direct ka koi condition nahi!
                       const hasSufficientPackage = upline.highestPackage >= amount;
-                      const hasSufficientDirects = upline.directCount >= currentLevel;
 
-                      if (hasSufficientPackage && hasSufficientDirects) {
+                      if (hasSufficientPackage) {
                           const levelAmount = (amount * percentage) / 100;
                           if (levelAmount > 0) {
-                              await User.updateOne({ _id: upline._id }, { $inc: { levelIncome: levelAmount, totalLevelIncome: levelAmount } });
+                              await User.updateOne({ _id: upline._id }, { $inc: { levelIncome: levelAmount, totalLevelIncome: levelAmount, walletBalance: levelAmount } });
                               await createTransaction({
                                   userId: upline.userId, type: "level_income", source: "level", amount: levelAmount,
-                                  fromUserId: targetUser.userId, description: `Level ${currentLevel} Income (${percentage}%)`, status: 'success'
+                                  fromUserId: targetUser.userId, description: `Level ${currentLevel} Income (${percentage}%) from $${amount} Package`, status: 'success'
                               });
                           }
                       }
@@ -1296,7 +1283,7 @@ router.put(
                   }
 
                   currentUplineId = upline.sponsorId;
-                  currentLevel++; // Level only increments if user was processed
+                  currentLevel++; 
               }
           } catch (bgError) {
               console.error("Background MLM Engine Error:", bgError);
@@ -1310,25 +1297,10 @@ router.put(
   }
 );
 
-// ✅ NOTE: Setup aur Super Setup wale Routes me bhi yahi same 
-// Bounce Back aur 2 Direct Rule Update kar dena same upar wale copy paste karke.
 
-
-// ==========================================
+// ========================================================
 // 🚀 2. SETUP TOPUP ROUTE (For 'setup' role)
-// ==========================================
-// ==========================================
-// 🚀 2. SETUP TOPUP ROUTE (For 'setup' role)
-// ==========================================
-// ==========================================
-// 🚀 2. SETUP TOPUP ROUTE (For 'setup' role)
-// ==========================================
-// ==========================================
-// 🚀 2. SETUP TOPUP ROUTE (For 'setup' role)
-// ==========================================
-// ==========================================
-// 🚀 2. SETUP TOPUP ROUTE (For 'setup' role)
-// ==========================================
+// ========================================================
 router.put(
   '/setup-topup/:userId',
   authMiddleware,
@@ -1370,7 +1342,7 @@ router.put(
           return res.status(400).json({ message: `Invalid upgrade. You must upgrade step-by-step. Your next required package is $${expectedNext}.` });
       }
 
-      // 🛑 2 DIRECTS REQUIRED FOR UPGRADE LOGIC
+      // 🛑 2 DIRECTS REQUIRED FOR UPGRADE LOGIC (Topup ke liye lagoo)
       if (currentHighest > 0) {
           const activeDirectsCount = await User.countDocuments({
               sponsorId: targetUser.userId,
@@ -1415,21 +1387,17 @@ router.put(
       const isDirect = (targetUser.sponsorId === currentUser.userId);
       
       if (isDirect && amount === 30) {
-          // Direct 30 ID laga raha hai, toh wallet mein min 30 hona chahiye.
           if (currentUser.walletBalance < 30) {
               return res.status(400).json({ message: "Insufficient Balance! You must keep $30 in your wallet to activate a direct ID." });
           }
           console.log(`[FREE $30] Setup ${currentUser.userId} activated direct ${targetUser.userId}. Balance NOT deducted.`);
       } else {
-          // Indirect ID ya koi bada package, $30 Locked rahenge.
-          const availableBalance = currentUser.walletBalance - 30; // $30 hamesha bacha ke rakhna hai
-          
+          const availableBalance = currentUser.walletBalance - 30;
           if (availableBalance < amount) {
              return res.status(400).json({ 
                  message: `Insufficient Wallet Balance! You need $${amount}, plus $30 must remain locked in your wallet. (Total required: $${amount + 30})` 
              });
           }
-          // 🔥 SAFE DEDUCTION 
           await User.updateOne({ userId: currentUser.userId }, { $inc: { walletBalance: -amount } });
       }
 
@@ -1509,7 +1477,6 @@ router.put(
                   }
 
                   if (directBonusReceiver) {
-                      // SETUP / SUPER SETUP Ko $3 Direct Blocked
                       if (directBonusReceiver.role === 'setup' || directBonusReceiver.role === 'super_setup') {
                           console.log(`[BLOCKED] Direct Income blocked for role: ${directBonusReceiver.role}.`);
                       } else {
@@ -1529,8 +1496,7 @@ router.put(
               }
 
               // ==========================================================
-              // 🔥 STRICT BLOCKER: Agar direct sponsor Setup/Super Setup hai,
-              // Toh koi Setting Income aur Level income upar nahi jayegi!
+              // 🔥 STRICT BLOCKER
               // ==========================================================
               if (isDirectSponsorSpecial) {
                   console.log(`[BLOCKED] Sponsor is ${immediateSponsorObj.role}. Setting and Level incomes are blocked from going up for this direct ID.`);
@@ -1576,13 +1542,13 @@ router.put(
                   }
 
                   // ==========================================================
-                  // 🌟 UNIFIED 50-LEVEL ENGINE 
+                  // 🌟 UNIFIED 20-LEVEL ENGINE (SETUP ROUTE)
                   // ==========================================================
                   let currentUplineId = targetUser.sponsorId; 
                   let currentLevel = 1;
                   let isBreakawayHit = false;
 
-                  while (currentUplineId && currentLevel <= 50) {
+                  while (currentUplineId && currentLevel <= 20) {
                       const upline = await User.findOne({ userId: currentUplineId }).select('userId isToppedUp sponsorId role directCount highestPackage _id');
                       if (!upline) break;
 
@@ -1599,22 +1565,26 @@ router.put(
                           continue; 
                       }
 
-                      if (currentLevel >= 2 && currentLevel <= 50) {
+                      if (currentLevel >= 2 && currentLevel <= 20) {
                           let percentage = 0;
                           if (currentLevel === 2) percentage = 5;
                           else if (currentLevel === 3) percentage = 3;
                           else if (currentLevel === 4) percentage = 2;
                           else if (currentLevel === 5) percentage = 1;
-                          else if (currentLevel >= 6 && currentLevel <= 10) percentage = 0.5;
-                          else if (currentLevel >= 11 && currentLevel <= 50) percentage = 0.25;
+                          else if (currentLevel >= 6 && currentLevel <= 10) percentage = 0.50;
+                          else if (currentLevel >= 11 && currentLevel <= 20) percentage = 0.25;
 
+                          // Level lene ke liye Upline ka package barabar ya bada hona chahiye, Direct ka koi condition nahi!
                           const hasSufficientPackage = upline.highestPackage >= amount;
-                          const hasSufficientDirects = upline.directCount >= currentLevel;
 
-                          if (hasSufficientPackage && hasSufficientDirects) {
+                          if (hasSufficientPackage) {
                               const levelAmount = (amount * percentage) / 100;
                               if (levelAmount > 0) {
-                                  await User.updateOne({ _id: upline._id }, { $inc: { levelIncome: levelAmount, totalLevelIncome: levelAmount } });
+                                  await User.updateOne({ _id: upline._id }, { $inc: { levelIncome: levelAmount, totalLevelIncome: levelAmount, walletBalance: levelAmount } });
+                                  await createTransaction({
+                                      userId: upline.userId, type: "level_income", source: "level", amount: levelAmount,
+                                      fromUserId: targetUser.userId, description: `Level ${currentLevel} Income (${percentage}%) from $${amount} Package`, status: 'success'
+                                  });
                               }
                           }
                       }
@@ -1686,7 +1656,7 @@ router.put(
           return res.status(400).json({ message: `Invalid upgrade. You must upgrade step-by-step. Your next required package is $${expectedNext}.` });
       }
 
-      // 🛑 2 DIRECTS REQUIRED FOR UPGRADE LOGIC
+      // 🛑 2 DIRECTS REQUIRED FOR UPGRADE LOGIC (Topup ke liye lagoo)
       if (currentHighest > 0) {
           const activeDirectsCount = await User.countDocuments({
               sponsorId: targetUser.userId,
@@ -1731,21 +1701,17 @@ router.put(
       const isDirect = (targetUser.sponsorId === currentUser.userId);
       
       if (isDirect && amount === 30) {
-          // Direct 30 ID laga raha hai, toh wallet mein min 30 hona chahiye.
           if (currentUser.walletBalance < 30) {
               return res.status(400).json({ message: "Insufficient Balance! You must keep $30 in your wallet to activate a direct ID." });
           }
           console.log(`[FREE $30] Super Setup ${currentUser.userId} activated direct ${targetUser.userId}. Balance NOT deducted.`);
       } else {
-          // Indirect ID ya koi bada package, $30 Locked rahenge.
-          const availableBalance = currentUser.walletBalance - 30; // $30 hamesha bacha ke rakhna hai
-          
+          const availableBalance = currentUser.walletBalance - 30; 
           if (availableBalance < amount) {
              return res.status(400).json({ 
                  message: `Insufficient Wallet Balance! You need $${amount}, plus $30 must remain locked in your wallet. (Total required: $${amount + 30})` 
              });
           }
-          // 🔥 SAFE DEDUCTION
           await User.updateOne({ userId: currentUser.userId }, { $inc: { walletBalance: -amount } });
       }
 
@@ -1825,7 +1791,6 @@ router.put(
                   }
 
                   if (directBonusReceiver) {
-                      // SETUP / SUPER SETUP Ko $3 Direct Blocked
                       if (directBonusReceiver.role === 'setup' || directBonusReceiver.role === 'super_setup') {
                           console.log(`[BLOCKED] Direct Income blocked for role: ${directBonusReceiver.role}.`);
                       } else {
@@ -1845,8 +1810,7 @@ router.put(
               }
 
               // ==========================================================
-              // 🔥 STRICT BLOCKER: Agar direct sponsor Setup/Super Setup hai,
-              // Toh koi Setting Income aur Level income upar nahi jayegi!
+              // 🔥 STRICT BLOCKER
               // ==========================================================
               if (isDirectSponsorSpecial) {
                   console.log(`[BLOCKED] Sponsor is ${immediateSponsorObj.role}. Setting and Level incomes are blocked from going up for this direct ID.`);
@@ -1892,13 +1856,13 @@ router.put(
                   }
 
                   // ==========================================================
-                  // 🌟 UNIFIED 50-LEVEL ENGINE 
+                  // 🌟 UNIFIED 20-LEVEL ENGINE (SUPER SETUP ROUTE)
                   // ==========================================================
                   let currentUplineId = targetUser.sponsorId; 
                   let currentLevel = 1;
                   let isBreakawayHit = false;
 
-                  while (currentUplineId && currentLevel <= 50) {
+                  while (currentUplineId && currentLevel <= 20) {
                       const upline = await User.findOne({ userId: currentUplineId }).select('userId isToppedUp sponsorId role directCount highestPackage _id');
                       if (!upline) break;
 
@@ -1915,22 +1879,26 @@ router.put(
                           continue; 
                       }
 
-                      if (currentLevel >= 2 && currentLevel <= 50) {
+                      if (currentLevel >= 2 && currentLevel <= 20) {
                           let percentage = 0;
                           if (currentLevel === 2) percentage = 5;
                           else if (currentLevel === 3) percentage = 3;
                           else if (currentLevel === 4) percentage = 2;
                           else if (currentLevel === 5) percentage = 1;
-                          else if (currentLevel >= 6 && currentLevel <= 10) percentage = 0.5;
-                          else if (currentLevel >= 11 && currentLevel <= 50) percentage = 0.25;
+                          else if (currentLevel >= 6 && currentLevel <= 10) percentage = 0.50;
+                          else if (currentLevel >= 11 && currentLevel <= 20) percentage = 0.25;
 
+                          // Level lene ke liye Upline ka package barabar ya bada hona chahiye, Direct ka koi condition nahi!
                           const hasSufficientPackage = upline.highestPackage >= amount;
-                          const hasSufficientDirects = upline.directCount >= currentLevel;
 
-                          if (hasSufficientPackage && hasSufficientDirects) {
+                          if (hasSufficientPackage) {
                               const levelAmount = (amount * percentage) / 100;
                               if (levelAmount > 0) {
-                                  await User.updateOne({ _id: upline._id }, { $inc: { levelIncome: levelAmount, totalLevelIncome: levelAmount } });
+                                  await User.updateOne({ _id: upline._id }, { $inc: { levelIncome: levelAmount, totalLevelIncome: levelAmount, walletBalance: levelAmount } });
+                                  await createTransaction({
+                                      userId: upline.userId, type: "level_income", source: "level", amount: levelAmount,
+                                      fromUserId: targetUser.userId, description: `Level ${currentLevel} Income (${percentage}%) from $${amount} Package`, status: 'success'
+                                  });
                               }
                           }
                       }
@@ -1956,8 +1924,6 @@ router.put(
     }
   }
 );
-
-
 
 // Backend Route: promo-dummy-topup
 // ✅ PROMO DUMMY TOPUP - FIXED & ROBUST

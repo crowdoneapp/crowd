@@ -47,12 +47,12 @@ const DirectTeamPage = () => {
   // 🔥 PROMOTE TO SETUP FUNCTION
   const handlePromote = (memberId, memberName) => {
     Swal.fire({
-      title: 'Are Your Sure?',
-      html: `<b>${memberName}</b> (${memberId})  <b> </b> <br/><br/><span style="color: #ef4444; font-size: 13px; font-weight: bold;"> </span>`,
+      title: 'Are You Sure?',
+      html: `<b>${memberName}</b> (${memberId}) <br/><br/><span style="color: #ef4444; font-size: 13px; font-weight: bold;">Promote to Setup Role?</span>`,
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonColor: '#2563eb', // Blue-600
-      cancelButtonColor: '#f1f5f9', // Slate-100
+      confirmButtonColor: '#2563eb',
+      cancelButtonColor: '#f1f5f9',
       confirmButtonText: 'Yes',
       cancelButtonText: '<span style="color: #475569;">Cancel</span>',
       customClass: {
@@ -76,9 +76,7 @@ const DirectTeamPage = () => {
             customClass: { popup: 'rounded-[24px]', confirmButton: 'rounded-xl font-bold shadow-md' }
           });
 
-          // Refresh list to update UI
-          fetchDirectTeam();
-
+          fetchDirectTeam(); // Refresh
         } catch (err) {
           Swal.fire({
             title: 'Error',
@@ -111,10 +109,28 @@ const DirectTeamPage = () => {
   const indexOfLast = currentPage * entriesPerPage;
   const indexOfFirst = indexOfLast - entriesPerPage;
   const currentItems = filtered.slice(indexOfFirst, indexOfLast);
-  const totalPages = Math.ceil(filtered.length / entriesPerPage);
+  
+  // Hamesha kam se kam 1 page toh dikhega
+  const totalPages = Math.ceil(filtered.length / entriesPerPage) || 1;
 
   const handlePrev = () => currentPage > 1 && setCurrentPage(currentPage - 1);
   const handleNext = () => currentPage < totalPages && setCurrentPage(currentPage + 1);
+
+  // 🔥 1 2 3 4 5 Number Generator Logic
+  const getPageNumbers = () => {
+    const pageNumbers = [];
+    let startPage = Math.max(1, currentPage - 2);
+    let endPage = Math.min(totalPages, startPage + 4);
+
+    if (endPage - startPage < 4) {
+      startPage = Math.max(1, endPage - 4);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i);
+    }
+    return pageNumbers;
+  };
 
   return (
     <div className="w-full max-w-7xl mx-auto pb-10 relative z-10 animate-in fade-in duration-500 font-sans">
@@ -136,8 +152,7 @@ const DirectTeamPage = () => {
              </div>
              Direct Team
           </h2>
-          <p className="text-slate-500 text-xs md:text-sm font-bold tracking-widest uppercase mt-2">Manage your direct referrals</p>
-        </div>
+         </div>
 
         {/* Status indicator for Super Setup */}
         {user?.role === 'super_setup' && (
@@ -153,7 +168,6 @@ const DirectTeamPage = () => {
 
       {/* Filters (Search & Entries) */}
       <div className="flex flex-col sm:flex-row gap-4 mb-6 justify-between items-center bg-white p-4 rounded-2xl border border-slate-200 shadow-[0_4px_15px_rgba(0,0,0,0.02)]">
-        
         <div className="relative w-full sm:w-80 group">
            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
              <Search size={16} strokeWidth={2.5} className="text-slate-400 group-focus-within:text-blue-600 transition-colors" />
@@ -166,7 +180,6 @@ const DirectTeamPage = () => {
              className="w-full bg-slate-50 border border-slate-200 text-[#0b1c3c] font-medium text-sm rounded-xl px-4 py-3.5 pl-11 focus:border-blue-400 focus:ring-4 focus:ring-blue-50 focus:outline-none transition-all placeholder-slate-400 shadow-inner"
            />
         </div>
-
       </div>
 
       {/* Table */}
@@ -180,7 +193,7 @@ const DirectTeamPage = () => {
                 <th className="p-4 font-black">User ID</th>
                 <th className="p-4 font-black">Name</th>
                 <th className="p-4 font-black text-center">Directs</th>
-                <th className="p-4 font-black text-center">Team Size</th>
+                <th className="p-4 font-black text-center">Downline Team</th>  
                 <th className="p-4 font-black text-center">Top-Up</th>
                 <th className="p-4 font-black">Mobile</th>
                 
@@ -223,20 +236,16 @@ const DirectTeamPage = () => {
                     <td className="p-4 font-bold text-slate-600">
                       {member.name || "-"}
                     </td>
-
-                    {/* Leader Bypass Logic */}
                     <td className="p-4 text-center">
                       <span className="bg-slate-50 border border-slate-200 text-slate-700 py-1 px-2.5 rounded-md text-[10px] font-black tracking-widest shadow-sm">
                         {member.role === 'leader' && user?.role !== 'superleader' ? 0 : (member.totalDirects || member.directCount || 0)}
                       </span>
                     </td>
-
                     <td className="p-4 text-center">
                       <span className="bg-indigo-50 border border-indigo-100 text-indigo-700 py-1 px-2.5 rounded-md text-[10px] font-black tracking-widest shadow-sm">
                         {member.role === 'leader' && user?.role !== 'superleader' ? 0 : (member.totalTeam || member.teamCount || 0)}
                       </span>
                     </td>
-
                     <td className="p-4 font-black text-center">
                        {Number(member.topUpAmount) > 0 ? (
                           <span className="text-emerald-600">${member.topUpAmount}</span>
@@ -244,7 +253,6 @@ const DirectTeamPage = () => {
                           <span className="text-slate-400">$0</span>
                        )}
                     </td>
-
                     <td className="p-4">
                       <div className="flex items-center gap-3">
                           <span className="text-slate-600 font-bold">{member.mobile || "-"}</span>
@@ -259,8 +267,6 @@ const DirectTeamPage = () => {
                           )}
                       </div>
                     </td>
-
-                    {/* 🔥 EXTRA COLUMN: Promote to Setup Button 🔥 */}
                     {user?.role === 'super_setup' && (
                       <td className="p-4 text-center">
                         {member.role === 'setup' ? (
@@ -277,7 +283,6 @@ const DirectTeamPage = () => {
                         )}
                       </td>
                     )}
-
                   </tr>
                 ))
               )}
@@ -285,36 +290,61 @@ const DirectTeamPage = () => {
           </table>
         </div>
 
-        {/* Pagination Footer */}
-        {totalPages > 0 && (
-           <div className="p-4 md:p-5 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row justify-between items-center gap-4">
-              <span className="text-slate-500 text-[10px] md:text-[11px] font-black uppercase tracking-widest">
-                Showing <span className="text-[#0b1c3c]">{indexOfFirst + 1}</span> to <span className="text-[#0b1c3c]">{Math.min(indexOfLast, filtered.length)}</span> of <span className="text-[#0b1c3c]">{filtered.length}</span> Entries
-              </span>
+        {/* 🔥 NUMBERED PAGINATION FOOTER - MOBILE & PC BOTH VISIBLE 🔥 */}
+        <div className="p-4 md:p-5 border-t border-slate-200 bg-slate-50 flex flex-col md:flex-row justify-between items-center gap-4">
+           
+           {/* Entries Info */}
+           <span className="text-slate-500 text-[10px] md:text-[11px] font-black uppercase tracking-widest text-center md:text-left">
+             Showing <span className="text-[#0b1c3c]">{filtered.length > 0 ? indexOfFirst + 1 : 0}</span> to <span className="text-[#0b1c3c]">{Math.min(indexOfLast, filtered.length)}</span> of <span className="text-[#0b1c3c]">{filtered.length}</span> Entries
+           </span>
+           
+           {/* Controls - Flex Wrap for Mobile */}
+           <div className="flex flex-wrap items-center justify-center gap-1.5 md:gap-2">
               
-              <div className="flex items-center gap-2">
-                 <button
-                   onClick={handlePrev}
-                   disabled={currentPage === 1}
-                   className={`p-2 rounded-xl flex items-center justify-center transition-all shadow-sm ${currentPage === 1 ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-transparent' : 'bg-white text-slate-600 hover:bg-blue-50 hover:text-blue-700 border border-slate-200 hover:border-blue-200 active:scale-95'}`}
-                 >
-                   <ChevronLeft size={18} strokeWidth={2.5} />
-                 </button>
-                 
-                 <span className="bg-white border border-slate-200 text-[#0b1c3c] shadow-sm text-xs font-black px-4 py-2 rounded-xl">
-                    {currentPage} / {totalPages}
-                 </span>
-                 
-                 <button
-                   onClick={handleNext}
-                   disabled={currentPage === totalPages}
-                   className={`p-2 rounded-xl flex items-center justify-center transition-all shadow-sm ${currentPage === totalPages ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-transparent' : 'bg-white text-slate-600 hover:bg-blue-50 hover:text-blue-700 border border-slate-200 hover:border-blue-200 active:scale-95'}`}
-                 >
-                   <ChevronRight size={18} strokeWidth={2.5} />
-                 </button>
+              {/* Prev Button */}
+              <button
+                onClick={handlePrev}
+                disabled={currentPage === 1}
+                className={`w-8 h-8 md:w-9 md:h-9 flex items-center justify-center rounded-lg md:rounded-xl transition-all shadow-sm border ${
+                  currentPage === 1 
+                    ? 'bg-slate-100 text-slate-300 cursor-not-allowed border-transparent' 
+                    : 'bg-white text-slate-600 border-slate-200 hover:bg-blue-50 hover:border-blue-200 hover:text-[#0b1c3c] active:scale-95'
+                }`}
+              >
+                <ChevronLeft size={16} strokeWidth={2.5} />
+              </button>
+              
+              {/* Number Buttons (1, 2, 3...) - ALWAYS VISIBLE */}
+              <div className="flex items-center gap-1 md:gap-1.5">
+                {getPageNumbers().map(num => (
+                  <button
+                    key={num}
+                    onClick={() => setCurrentPage(num)}
+                    className={`w-8 h-8 md:w-9 md:h-9 flex items-center justify-center rounded-lg md:rounded-xl text-xs font-black transition-all shadow-sm border ${
+                      currentPage === num 
+                        ? 'bg-[#0b1c3c] text-white border-[#0b1c3c] scale-105' 
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-blue-50 hover:border-blue-200 hover:text-[#0b1c3c]'
+                    }`}
+                  >
+                    {num}
+                  </button>
+                ))}
               </div>
+              
+              {/* Next Button */}
+              <button
+                onClick={handleNext}
+                disabled={currentPage === totalPages}
+                className={`w-8 h-8 md:w-9 md:h-9 flex items-center justify-center rounded-lg md:rounded-xl transition-all shadow-sm border ${
+                  currentPage === totalPages 
+                    ? 'bg-slate-100 text-slate-300 cursor-not-allowed border-transparent' 
+                    : 'bg-white text-slate-600 border-slate-200 hover:bg-blue-50 hover:border-blue-200 hover:text-[#0b1c3c] active:scale-95'
+                }`}
+              >
+                <ChevronRight size={16} strokeWidth={2.5} />
+              </button>
            </div>
-        )}
+        </div>
       </div>
     </div>
   );

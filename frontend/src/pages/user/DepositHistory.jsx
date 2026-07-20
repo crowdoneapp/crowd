@@ -113,9 +113,7 @@ const DepositHistory = () => {
              </div>
              Deposit History
           </h2>
-          <p className="text-cyan-400/60 text-[10px] md:text-xs font-bold tracking-widest uppercase mt-2 ml-1">
-            Track your wallet top-up transactions
-          </p>
+         
         </div>
       </div>
 

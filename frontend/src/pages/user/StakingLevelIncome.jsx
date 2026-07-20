@@ -75,9 +75,7 @@ const StakingLevelIncome = () => {
           <h2 className="text-2xl md:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-pink-500 uppercase tracking-wide flex items-center gap-3">
              <ListChecks className="text-purple-500" size={28} /> CCT Staking Level
           </h2>
-          <p className="text-black text-xs md:text-sm font-bold tracking-widest uppercase mt-1">
-            Track your level-wise staking rewards
-          </p>
+           
         </div>
       </div>
 
