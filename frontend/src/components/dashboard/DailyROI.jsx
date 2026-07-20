@@ -70,21 +70,21 @@ const generateLevelsData = (pkgAmount) => {
   for (let i = 1; i <= TOTAL_LEVELS; i++) {
     
     // 🔥 Left Side (UI) me Table me kya dikhega
-    // Level 1 se 5 tak -> 100, 200, 300... Level 6 se 50 tak -> Sirf 500 dikhega
-    let displayTeamUI = i <= 5 ? i * 100 : 500;
+    // Har level me bas 100 dikhana hai (jaise direct me 1 dikhate hain)
+    let displayTeamUI = 100;
 
-    // 🔥 Right Side (Status) me Unlock hone ke liye Asli calculation kya hogi
-    // Level 1 se 5 tak -> 100, 200, 300... Level 6 se aage -> 1000, 1500, 2000 (Pichla total + 500 extra)
-    let unlockTeamLogic = i <= 5 ? i * 100 : 500 + ((i - 5) * 500);
+    // 🔥 Right Side (Status) me Unlock hone ke liye Asli calculation
+    // Level 1 = 100, Level 2 = 200, Level 3 = 300... (Cumulative)
+    let unlockTeamLogic = i * 100;
 
     levels.push({
       level: i,
       totalEarning: totalReturnPerLevel,
       dailyEarning: dailyReturnPerLevel,
       days: ROI_DAYS,
-      reqDirectsActual: 1,         // ✅ Har level me 1 Direct chahiye (Fixed)
-      reqTeamActual: displayTeamUI, // ✅ Left Side me dikhane ke liye
-      unlockTeamReq: unlockTeamLogic, // ✅ Status Locked/Unlocked check karne ke liye
+      reqDirectsActual: 1,            // ✅ Har level me 1 Direct dikhega
+      reqTeamActual: displayTeamUI,   // ✅ Table UI me sirf 100 dikhega har row me
+      unlockTeamReq: unlockTeamLogic, // ✅ Status check karne ke liye 100, 200, 300...
     });
   }
   return levels;
@@ -142,7 +142,7 @@ export default function Plan() {
            </div>
         )}
 
-        {/* ✅ SUMMARY CARDS */}
+        {/* ✅ SUMMARY CARDS (Top 2 Cards Only) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-8">
            {/* Card 1: Active Package */}
            <div className="neo-card p-5 sm:p-6 flex items-center justify-between group">
@@ -277,15 +277,15 @@ export default function Plan() {
                   {currentLevels.map((lvl) => {
                     const isPackageUnlocked = userHighestPackage >= selectedPackage;
                     
-                    // 🔥 LOCK/UNLOCK LOGIC ab sahi se cumulative count check karegi
+                    // 🔥 LOCK/UNLOCK LOGIC ab sahi se cumulative count check karegi (100, 200, 300...)
                     const isLevelUnlocked = isPackageUnlocked && 
                                             currentPackageDirects >= lvl.reqDirectsActual && 
-                                            currentPackageYourCrowd >= lvl.unlockTeamReq; // 👈 Ye 1000, 1500 check karega!
+                                            currentPackageYourCrowd >= lvl.unlockTeamReq;
 
                     return (
                       <tr key={lvl.level} className="neo-row border-b border-slate-100 hover:bg-blue-50/50">
                         
-                        {/* TEAM (Left Side UI - Shows 500 after level 5) */}
+                        {/* TEAM (Left Side UI - Ab har row me strictly 100 dikhega) */}
                         <td className="py-4 px-3 sm:py-5 sm:px-6 font-black text-slate-800 text-sm sm:text-base">
                           {lvl.reqTeamActual.toLocaleString()}
                         </td>
@@ -295,7 +295,7 @@ export default function Plan() {
                           ${lvl.totalEarning.toFixed(2)} USDT
                         </td>
 
-                        {/* DIRECT REQUIRED (Seedha 1 Direct) */}
+                        {/* DIRECT REQUIRED (UI me strictly 1 Direct) */}
                         <td className="py-4 px-3 sm:py-5 sm:px-6 font-bold text-slate-600 text-xs sm:text-sm">
                            1 Direct
                         </td>
@@ -310,7 +310,7 @@ export default function Plan() {
                           {lvl.days} Days
                         </td>
 
-                        {/* STATUS BUTTON (Right Side Logic - Works perfectly now) */}
+                        {/* STATUS BUTTON (Right Side Logic - cumulative count pe check karega) */}
                         <td className="py-4 px-3 sm:py-5 sm:px-6">
                           {!isPackageUnlocked ? (
                              <button className="inline-flex items-center justify-center gap-1.5 text-rose-600 bg-rose-50 px-3 py-1.5 rounded-lg border border-rose-200 font-bold text-[9px] sm:text-[10px] uppercase tracking-wide whitespace-nowrap shadow-sm">

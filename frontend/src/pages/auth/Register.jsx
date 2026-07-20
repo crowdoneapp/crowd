@@ -6,8 +6,20 @@ import Confetti from 'react-confetti';
 import FingerprintJS from '@fingerprintjs/fingerprintjs';
 import {
   User, Users, Mail, Phone,
-  CheckCircle2, XCircle, ArrowRight, Copy, Globe, Hexagon, Home
+  CheckCircle2, XCircle, ArrowRight, Copy, Globe, Hexagon, Home,
+  Calendar, Clock, ShieldCheck, KeyRound, UserPlus
 } from 'lucide-react';
+
+// Reusable field wrapper — bordered icon box + input, matches reference image style
+// 🔥 IMPORTANT: defined OUTSIDE Register() so it doesn't remount on every keystroke
+const FieldShell = ({ icon: Icon, children, focusRing = true, className = '' }) => (
+  <div className={`flex items-stretch bg-white/5 border border-white/10 rounded-xl overflow-hidden focus-within:border-cyan-400/60 ${focusRing ? 'focus-within:ring-4 focus-within:ring-cyan-400/10' : ''} transition-all ${className}`}>
+    <div className="flex items-center justify-center w-12 shrink-0 border-r border-white/10 text-slate-400">
+      <Icon size={17} strokeWidth={2.2} />
+    </div>
+    {children}
+  </div>
+);
 
 function Register() {
   const [name, setName] = useState('');
@@ -136,6 +148,7 @@ function Register() {
         userId: response.data.userId,
         password: response.data.password,
         name: response.data.name || cleanName,
+        registeredAt: new Date(),
       });
 
       setShowPopup(true);
@@ -333,23 +346,23 @@ function Register() {
     { value: 'Zimbabwe', label: 'Zimbabwe (+263)' }
   ];
 
-  // Dark-glass Custom Select Styles (matches the aurora theme)
+  // Dark-glass Custom Select Styles — icon-box style to match the new field design
   const customSelectStyles = {
     control: (base, state) => ({
       ...base,
-      background: 'rgba(255,255,255,0.05)',
-      borderColor: state.isFocused ? 'rgba(34,211,238,0.6)' : 'rgba(255,255,255,0.1)',
-      borderRadius: '0.75rem',
+      background: 'transparent',
+      border: 'none',
+      borderRadius: 0,
       color: '#ffffff',
-      minHeight: '52px',
-      boxShadow: state.isFocused ? '0 0 0 4px rgba(34,211,238,0.1)' : 'none',
-      transition: 'all 0.3s ease',
-      paddingLeft: '35px',
+      minHeight: '50px',
+      boxShadow: 'none',
+      paddingLeft: '2px',
       cursor: 'pointer'
     }),
     singleValue: (base) => ({ ...base, color: '#ffffff', fontWeight: 'bold' }),
     input: (base) => ({ ...base, color: '#ffffff' }),
-    menu: (base) => ({ ...base, background: '#141a2b', border: '1px solid rgba(255,255,255,0.1)', zIndex: 50, borderRadius: '12px', overflow: 'hidden', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)' }),
+    menu: (base) => ({ ...base, background: '#141a2b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)' }),
+    menuPortal: (base) => ({ ...base, zIndex: 9999 }),
     option: (base, state) => ({
       ...base,
       backgroundColor: state.isFocused ? 'rgba(34,211,238,0.1)' : 'transparent',
@@ -359,12 +372,20 @@ function Register() {
       fontWeight: 'bold'
     }),
     placeholder: (base) => ({ ...base, color: '#64748b', fontWeight: 'bold' }),
+    indicatorSeparator: () => ({ display: 'none' }),
   };
+
+  const certDate = registeredData?.registeredAt
+    ? registeredData.registeredAt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+    : '';
+  const certTime = registeredData?.registeredAt
+    ? registeredData.registeredAt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
+    : '';
 
   return (
     <div className="min-h-screen bg-[#0a0e1a] flex flex-col items-center justify-center px-4 py-8 sm:py-10 relative overflow-hidden font-sans selection:bg-cyan-400/30 selection:text-white">
 
-      {/* ===== AURORA MESH BACKGROUND (matches login page) ===== */}
+      {/* ===== AURORA MESH BACKGROUND ===== */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-[-15%] left-[10%] w-[50vw] h-[50vw] max-w-[600px] max-h-[600px] bg-violet-600/25 blur-[120px] rounded-full"></div>
         <div className="absolute bottom-[-20%] right-[5%] w-[45vw] h-[45vw] max-w-[550px] max-h-[550px] bg-cyan-500/20 blur-[120px] rounded-full"></div>
@@ -396,29 +417,26 @@ function Register() {
             to="/login"
             className="text-xs font-black text-cyan-300 bg-cyan-400/10 border border-cyan-400/30 hover:bg-cyan-400/20 px-3 py-2 rounded-lg transition-colors"
           >
-            Login Instead
+            Login
           </Link>
         </div>
       </div>
 
-      {/* ===== CENTERED GLASS CARD ===== */}
+      {/* ===== CENTERED CARD — matches reference image ===== */}
       <div className="relative z-10 w-full max-w-md animate-in fade-in zoom-in-95 duration-500">
 
-        <div className="relative flex justify-center mb-[-28px] z-20">
-          <div className="relative">
-            <span className="absolute inset-0 rounded-2xl bg-cyan-400/40 blur-md animate-pulse"></span>
-            <div className="relative bg-gradient-to-br from-cyan-400 to-violet-500 w-14 h-14 rounded-2xl flex items-center justify-center shadow-[0_8px_30px_-6px_rgba(34,211,238,0.5)] border border-white/20">
-              <Hexagon size={26} color="#0a0e1a" fill="#0a0e1a" />
-            </div>
+        {/* Header icon: outline box with person+ icon, like reference */}
+        <div className="flex flex-col items-center mb-5">
+          <div className="w-16 h-16 rounded-2xl border-2 border-cyan-400/60 bg-cyan-400/5 flex items-center justify-center shadow-[0_0_25px_-5px_rgba(34,211,238,0.4)] mb-4">
+            <UserPlus size={28} className="text-cyan-400" strokeWidth={2} />
           </div>
+          <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight text-center">
+            CREATE <span className="bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-violet-500">ACCOUNT</span>
+          </h2>
+          <p className="text-slate-400 text-sm font-medium mt-1">Join us and start your journey</p>
         </div>
 
-        <div className="bg-white/[0.06] backdrop-blur-2xl border border-white/10 rounded-[28px] pt-12 pb-8 px-6 sm:px-9 shadow-[0_25px_70px_-15px_rgba(0,0,0,0.6)]">
-
-          <div className="mb-6 text-center">
-            <h2 className="text-2xl sm:text-3xl font-black text-white mb-1.5 tracking-tight">Create account</h2>
-            <p className="text-slate-400 text-sm font-medium">Join the Crowd One network today.</p>
-          </div>
+        <div className="bg-white/[0.04] backdrop-blur-2xl border border-white/10 rounded-[24px] py-7 px-6 sm:px-8 shadow-[0_25px_70px_-15px_rgba(0,0,0,0.6)]">
 
           {errorMsg && (
             <div className="mb-5 bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs p-3.5 rounded-xl font-bold flex items-center gap-2 animate-in slide-in-from-top-2">
@@ -441,12 +459,24 @@ function Register() {
               aria-hidden="true"
             />
 
-            {/* Sponsor Box */}
-            <div className="bg-white/[0.04] p-4 rounded-2xl border border-white/10 mb-1">
-              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 mb-2 flex items-center gap-2">
-                <Users size={14} className="text-cyan-400" /> Referral Sponsor
-              </label>
-              <div className="relative">
+            {/* Full Name — person+ icon as requested */}
+            <div>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 mb-2">Full Name</label>
+              <FieldShell icon={UserPlus}>
+                <input
+                  type="text"
+                  placeholder="Enter your full name"
+                  value={name}
+                  onChange={e => setName(e.target.value.replace(/[^A-Za-z\s]/g, ''))}
+                  className="w-full bg-transparent px-4 py-3.5 text-white font-bold placeholder-slate-500 outline-none"
+                />
+              </FieldShell>
+            </div>
+
+            {/* Referral Sponsor */}
+            <div>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 mb-2">Referral Sponsor</label>
+              <FieldShell icon={Users} focusRing={false} className={sponsorName === 'Invalid Sponsor' ? 'border-rose-400/60' : (sponsorName && sponsorId) ? 'border-cyan-400/60' : ''}>
                 <input
                   type="text"
                   value={sponsorId}
@@ -455,71 +485,67 @@ function Register() {
                     setSponsorId(val);
                     fetchSponsorName(val);
                   }}
-                  className={`w-full bg-white/5 border ${sponsorName === 'Invalid Sponsor' ? 'border-rose-400/60 focus:border-rose-400 ring-2 ring-rose-500/10' : (sponsorName && sponsorId) ? 'border-cyan-400/60 focus:border-cyan-400 ring-2 ring-cyan-400/10' : 'border-white/10 focus:border-white/20'} rounded-xl px-4 py-3.5 text-white font-mono tracking-wide focus:outline-none transition-all`}
+                  className="w-full bg-transparent pl-4 pr-2 py-3.5 text-white font-mono font-bold tracking-wide placeholder-slate-500 outline-none"
                   placeholder="Enter Sponsor ID"
                 />
-                <div className="absolute right-4 top-3.5">
-                  {sponsorName === 'Invalid Sponsor' && <XCircle className="text-rose-400" size={20} />}
-                  {sponsorName && sponsorName !== 'Invalid Sponsor' && <CheckCircle2 className="text-cyan-400" size={20} />}
+                <div className="flex items-center pr-4">
+                  {sponsorName === 'Invalid Sponsor' && <XCircle className="text-rose-400" size={18} />}
+                  {sponsorName && sponsorName !== 'Invalid Sponsor' && <CheckCircle2 className="text-cyan-400" size={18} />}
                 </div>
-              </div>
-
-              <div className="h-4 mt-2 ml-1">
+              </FieldShell>
+              <div className="h-4 mt-1.5 ml-1">
                 {sponsorName && (
-                  <p className={`text-[10px] md:text-[11px] font-black tracking-wide uppercase truncate ${sponsorName === 'Invalid Sponsor' ? 'text-rose-400' : 'text-cyan-400'}`}>
+                  <p className={`text-[10px] font-black tracking-wide uppercase truncate ${sponsorName === 'Invalid Sponsor' ? 'text-rose-400' : 'text-cyan-400'}`}>
                     {sponsorName === 'Invalid Sponsor' ? 'Sponsor not found' : `VERIFIED: ${sponsorName}`}
                   </p>
                 )}
               </div>
             </div>
 
-            {/* Input Fields */}
-            <div className="space-y-3">
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <User className="h-5 w-5 text-slate-500 group-focus-within:text-cyan-400 transition-colors" />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Full Name"
-                  value={name}
-                  onChange={e => setName(e.target.value.replace(/[^A-Za-z\s]/g, ''))}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 pl-12 text-white font-bold placeholder-slate-500 focus:border-cyan-400/60 focus:ring-4 focus:ring-cyan-400/10 outline-none transition-all"
-                />
-              </div>
-
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-slate-500 group-focus-within:text-cyan-400 transition-colors" />
-                </div>
+            {/* Email */}
+            <div>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 mb-2">Email Address</label>
+              <FieldShell icon={Mail}>
                 <input
                   type="email"
-                  placeholder="Email Address"
+                  placeholder="Enter your email address"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 pl-12 text-white font-bold placeholder-slate-500 focus:border-cyan-400/60 focus:ring-4 focus:ring-cyan-400/10 outline-none transition-all"
+                  className="w-full bg-transparent px-4 py-3.5 text-white font-bold placeholder-slate-500 outline-none"
                 />
-              </div>
+              </FieldShell>
+            </div>
 
-              <div className="relative group z-30">
-                <div className="absolute top-[16px] left-4 z-10 pointer-events-none">
-                  <Globe className="h-5 w-5 text-slate-500 group-focus-within:text-cyan-400 transition-colors" />
+            {/* Country */}
+            <div className="relative z-30">
+              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 mb-2">Country</label>
+              <FieldShell icon={Globe} focusRing={false}>
+                <div className="flex-1">
+                  <Select
+                    options={countryOptions}
+                    onChange={s => setCountry(s.value)}
+                    styles={customSelectStyles}
+                    placeholder="Select Country"
+                    isSearchable={false}
+                    menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
+                    menuPosition="fixed"
+                  />
                 </div>
-                <Select options={countryOptions} onChange={s => setCountry(s.value)} styles={customSelectStyles} placeholder="Select Country" isSearchable={false} />
-              </div>
+              </FieldShell>
+            </div>
 
-              <div className="relative group z-20">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Phone className="h-5 w-5 text-slate-500 group-focus-within:text-cyan-400 transition-colors" />
-                </div>
+            {/* Mobile */}
+            <div className="relative z-20">
+              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 mb-2">Mobile Number</label>
+              <FieldShell icon={Phone}>
                 <input
                   type="tel"
-                  placeholder="Mobile Number"
+                  placeholder="Enter your mobile number"
                   value={mobile}
                   onChange={handleMobileChange}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 pl-12 text-white font-bold placeholder-slate-500 focus:border-cyan-400/60 focus:ring-4 focus:ring-cyan-400/10 outline-none transition-all font-mono"
+                  className="w-full bg-transparent px-4 py-3.5 text-white font-bold font-mono placeholder-slate-500 outline-none"
                 />
-              </div>
+              </FieldShell>
             </div>
 
             <button
@@ -547,76 +573,112 @@ function Register() {
         </div>
       </div>
 
-      {/* ===== SUCCESS MODAL — same aurora/glass theme ===== */}
-    {showPopup && registeredData && (
-  <div className="fixed inset-0 z-[9999] bg-[#020617]/90 backdrop-blur-md flex justify-center items-center p-4">
-    <div className="animate-in zoom-in-95 duration-300 relative overflow-hidden bg-[#0f172a]/80 backdrop-blur-xl border border-cyan-500/20 rounded-3xl w-full max-w-md p-6 sm:p-8 text-center shadow-[0_0_50px_-12px_rgba(34,211,238,0.3)]">
-      
-      {/* 🟢 Glowing Background Orbs */}
-      <div className="absolute -top-10 -right-10 w-40 h-40 bg-cyan-500/20 blur-[60px] rounded-full"></div>
-      <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-indigo-500/20 blur-[60px] rounded-full"></div>
+      {/* ===== SUCCESS MODAL — Compact certificate style ===== */}
+      {showPopup && registeredData && (
+        <div className="fixed inset-0 z-[9999] bg-[#020617]/90 backdrop-blur-md flex justify-center items-center p-4">
+ 
+          <div className="animate-in zoom-in-95 duration-300 relative overflow-hidden bg-gradient-to-b from-[#0b1330] to-[#060a18] border-2 border-cyan-500/30 rounded-[22px] w-full max-w-sm max-h-[90vh] overflow-y-auto p-5 sm:p-6 text-center shadow-[0_0_60px_-10px_rgba(34,211,238,0.35)]">
 
-      {/* 🟢 Success Icon */}
-      <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-cyan-500/10 to-indigo-500/10 flex items-center justify-center mx-auto mb-6 relative border border-cyan-500/20 shadow-[0_0_20px_rgba(34,211,238,0.2)]">
-        <div className="absolute inset-0 bg-cyan-400/20 rounded-2xl animate-ping opacity-30"></div>
-        <CheckCircle2 size={40} className="text-cyan-400 relative z-10" strokeWidth={2.5} />
-      </div>
+            {/* Glowing Background Orbs */}
+            <div className="absolute -top-10 -right-10 w-32 h-32 bg-cyan-500/20 blur-[50px] rounded-full pointer-events-none"></div>
+            <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-violet-500/20 blur-[50px] rounded-full pointer-events-none"></div>
 
-      <h2 className="text-2xl sm:text-3xl font-black text-white mb-1 tracking-tight">
-        ACCOUNT <span className="bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-indigo-400">CREATED</span>
-      </h2>
-      <p className="text-slate-400 text-xs sm:text-sm uppercase tracking-widest mb-8 font-bold truncate px-2">
-        Welcome, <span className="text-white">{registeredData.name}</span>
-      </p>
+            {/* Shield badge top-right */}
+            <div className="absolute top-4 right-4 w-9 h-9 rounded-lg bg-gradient-to-br from-cyan-500 to-indigo-600 flex items-center justify-center shadow-[0_4px_15px_rgba(34,211,238,0.4)] z-10">
+              <ShieldCheck size={17} className="text-white" strokeWidth={2.5} />
+            </div>
 
-      {/* 🟢 Credentials Box */}
-      <div className="bg-black/40 border border-white/5 p-5 rounded-2xl mb-6 text-left relative z-10 shadow-inner">
-        
-        {/* User ID */}
-        <div className="flex justify-between items-center mb-4 pb-4 border-b border-white/10">
-          <span className="text-slate-400 font-bold text-[10px] sm:text-xs uppercase tracking-widest">User ID</span>
-          <div className="flex items-center gap-3">
-            <span className="text-cyan-400 font-black text-lg sm:text-xl tracking-wider font-mono drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]">
-              {registeredData.userId}
-            </span>
-            <button 
-              onClick={() => copyToClipboard(registeredData.userId)} 
-              className="text-slate-400 hover:text-cyan-300 bg-white/5 hover:bg-white/10 border border-white/10 p-2 rounded-lg transition-all active:scale-95"
+            {/* Logo */}
+            <div className="flex flex-col items-center relative z-10">
+              <div className="bg-gradient-to-br from-cyan-400 to-violet-500 w-9 h-9 rounded-xl flex items-center justify-center shadow-[0_6px_20px_-6px_rgba(34,211,238,0.5)] mb-1.5">
+                <Hexagon size={18} color="#0a0e1a" fill="#0a0e1a" />
+              </div>
+              <span className="text-sm font-black text-white tracking-tight">
+                CROWD<span className="text-cyan-400">ONE</span>
+              </span>
+            </div>
+
+            {/* Title */}
+            <h2 className="text-lg font-black text-white mt-3 tracking-tight leading-none">
+              REGISTRATION
+            </h2>
+            <h2 className="text-xl font-black bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-violet-400 mb-2.5 tracking-tight leading-tight">
+              CERTIFICATE
+            </h2>
+
+            <p className="text-slate-400 text-[11px] font-medium">This is to certify that</p>
+            <p className="text-lg font-black text-white mb-1 truncate px-2 italic">
+              {registeredData.name}
+            </p>
+            <p className="text-slate-400 text-[11px] font-medium mb-4 leading-relaxed px-2">
+              has successfully joined <span className="text-cyan-400 font-bold">CrowdOne</span> World.
+            </p>
+
+            {/* Details Box */}
+            <div className="bg-black/40 border border-white/10 p-4 rounded-xl mb-4 text-left relative z-10 shadow-inner space-y-2.5">
+
+              {/* User ID */}
+              <div className="flex justify-between items-center pb-2.5 border-b border-white/10">
+                <span className="flex items-center gap-1.5 text-slate-400 font-bold text-[10px] uppercase tracking-widest">
+                  <User size={12} className="text-cyan-400" /> User ID
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-cyan-400 font-black text-sm font-mono">
+                    {registeredData.userId}
+                  </span>
+                  <button
+                    onClick={() => copyToClipboard(registeredData.userId)}
+                    className="text-slate-400 hover:text-cyan-300 bg-white/5 hover:bg-white/10 border border-white/10 p-1 rounded-md transition-all active:scale-95"
+                  >
+                    <Copy size={12} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Password */}
+              <div className="flex justify-between items-center pb-2.5 border-b border-white/10">
+                <span className="flex items-center gap-1.5 text-slate-400 font-bold text-[10px] uppercase tracking-widest">
+                  <KeyRound size={12} className="text-cyan-400" /> Password
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-white font-bold font-mono bg-white/5 border border-white/10 px-2 py-0.5 rounded-md text-xs truncate max-w-[90px]">
+                    {registeredData.password}
+                  </span>
+                  <button
+                    onClick={() => copyToClipboard(registeredData.password)}
+                    className="text-slate-400 hover:text-cyan-300 bg-white/5 hover:bg-white/10 border border-white/10 p-1 rounded-md transition-all flex-shrink-0 active:scale-95"
+                  >
+                    <Copy size={12} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Date + Time combined row */}
+              <div className="flex justify-between items-center pb-2.5 border-b border-white/10">
+                <span className="flex items-center gap-1.5 text-slate-400 font-bold text-[10px] uppercase tracking-widest">
+                  <Calendar size={12} className="text-cyan-400" /> Date
+                </span>
+                <span className="text-white font-bold text-xs">{certDate}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="flex items-center gap-1.5 text-slate-400 font-bold text-[10px] uppercase tracking-widest">
+                  <Clock size={12} className="text-cyan-400" /> Time
+                </span>
+                <span className="text-white font-bold text-xs">{certTime}</span>
+              </div>
+            </div>
+
+            {/* Action Button */}
+            <button
+              onClick={handlePopupClose}
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-500 text-white font-black text-xs tracking-widest uppercase hover:shadow-[0_0_30px_rgba(34,211,238,0.4)] transition-all relative z-10 overflow-hidden group"
             >
-              <Copy size={16} />
+              <div className="absolute inset-0 bg-white/20 group-hover:translate-x-full -translate-x-full transition-transform duration-700 ease-out skew-x-12"></div>
+              Proceed to Login
             </button>
           </div>
         </div>
-
-        {/* Password */}
-        <div className="flex justify-between items-center">
-          <span className="text-slate-400 font-bold text-[10px] sm:text-xs uppercase tracking-widest">Password</span>
-          <div className="flex items-center gap-3 max-w-[65%]">
-            <span className="text-white font-bold font-mono bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg text-sm truncate tracking-wider">
-              {registeredData.password}
-            </span>
-            <button 
-              onClick={() => copyToClipboard(registeredData.password)} 
-              className="text-slate-400 hover:text-cyan-300 bg-white/5 hover:bg-white/10 border border-white/10 p-2 rounded-lg transition-all flex-shrink-0 active:scale-95"
-            >
-              <Copy size={16} />
-            </button>
-          </div>
-        </div>
-      </div>
-
-     
-      {/* 🟢 Action Button */}
-      <button 
-        onClick={handlePopupClose} 
-        className="w-full py-4 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-500 text-white font-black tracking-widest uppercase hover:shadow-[0_0_30px_rgba(34,211,238,0.4)] transition-all relative z-10 overflow-hidden group"
-      >
-        <div className="absolute inset-0 bg-white/20 group-hover:translate-x-full -translate-x-full transition-transform duration-700 ease-out skew-x-12"></div>
-        Proceed to Login
-      </button>
-    </div>
-  </div>
-)}
+      )}
     </div>
   );
 }

@@ -5,7 +5,7 @@ import {
   Home, Wallet, Banknote, History, Users, UserCircle2, 
   HelpCircle, BadgeDollarSign, BarChart, Globe, Zap, 
   FileQuestion, Coins, Layers, ArrowRightLeft, ShieldCheck, 
-  Network, PieChart, LayoutDashboard, Send, ChevronDown
+  Network, PieChart, LayoutDashboard, Send, ChevronDown, LogOut
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 
@@ -41,6 +41,7 @@ const SidebarItem = ({ label, icon: Icon, active, onClick, badge, path }) => {
 
 const Sidebar = ({ user, isOpen, setIsOpen }) => { 
   const location = useLocation();
+  const navigate = useNavigate();
   const [notifCount, setNotifCount] = useState(0);
   const { logout } = useAuth();
   
@@ -140,6 +141,13 @@ const Sidebar = ({ user, isOpen, setIsOpen }) => {
     }));
   };
 
+  // 🔥 Logout handler
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+    if (window.innerWidth < 1024) setIsOpen(false);
+  };
+
   return (
     <>
       {isOpen && (
@@ -210,6 +218,19 @@ const Sidebar = ({ user, isOpen, setIsOpen }) => {
 
               </div>
             ))}
+
+            {/* 🔥 Logout Button */}
+            <div className="pt-4 mt-4 border-t border-slate-100">
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-all duration-300 group"
+              >
+                <div className="p-1.5 rounded-lg bg-rose-50 text-rose-500 group-hover:bg-rose-100 transition-colors">
+                  <LogOut size={16} strokeWidth={2.5} />
+                </div>
+                <span>Logout</span>
+              </button>
+            </div>
 
           </nav>
         </div>

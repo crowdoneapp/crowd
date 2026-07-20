@@ -277,108 +277,111 @@ router.get('/:userId', getUserById);
 //     }
 // });
 
-router.post('/send-edit-otp', authMiddleware, async (req, res) => {
-    try {
-        const user = await User.findOne({ userId: req.user.userId }); // 🔥 ALWAYS use req.user.userId
-        if (!user) return res.status(404).json({ message: "User not found" });
+// router.post('/send-edit-otp', authMiddleware, async (req, res) => {
+//     try {
+//         const user = await User.findOne({ userId: req.user.userId }); // 🔥 ALWAYS use req.user.userId
+//         if (!user) return res.status(404).json({ message: "User not found" });
 
-        // 🕒 RATE LIMITING LOGIC: Din mein sirf 3 OTP
-        const now = new Date();
-        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // Aaj raat 12:00 AM ka time
+//         // 🕒 RATE LIMITING LOGIC: Din mein sirf 3 OTP
+//         const now = new Date();
+//         const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // Aaj raat 12:00 AM ka time
 
-        // Agar last OTP request aaj se pehle ki hai (kal ki ya purani), toh count 0 kardo (Reset)
-        if (!user.lastOtpRequestDate || user.lastOtpRequestDate < startOfToday) {
-            user.otpRequestCount = 0; 
-        }
+//         // Agar last OTP request aaj se pehle ki hai (kal ki ya purani), toh count 0 kardo (Reset)
+//         if (!user.lastOtpRequestDate || user.lastOtpRequestDate < startOfToday) {
+//             user.otpRequestCount = 0; 
+//         }
 
-        // Limit Check: Agar count 3 ya usse zyada hai, toh error de do
-        if (user.otpRequestCount >= 3) {
-            return res.status(429).json({ 
-                success: false, 
-                message: "Daily limit exceeded. You can only request OTP 3 times a day." 
-            });
-        }
+//         // Limit Check: Agar count 3 ya usse zyada hai, toh error de do
+//         if (user.otpRequestCount >= 3) {
+//             return res.status(429).json({ 
+//                 success: false, 
+//                 message: "Daily limit exceeded. You can only request OTP 3 times a day." 
+//             });
+//         }
 
-        // 🔐 Generate 6 digit OTP
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        user.editProfileOtp = otp;
-        user.editProfileOtpExpiry = Date.now() + 10 * 60 * 1000; // 10 minutes expiry
+//         // 🔐 Generate 6 digit OTP
+//         const otp = Math.floor(100000 + Math.random() * 900000).toString();
+//         user.editProfileOtp = otp;
+//         user.editProfileOtpExpiry = Date.now() + 10 * 60 * 1000; // 10 minutes expiry
 
-        // Update limit count aur date
-        user.otpRequestCount += 1; 
-        user.lastOtpRequestDate = now;
+//         // Update limit count aur date
+//         user.otpRequestCount += 1; 
+//         user.lastOtpRequestDate = now;
 
-        await user.save();
+//         await user.save();
 
-        // 📧 SEND REAL EMAIL (Ab bypass hٹا diya gaya hai)
-        const mailOptions = {
-            from: `"${process.env.APP_NAME}" <${process.env.EMAIL_USER}>`,
-            to: user.email,
-            subject: 'OTP for Profile Update',
-            html: `<h3>Your Profile Edit OTP</h3>
-                   <p>Your OTP to unlock profile editing is: <b style="font-size:20px; color:green;">${otp}</b></p>
-                   <p>This OTP is valid for 10 minutes. Do not share it with anyone.</p>`
-        };
+//         // 📧 SEND REAL EMAIL (Ab bypass hٹا diya gaya hai)
+//         const mailOptions = {
+//             from: `"${process.env.APP_NAME}" <${process.env.EMAIL_USER}>`,
+//             to: user.email,
+//             subject: 'OTP for Profile Update',
+//             html: `<h3>Your Profile Edit OTP</h3>
+//                    <p>Your OTP to unlock profile editing is: <b style="font-size:20px; color:green;">${otp}</b></p>
+//                    <p>This OTP is valid for 10 minutes. Do not share it with anyone.</p>`
+//         };
 
-        // Note: Assumes transporter is defined elsewhere in your file
-        await transporter.sendMail(mailOptions);
+//         // Note: Assumes transporter is defined elsewhere in your file
+//         await transporter.sendMail(mailOptions);
         
-        // Success response (Clean)
-        res.json({ success: true, message: "OTP sent to your registered email." });
+//         // Success response (Clean)
+//         res.json({ success: true, message: "OTP sent to your registered email." });
         
-    } catch (error) {
-        console.error("OTP Error:", error);
-        res.status(500).json({ success: false, message: "Failed to send OTP." });
-    }
-});
+//     } catch (error) {
+//         console.error("OTP Error:", error);
+//         res.status(500).json({ success: false, message: "Failed to send OTP." });
+//     }
+// });
 
-// 2. Verify OTP (SECURED)
-// Isme bhi authMiddleware add kiya gaya hai
-router.post('/verify-edit-otp', authMiddleware, async (req, res) => {
-    try {
-        const { otp } = req.body; // userId body se nahi lena!
-        const user = await User.findOne({ userId: req.user.userId }); // 🔥 Secure check
+// // 2. Verify OTP (SECURED)
+// // Isme bhi authMiddleware add kiya gaya hai
+// router.post('/verify-edit-otp', authMiddleware, async (req, res) => {
+//     try {
+//         const { otp } = req.body; // userId body se nahi lena!
+//         const user = await User.findOne({ userId: req.user.userId }); // 🔥 Secure check
 
-        if (!user) {
-            return res.status(400).json({ success: false, message: "User not found." });
-        }
+//         if (!user) {
+//             return res.status(400).json({ success: false, message: "User not found." });
+//         }
 
-        if (!user.editProfileOtp || user.editProfileOtpExpiry < Date.now()) {
-            return res.status(400).json({ success: false, message: "OTP has expired or was not requested." });
-        }
+//         if (!user.editProfileOtp || user.editProfileOtpExpiry < Date.now()) {
+//             return res.status(400).json({ success: false, message: "OTP has expired or was not requested." });
+//         }
 
-        if (String(user.editProfileOtp) !== String(otp)) {
-            return res.status(400).json({ success: false, message: "Invalid OTP." });
-        }
+//         if (String(user.editProfileOtp) !== String(otp)) {
+//             return res.status(400).json({ success: false, message: "Invalid OTP." });
+//         }
 
-        // OTP Sahi hai! Clear OTP and give 15 mins access window
-        user.editProfileOtp = undefined;
-        user.editProfileOtpExpiry = undefined;
-        user.profileEditAccessExpiry = Date.now() + 15 * 60 * 1000; // 15 mins window to edit
-        await user.save();
+//         // OTP Sahi hai! Clear OTP and give 15 mins access window
+//         user.editProfileOtp = undefined;
+//         user.editProfileOtpExpiry = undefined;
+//         user.profileEditAccessExpiry = Date.now() + 15 * 60 * 1000; // 15 mins window to edit
+//         await user.save();
 
-        res.json({ success: true, message: "OTP Verified. Profile unlocked for 15 minutes." });
-    } catch (error) {
-        console.error("OTP Verify Error:", error);
-        res.status(500).json({ success: false, message: "Verification failed." });
-    }
-});
+//         res.json({ success: true, message: "OTP Verified. Profile unlocked for 15 minutes." });
+//     } catch (error) {
+//         console.error("OTP Verify Error:", error);
+//         res.status(500).json({ success: false, message: "Verification failed." });
+//     }
+// });
 
 // 3. Update Profile & Wallet (SECURED)
 // Bina auth token ke ab update nahi hoga
 router.put('/update-profile-secure', authMiddleware, async (req, res) => {
     try {
-        const { name, mobile, email, newWalletAddress } = req.body; // userId removed from here
+        const { name, mobile, email, newWalletAddress, password } = req.body;
         const user = await User.findOne({ userId: req.user.userId }); // 🔥 Secure
 
         if (!user) {
             return res.status(404).json({ success: false, message: "User not found." });
         }
 
-        // Check if user has verified OTP recently (within 15 mins)
-        if (!user.profileEditAccessExpiry || user.profileEditAccessExpiry < Date.now()) {
-            // Security measure: agar try kiya aur fail hua, access deny.
-            return res.status(403).json({ success: false, message: "Session expired or unauthorized. Please verify OTP first." });
+        // 🔥 Password verify (plain text compare)
+        if (!password) {
+            return res.status(400).json({ success: false, message: "Password is required to update profile." });
+        }
+
+        if (password !== user.password) {
+            return res.status(401).json({ success: false, message: "Incorrect password." });
         }
 
         // 🔥 Email Change Logic
@@ -411,7 +414,7 @@ router.put('/update-profile-secure', authMiddleware, async (req, res) => {
                 user.walletAddressHistory.push({ 
                     address: currentWallet, 
                     changedAt: new Date(),
-                    updatedBy: "User" // 🔥 NAYI LINE
+                    updatedBy: "User"
                 });
             }
 
@@ -423,9 +426,6 @@ router.put('/update-profile-secure', authMiddleware, async (req, res) => {
             }
         }
 
-        // 🔒 SEVERE SECURITY: Lock profile instantly after ONE successful update to prevent multi-updates
-        user.profileEditAccessExpiry = undefined;
-        
         await user.save();
 
         res.json({ success: true, message: "Profile updated successfully!", user });

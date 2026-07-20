@@ -9,14 +9,14 @@ const { countryNames, countriesProbability } = require('../utils/fakeData');
 const TOTAL_LEVELS = 50;
 const ROI_DAYS = 90;
 const GLOBAL_POOLS = [];
+const PACKAGES = [30, 100, 300, 500, 1000];
 
-// Base package amount 30 maankar calculation ki gayi hai.
-// (Amount aur Daily Return user ke topup par depend karega baad me)
+// 🔥 HAR LEVEL ME EXACT 100 CUMULATIVE TEAM & 1 DIRECT RULE
 for (let i = 1; i <= TOTAL_LEVELS; i++) {
     GLOBAL_POOLS.push({
         level: i,
-        globalTeam: i * 100, // Level 1 = 100, Level 2 = 200, Level 50 = 5000
-        reqDirects: i,       // Level 1 = 1, Level 2 = 2, Level 50 = 50
+        globalTeam: i * 100, // Level 1 = 100, Level 2 = 200, Level 3 = 300... Level 50 = 5000
+        reqDirects: 1,       // ✅ Har level me 1 Direct chahiye
         days: ROI_DAYS
     });
 }
@@ -32,81 +32,93 @@ const startGlobalGrowthCron = () => {
 
     const processFakeGrowth = async (forcedCountry = null) => {
         const todayStr = getISTDateStr();
-        // 🔥 RULE 1: ONLY ACTIVE USERS WILL GET GLOBAL TEAM (isToppedUp: true)
-        const activeUsers = await User.find({ isToppedUp: true })
-            .select('_id globalTeamCount directCount todayGlobalTeamAdded lastGlobalTeamAddDate');
 
-        const bulkOps = [];
+        // 🔥 FIX 1: Random Package Generator (Sab packages grow honge)
+        // (Chote packages zyada aayenge, bade packages kam aayenge)
+        const pkgWeights = [30, 30, 30, 30, 100, 100, 100, 300, 300, 500, 1000];
+        const randomPkg = pkgWeights[Math.floor(Math.random() * pkgWeights.length)];
 
-        for (const user of activeUsers) {
-            // 🔥 RULE 2: TEAM GROWS ONLY IF DIRECTS EXIST
-            // Agar aap chahte hain ki bina direct ke team na badhe, toh condition lagaiye:
-            // if (user.directCount === 0) continue; 
-            
-            // Abhi ke liye main normal growth rakha hai kyunki global team auto hoti hai. 
-            // Lock logic sirf unlock ke time check hota hai.
+        // Select Country
+        let randomCountry = "IN";
+        if (forcedCountry) {
+            randomCountry = forcedCountry;
+        } else if (typeof countriesProbability !== 'undefined' && countriesProbability?.length > 0) {
+            randomCountry = countriesProbability[Math.floor(Math.random() * countriesProbability.length)];
+        }
 
-            if (user.lastGlobalTeamAddDate !== todayStr) {
-                bulkOps.push({
-                    updateOne: {
-                        filter: { _id: user._id },
-                        update: {
-                            $inc: { globalTeamCount: 1 },
-                            $set: { todayGlobalTeamAdded: 1, lastGlobalTeamAddDate: todayStr }
-                        }
-                    }
-                });
-            } else {
-                bulkOps.push({
-                    updateOne: {
-                        filter: { _id: user._id },
-                        update: {
-                            $inc: { globalTeamCount: 1, todayGlobalTeamAdded: 1 },
-                            $set: { lastGlobalTeamAddDate: todayStr }
-                        }
-                    }
-                });
+        // Select Name
+        let randomName = "Crypto User";
+        if (typeof countryNames !== 'undefined') {
+            const namePool = countryNames[randomCountry] || countryNames["IN"];
+            if (namePool && namePool.length > 0) {
+                randomName = namePool[Math.floor(Math.random() * namePool.length)];
             }
         }
 
-        if (bulkOps.length > 0) {
-            await User.bulkWrite(bulkOps);
-        }
-
-        await SystemStat.findOneAndUpdate(
-            {}, 
-            { $inc: { globalFakeCount: 1 } }, 
-            { upsert: true, returnDocument: 'after' }
-        );            
-        
+        // Generate Random User ID
         const randomId = Math.floor(1000000 + Math.random() * 9000000); 
         const isRealUser = await User.exists({ userId: randomId });
         const isFakeUser = await FakeUser.exists({ userId: randomId });
 
         if (!isRealUser && !isFakeUser) {
-            let randomCountry = "IN";
-            if (forcedCountry) {
-                randomCountry = forcedCountry;
-            } else if (typeof countriesProbability !== 'undefined' && countriesProbability?.length > 0) {
-                randomCountry = countriesProbability[Math.floor(Math.random() * countriesProbability.length)];
-            }
-
-            let randomName = "Crypto User";
-            if (typeof countryNames !== 'undefined') {
-                const namePool = countryNames[randomCountry] || countryNames["IN"];
-                if (namePool && namePool.length > 0) {
-                    randomName = namePool[Math.floor(Math.random() * namePool.length)];
-                }
-            }
-
+            // Create Fake User with the randomly selected Package
             await FakeUser.create({
                 userId: randomId,
                 name: randomName,
                 country: randomCountry,
                 isToppedUp: true,
-                topUpAmount: 30,
+                topUpAmount: randomPkg,
                 date: new Date()
             });
+
+            // 🔥 FIX 2: Admin panel tracking ke liye SystemStat update
+            await SystemStat.findOneAndUpdate(
+                {}, 
+                { 
+                    $inc: { 
+                        globalFakeCount: 1,
+                        [`packageStats.${randomPkg}.allCrowd`]: 1, // Us package me overall kitni aayi
+                        [`countryStats.${randomCountry}.${randomPkg}`]: 1 // Kis country se konsa package aaya
+                    } 
+                }, 
+                { upsert: true }
+            );            
+
+            // 🔥 FIX 3: Un users ki team badhao jinka package is growth ke eligible hai
+            const activeUsers = await User.find({ isToppedUp: true }).select('_id highestPackage globalTeamCount todayGlobalTeamAdded lastGlobalTeamAddDate packageStats');
+            const bulkOps = [];
+
+            for (const user of activeUsers) {
+                const userMaxPkg = user.highestPackage || 30;
+
+                // Agar user ka package randomPkg ke barabar ya bada hai, toh hi uski Your Crowd badhegi
+                if (userMaxPkg >= randomPkg) {
+                    let updateDoc = {
+                        $inc: { 
+                            globalTeamCount: 1, 
+                            [`packageStats.${randomPkg}.yourCrowd`]: 1 // Package-specific team growth!
+                        }
+                    };
+                    
+                    if (user.lastGlobalTeamAddDate !== todayStr) {
+                        updateDoc.$set = { todayGlobalTeamAdded: 1, lastGlobalTeamAddDate: todayStr };
+                    } else {
+                        updateDoc.$inc.todayGlobalTeamAdded = 1;
+                        updateDoc.$set = { lastGlobalTeamAddDate: todayStr };
+                    }
+
+                    bulkOps.push({
+                        updateOne: {
+                            filter: { _id: user._id },
+                            update: updateDoc
+                        }
+                    });
+                }
+            }
+
+            if (bulkOps.length > 0) {
+                await User.bulkWrite(bulkOps);
+            }
         } 
     };
 
@@ -119,30 +131,26 @@ const startGlobalGrowthCron = () => {
             if (shouldAddFakeUser) {
                 await processFakeGrowth(); 
             }
-
-            // [India, Nigeria, ZA Boost Logic code remains here... skiping for brevity]
             
-            // 🔥 2. POOL UNLOCK DISTRIBUTION LOGIC (NEW 50 LEVELS RULE)
-            // User ke paas minimum 1 direct hona chahiye pehle level ke liye
+            // 🔥 POOL UNLOCK DISTRIBUTION LOGIC (100, 200, 300 Team Logic)
             const eligibleUsers = await User.find({ directCount: { $gte: 1 }, isToppedUp: true });
             const currentTodayStr = getISTDateStr();
 
             for (let user of eligibleUsers) {
                 let isUpdated = false;
-
-                // Naye logic me cumulative ki zaroorat nahi hai, kyuki hum absolute reqTeam check kar rahe hain
-                // User Global Team = 100, 200, 300 (not cumulative)
+                const targetPackageAmount = user.highestPackage || 30; 
+                
+                // User ki selected package ki team check karo, agar nahi hai toh globalTeam fallback lo
+                const userCrowdForPackage = user.packageStats?.[targetPackageAmount]?.yourCrowd || user.globalTeamCount || 0;
 
                 for (let lvl of GLOBAL_POOLS) {
-                    // Check logic: Has Required Team AND Required Directs
-                    if (user.globalTeamCount >= lvl.globalTeam && user.directCount >= lvl.reqDirects) {
+                    // Check logic: Has Required Team (100, 200...) AND Required Directs (1)
+                    if (userCrowdForPackage >= lvl.globalTeam && user.directCount >= lvl.reqDirects) {
                         const existingPool = user.activePools?.find(p => p.level === lvl.level);
                         
                         if (!existingPool) {
                             if (!user.activePools) user.activePools = [];
                             
-                            // User ne jis package se topup kiya hai, uska double milega level pe
-                            const targetPackageAmount = user.highestPackage || 30; 
                             const totalReturn = targetPackageAmount * 2;
                             const dailyReturn = Number((totalReturn / ROI_DAYS).toFixed(2));
 
@@ -162,7 +170,7 @@ const startGlobalGrowthCron = () => {
                                 type: 'credit',
                                 source: 'pool',
                                 amount: dailyReturn,
-                                description: `Daily Community Income Level ${lvl.level} (Day 1 of ${lvl.days})`,
+                                description: `Daily Community Yield Level ${lvl.level} (Day 1 of ${lvl.days})`,
                                 status: 'success'
                             });
 
@@ -178,7 +186,7 @@ const startGlobalGrowthCron = () => {
     });
 
     // =========================================================================
-    // DAILY MIDNIGHT CRON
+    // DAILY MIDNIGHT CRON (PAYOUT DISTRIBUTION)
     // =========================================================================
     cron.schedule('30 1 * * *', async () => {
         try {
@@ -202,7 +210,7 @@ const startGlobalGrowthCron = () => {
                                 type: 'credit',
                                 source: 'pool',
                                 amount: pool.dailyAmount,
-                                description: `Daily Community Income Level ${pool.level} (Day ${pool.daysPaid + 1} of ${pool.totalDays})`,
+                                description: `Daily Community Yield Level ${pool.level} (Day ${pool.daysPaid + 1} of ${pool.totalDays})`,
                                 status: 'success'
                             }).catch(err => console.error("Txn creation failed:", err));
 
