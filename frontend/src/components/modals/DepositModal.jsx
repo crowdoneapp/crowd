@@ -287,9 +287,7 @@ export default function DepositModal({ onClose, user, userId }) {
                  <div className="absolute inset-0 bg-cyan-400 rounded-3xl blur-[30px] opacity-20 group-hover:opacity-40 transition-opacity duration-500"></div>
                  <div className="relative p-4 bg-white rounded-2xl border-4 border-cyan-500/20 shadow-[0_0_30px_rgba(34,211,238,0.15)] flex flex-col items-center transform transition-transform group-hover:scale-105 duration-300">
                    <QRCodeCanvas value={address} size={140} level="H" />
-                   <div className="mt-3 text-[#0b1c3c] font-black text-[9px] tracking-[0.2em] uppercase flex items-center gap-1.5 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
-                      <QrCode size={12} /> Scan to Pay
-                   </div>
+                   
                  </div>
               </div>
 

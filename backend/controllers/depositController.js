@@ -186,8 +186,7 @@ const verifyAndProcessDeposit = async (req, res) => {
         if (amountInUSDT < 10) {
             return res.status(400).json({ 
                 success: false, 
-                message: "Minimum deposit is 10 USDT. If you sent 10 or more, please wait 1-2 minutes for blockchain confirmation." 
-            });
+message: "Minimum deposit requirement is 10 USDT. Please allow 1-2 minutes for blockchain network synchronization. If funds do not appear in your Asset Vault within 5 minutes, please contact our support team with your Transaction Hash (TXID) for manual reconciliation."            });
         }
 
         // Fund mil gaya

@@ -3,7 +3,7 @@ import api from "../../api/axios";
 import SuccessModal from "./SuccessModal";
 import MessageModal from "./MessageModal";
 import { useAuth } from "../../context/AuthContext";
-import { CheckCircle2, ShieldAlert, Rocket, X,RefreshCcw , ArrowUpCircle, Wallet, Lock, UserCheck, Crown, Check, AlertOctagon, Info, Cpu } from "lucide-react"; 
+import { CheckCircle2, ShieldAlert, Rocket, X, RefreshCcw, ArrowUpCircle, Wallet, Lock, User, Crown, Check, AlertOctagon, Info, Cpu, Activity, Zap, ShieldCheck } from "lucide-react"; 
 
 const PACKAGES = [30, 100, 300, 500, 1000];
 
@@ -145,98 +145,129 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-[#020617]/90 backdrop-blur-md p-4 overflow-hidden font-sans animate-in fade-in duration-300">
-      
-      {/* 🟢 Premium Glassmorphism Modal Container */}
-      <div className="bg-[#0f172a]/80 backdrop-blur-2xl w-full max-w-[440px] flex flex-col rounded-[32px] border border-cyan-500/20 shadow-[0_0_50px_-12px_rgba(34,211,238,0.3)] overflow-hidden relative animate-in zoom-in-95 duration-300 max-h-[95vh]">
-        
-        {/* 🟢 Glow Effects */}
-        <div className="absolute -top-20 -right-20 w-48 h-48 bg-cyan-500/20 rounded-full blur-[60px] pointer-events-none"></div>
-        <div className="absolute -bottom-20 -left-20 w-48 h-48 bg-indigo-500/20 rounded-full blur-[60px] pointer-events-none"></div>
+    <>
+      {!successModalOpen && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[1000] flex justify-center items-center p-4 overflow-hidden animate-in fade-in duration-300">
 
-        {/* 🟢 Header */}
-        <div className="bg-black/20 border-b border-white/5 p-5 flex justify-between items-center relative z-10 shrink-0">
-          <div className="flex items-center gap-3.5">
-            <div className={`p-3 rounded-2xl shadow-[0_0_15px_rgba(34,211,238,0.2)] border bg-gradient-to-br ${isFirstTopup || !userInfo ? 'from-cyan-500/10 to-blue-500/10 border-cyan-500/30 text-cyan-400' : 'from-indigo-500/10 to-purple-500/10 border-indigo-500/30 text-indigo-400'}`}>
-               {isFirstTopup || !userInfo ? <Rocket size={22} strokeWidth={2.5} /> : <Cpu size={22} strokeWidth={2.5} />}
-            </div>
-            <div>
-              <h1 className="text-xl font-black text-white tracking-tight">
-                {isFirstTopup || !userInfo ? 'Initialize User' : 'Elevate Tier user'} 
-              </h1>
-              <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-0.5 font-bold">Secure Blockchain Protocol</p>
-            </div>
-          </div>
-          <button onClick={onClose} className="p-2 rounded-full bg-white/5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition-all border border-white/10 hover:border-rose-500/30 shadow-sm cursor-pointer active:scale-95 group">
-             <X size={18} strokeWidth={2.5} />
-          </button>
-        </div>
+          <style>{`
+            input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+            input[type=number] { -moz-appearance: textfield; }
+            .custom-scroll::-webkit-scrollbar { width: 4px; }
+            .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+            .custom-scroll::-webkit-scrollbar-thumb { background: rgba(96,165,250,0.3); border-radius: 10px; }
+          `}</style>
 
-        {/* 🟢 Content Body */}
-        <div className="p-5 md:p-6 space-y-5 relative z-10 bg-transparent overflow-y-auto custom-scroll">
-          
-          {/* User Input Section */}
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-cyan-400 uppercase tracking-widest ml-1 flex items-center gap-1.5">
-               <UserCheck size={14} className="text-cyan-500"/> Target  (User ID)
-            </label>
-            <div className="flex gap-2">
-              <div className="relative flex-1 group">
-                {isPromoUser ? (
-                  <div className="w-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 rounded-xl px-4 py-3.5 font-bold flex items-center justify-center gap-2 shadow-inner text-sm">
-                    <ShieldAlert size={18} /> Auto-Allocation Active
+          {/* 🟢 Main Container matches WalletTransfer style */}
+          <div className="bg-[#0a0f1e] w-full max-w-sm rounded-[28px] border border-white/10 shadow-[0_25px_70px_-15px_rgba(0,0,0,0.6)] flex flex-col max-h-[92vh] relative overflow-hidden animate-in zoom-in-95 duration-300">
+
+            <button
+              onClick={onClose}
+              className="absolute top-4 right-4 z-20 bg-white/5 hover:bg-white/10 p-2 rounded-full transition-all border border-white/10 active:scale-95"
+            >
+              <X size={16} className="text-slate-300" strokeWidth={2.5} />
+            </button>
+
+            <div className="overflow-y-auto custom-scroll flex-1">
+
+              {/* Hero header */}
+              <div className="px-6 pt-7 pb-5 relative overflow-hidden">
+                <div className="absolute -top-10 -right-10 w-40 h-40 bg-blue-500/20 blur-[60px] pointer-events-none rounded-full"></div>
+                <div className="absolute top-0 left-0 w-32 h-32 bg-amber-400/10 blur-[50px] pointer-events-none rounded-full"></div>
+
+                <div className="relative z-10">
+                  <h1 className="text-white text-2xl font-black tracking-tight mb-1">
+                    {isFirstTopup || !userInfo ? 'Buy Package' : 'Elevate Tier'}
+                  </h1>
+                  <p className="text-slate-400 text-xs font-semibold">
+                    Secure <span className="text-slate-600">•</span> Blockchain <span className="text-slate-600">•</span> Protocol
+                  </p>
+                </div>
+
+                {/* <div className="relative z-10 mt-5 w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-800 border border-blue-400/30 flex items-center justify-center shadow-[0_10px_30px_-8px_rgba(59,130,246,0.5)]">
+                  {isFirstTopup || !userInfo ? (
+                     <Rocket size={28} className="text-blue-200" strokeWidth={1.8} />
+                  ) : (
+                     <Cpu size={28} className="text-blue-200" strokeWidth={1.8} />
+                  )}
+                  <div className="absolute -bottom-1.5 -right-1.5 w-6 h-6 rounded-full bg-amber-400 border-2 border-[#0a0f1e] flex items-center justify-center">
+                    <Crown size={10} className="text-[#0a0f1e]" strokeWidth={3} />
                   </div>
-                ) : (
-                  <>
-                    <input 
-                      type="number" 
-                      placeholder="Enter User ID"
-                      value={userId}
-                      onChange={(e) => setUserId(e.target.value)}
-                      className={`w-full bg-black/40 text-cyan-100 rounded-xl px-4 py-3.5 outline-none transition-all placeholder-slate-600 font-mono font-black shadow-inner border ${
-                          userInfo ? 'border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/10' : 'border-white/10 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/20 hover:border-white/20'
-                      }`}
-                    />
-                    {userInfo && (
-                      <div className="absolute right-4 top-1/2 -translate-y-1/2 text-emerald-400 bg-emerald-500/10 rounded-full p-0.5 shadow-[0_0_10px_rgba(16,185,129,0.3)]">
-                        <CheckCircle2 size={18} strokeWidth={3} />
-                      </div>
-                    )}
-                  </>
-                )}
+                </div> */}
               </div>
-              
-              {!isPromoUser && !userInfo && (
-                <button onClick={() => fetchUser(userId, true)} className="bg-white/5 hover:bg-white/10 border border-white/10 text-cyan-400 hover:text-cyan-300 px-5 rounded-xl font-black uppercase tracking-widest transition-all shadow-sm text-[10px] active:scale-95 shrink-0 flex items-center gap-1.5 hover:border-cyan-500/30">
-                  <RefreshCcw size={12} /> Sync
-                </button>
-              )}
-            </div>
-          </div>
 
-          {/* Fetched User Info Area */}
-          {!isPromoUser && (
-            <div className="min-h-[56px] transition-all duration-300">
-              {userInfo ? (
-                <div className="space-y-4 animate-in slide-in-from-bottom-2 duration-300">
+              <div className="px-5 pb-6 space-y-4 relative z-10">
+
+                {/* Asset Vault (Balance) */}
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-300 mb-2 ml-0.5">Asset Vault</label>
+                  <div className="bg-white/[0.04] border border-white/10 rounded-2xl px-4 py-3.5 flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-blue-500/15 border border-blue-500/30 flex items-center justify-center shrink-0">
+                      <Wallet size={16} className="text-blue-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white text-sm font-bold">Main Balance</p>
+                      <p className="text-slate-500 text-[11px] font-medium">
+                        Available: {walletBalance !== null ? `$${(Math.floor(Number(walletBalance) * 100) / 100).toFixed(2)}` : "..."}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Target User ID */}
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-300 mb-2 ml-0.5">User ID</label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1 group">
+                      {isPromoUser ? (
+                        <div className="w-full bg-blue-500/10 border border-blue-500/30 text-blue-300 rounded-2xl px-4 py-3.5 font-semibold flex items-center justify-center gap-2 text-sm">
+                          <ShieldAlert size={16} /> Auto-Allocation Active
+                        </div>
+                      ) : (
+                        <>
+                          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <User className="h-4 w-4 text-slate-500 group-focus-within:text-blue-400 transition-colors" />
+                          </div>
+                          <input 
+                            type="number" 
+                            placeholder="Enter User ID"
+                            value={userId}
+                            onChange={(e) => setUserId(e.target.value)}
+                            className="w-full bg-white/[0.04] border border-white/10 rounded-2xl px-4 py-3.5 pl-11 text-white text-sm focus:border-blue-400/60 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all font-semibold placeholder-slate-500"
+                          />
+                          {userInfo && (
+                            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-emerald-400">
+                              <CheckCircle2 size={16} strokeWidth={3} />
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                    
+                   
+                  </div>
+                </div>
+
+                {/* Fetched User Info Area */}
+                {!isPromoUser && userInfo && (
+                  <div className="space-y-4 animate-in slide-in-from-bottom-2 duration-300">
                     
                     {/* User Profile Card */}
-                    <div className={`border rounded-2xl p-4 flex justify-between items-center shadow-inner ${isMaxedOut ? 'bg-amber-500/10 border-amber-500/30' : 'bg-black/40 border-white/10'}`}>
+                    <div className="bg-white/[0.04] border border-white/10 rounded-2xl p-4 flex justify-between items-center shadow-inner">
                       <div>
-                        <div className="text-white font-black text-sm uppercase tracking-wide">{userInfo.name}</div>
-                        <div className="text-[10px] font-mono font-bold text-slate-500 mt-1 uppercase tracking-widest">ID: {userInfo.userId}</div>
+                        <div className="text-white font-bold text-sm">{userInfo.name}</div>
+                        <div className="text-[11px] font-mono font-medium text-slate-500 mt-0.5">ID: {userInfo.userId}</div>
                       </div>
                       <div className="text-right">
-                         <div className="text-slate-400 font-bold text-[9px] uppercase tracking-widest mb-1">Active UserID</div>
-                         <div className="text-cyan-300 font-black text-[13px] font-mono bg-cyan-500/10 px-3 py-1 rounded-lg border border-cyan-500/20 inline-block shadow-[0_0_10px_rgba(34,211,238,0.1)]">
+                         <div className="text-slate-500 font-medium text-[10px] uppercase mb-1">Active Tier</div>
+                         <div className="text-blue-400 font-black text-sm font-mono bg-blue-500/10 px-2.5 py-1 rounded-lg border border-blue-500/20 inline-block shadow-[0_0_10px_rgba(59,130,246,0.1)]">
                            ${currentHighestPkg}
                          </div>
                       </div>
                     </div>
 
                     {/* 🔥 Visual Package Tracker */}
-                    <div className="bg-black/40 border border-white/5 p-4 rounded-2xl shadow-inner">
-                        <h4 className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-3 text-center">Smart Contract Progression</h4>
+                    <div className="bg-white/[0.02] border border-white/5 p-4 rounded-2xl shadow-inner">
+                        <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 text-center">Contract Progression</h4>
                         <div className="flex items-center justify-between gap-1">
                             {PACKAGES.map((pkg, idx) => {
                                 const isCompleted = currentHighestPkg >= pkg;
@@ -244,20 +275,20 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
                                 const isLocked = !isCompleted && !isNext;
 
                                 return (
-                                    <div key={pkg} className="flex flex-col items-center gap-1.5 relative flex-1">
+                                    <div key={pkg} className="flex flex-col items-center gap-2 relative flex-1">
                                         {/* Connector Line */}
                                         {idx !== 0 && (
-                                            <div className={`absolute top-[14px] left-[-50%] w-full h-[2px] -z-10 ${isCompleted ? 'bg-cyan-500 shadow-[0_0_8px_rgba(34,211,238,0.6)]' : 'bg-white/10'}`}></div>
+                                            <div className={`absolute top-[14px] left-[-50%] w-full h-[2px] -z-10 ${isCompleted ? 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)]' : 'bg-white/10'}`}></div>
                                         )}
                                         
-                                         <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] border-2 transition-all duration-300 shadow-sm
-                                            ${isCompleted ? 'border-cyan-500 text-cyan-400 bg-cyan-500/10 shadow-[0_0_10px_rgba(34,211,238,0.3)]' : ''}
-                                            ${isNext ? 'border-indigo-400 text-indigo-300 bg-indigo-500/10 ring-4 ring-indigo-500/20 scale-110 shadow-[0_0_15px_rgba(99,102,241,0.4)]' : ''}
-                                            ${isLocked ? 'border-white/10 text-slate-600 bg-black/40' : ''}
+                                         <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] border-2 transition-all duration-300 shadow-sm z-10
+                                            ${isCompleted ? 'border-blue-500 text-blue-400 bg-[#0a0f1e] shadow-[0_0_10px_rgba(59,130,246,0.3)]' : ''}
+                                            ${isNext ? 'border-amber-400 text-amber-300 bg-amber-500/10 ring-4 ring-amber-500/20 scale-110 shadow-[0_0_15px_rgba(245,158,11,0.4)]' : ''}
+                                            ${isLocked ? 'border-white/10 text-slate-600 bg-white/5' : ''}
                                         `}>
                                             {isCompleted ? <Check size={14} strokeWidth={3} /> : (isLocked ? <Lock size={10} /> : <span className="font-black">${pkg}</span>)}
                                         </div>
-                                        <span className={`text-[9px] font-black font-mono ${isNext ? 'text-indigo-300 drop-shadow-[0_0_5px_rgba(99,102,241,0.8)]' : 'text-slate-500'}`}>
+                                        <span className={`text-[9px] font-black font-mono ${isNext ? 'text-amber-300 drop-shadow-[0_0_5px_rgba(245,158,11,0.8)]' : 'text-slate-500'}`}>
                                             ${pkg}
                                         </span>
                                     </div>
@@ -267,89 +298,58 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
                     </div>
 
                     {/* 🔥 2 Directs Requirement Notification */}
-                    {!isFirstTopup && !isMaxedOut && (
-                        <div className="flex items-start gap-3 text-slate-300 bg-sky-500/10 px-3.5 py-3 rounded-2xl border border-sky-500/20 shadow-[0_0_15px_rgba(14,165,233,0.1)]">
-                           <Info size={18} className="text-sky-400 shrink-0 mt-0.5" />
-                           <p className="text-[10px] font-bold leading-relaxed text-sky-100/80">
-                               <span className="font-black text-sky-400 tracking-widest uppercase text-[9px] block mb-0.5">Requirement Protocol</span> 
-                               Elevation requires <span className="text-sky-300 font-black">2 Active Direct UderID</span> on your current tier (${currentHighestPkg}) or higher.
-                           </p>
-                        </div>
-                    )}
+                  
 
-                    {/* 🔥 UPGRADE BOUNCE BACK WARNING */}
-                    {!isMaxedOut && !isFirstTopup && (
-                        <div className="bg-amber-500/10 border border-amber-500/20 p-3.5 rounded-2xl flex items-start gap-3 shadow-[0_0_15px_rgba(245,158,11,0.1)]">
-                            <AlertOctagon className="text-amber-400 shrink-0 w-6 h-6" strokeWidth={2} />
-                            <div>
-                               <p className="text-amber-400 text-[10px] font-black uppercase tracking-widest mb-1">User Roll-Up Warning</p>
-                               <p className="text-amber-200/70 text-[10px] font-bold leading-relaxed">
-                                   If a sub-user elevates to <span className="font-black text-amber-300">${nextAmount}</span> before you do, the reward hash bypasses your wallet and <span className="font-black text-rose-400 underline">rolls up</span> to the qualified Super-userID.
-                               </p>
-                            </div>
-                        </div>
-                    )}
+                  </div>
+                )}
 
+                {/* Tx PIN */}
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-300 mb-2 ml-0.5">Transaction PIN</label>
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                      <Lock className="h-4 w-4 text-slate-500 group-focus-within:text-blue-400 transition-colors" />
+                    </div>
+                    <input
+                      type="password"
+                      placeholder="Enter your PIN"
+                      value={transactionPassword}
+                      autoComplete="new-password"
+                      onChange={(e) => setTransactionPassword(e.target.value)}
+                      className="w-full bg-white/[0.04] border border-white/10 rounded-2xl px-4 py-3.5 pl-11 text-white focus:border-blue-400/60 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all font-mono font-bold tracking-widest placeholder-slate-500 text-sm"
+                    />
+                  </div>
                 </div>
-              ) : (
-                userId.length > 0 && <div className="text-[10px] font-black text-cyan-400/70 uppercase tracking-widest px-2 pt-2 animate-pulse flex items-center justify-center gap-2 h-full"><Rocket size={14}/> Fetching UserID Hash...</div>
-              )}
+
+                {/* CTA Button */}
+                <button
+                  onClick={handleTopUp}
+                  disabled={loading || isMaxedOut || (!isPromoUser && !userInfo)}
+                  className={`w-full mt-2 flex items-center justify-center gap-2.5 py-4 rounded-2xl font-black text-sm transition-all active:scale-95 ${
+                    loading || isMaxedOut || (!isPromoUser && !userInfo)
+                      ? "bg-white/5 text-slate-500 cursor-not-allowed border border-white/10"
+                      : "bg-gradient-to-r from-amber-400 to-amber-500 text-[#0a0f1e] shadow-[0_10px_30px_-8px_rgba(251,191,36,0.5)] hover:brightness-110"
+                  }`}
+                >
+                  {loading ? (
+                    <>
+                      <Activity size={18} className="animate-pulse" /> Validating Hash...
+                    </>
+                  ) : (
+                    <>
+                      <Rocket size={18} strokeWidth={2.5} /> 
+                      {isMaxedOut ? "APEX TIER ACHIEVED" : (isFirstTopup || !userInfo ? "EXECUTE INITIALIZATION" : "AUTHORIZE UPGRADE")}
+                      {!isMaxedOut && <span className={(!isPromoUser && !userInfo) ? "text-slate-600 ml-1" : "text-[#0a0f1e]/80 ml-1"}>(${nextAmount})</span>}
+                    </>
+                  )}
+                </button>
+
+              </div>
             </div>
-          )}
 
-          {/* Balance Preview */}
-          <div className="flex items-center justify-between bg-black/40 border border-white/5 rounded-2xl p-4 shadow-inner">
-             <div className="flex items-center gap-2 text-slate-400">
-                 <Wallet size={16} className="text-emerald-400" />
-                 <span className="text-[10px] uppercase tracking-widest font-black text-white">Asset Vault</span>
-             </div>
-             <div className="text-lg font-black text-emerald-400 font-mono tracking-tight drop-shadow-[0_0_8px_rgba(52,211,153,0.4)]">
-               {walletBalance !== null ? `$${(Math.floor(Number(walletBalance) * 100) / 100).toFixed(2)}` : "..."}
-             </div>
-          </div>
-
-        </div>
-
-        {/* 🟢 Footer (Payment Action) */}
-        <div className="bg-black/20 border-t border-white/5 p-5 md:p-6 shrink-0 z-20">
-          <div className="space-y-4">
-             <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center justify-center pointer-events-none text-slate-500 group-focus-within:text-cyan-400 transition-colors">
-                   <Lock size={18} strokeWidth={2.5} />
-                </div>
-                <input
-                  type="password"
-                  placeholder="Secure Tx-PIN"
-                  value={transactionPassword}
-                  onChange={(e) => setTransactionPassword(e.target.value)}
-                  className="w-full bg-black/40 border border-white/10 text-white font-black rounded-xl pl-12 pr-4 py-4 focus:ring-4 focus:ring-cyan-500/20 focus:border-cyan-400 outline-none transition-all placeholder-slate-600 font-mono tracking-widest shadow-inner text-sm"
-                />
-             </div>
-             
-             <button 
-               onClick={handleTopUp} 
-               disabled={loading || isMaxedOut || (!isPromoUser && !userInfo)}
-               className={`
-                 w-full py-4.5 rounded-xl font-black text-sm tracking-widest uppercase flex items-center justify-center gap-2 transition-all duration-300 relative overflow-hidden group
-                 ${loading || isMaxedOut || (!isPromoUser && !userInfo) 
-                    ? 'bg-white/5 text-slate-500 cursor-not-allowed border border-white/5' 
-                    : 'bg-gradient-to-r from-cyan-500 to-indigo-500 text-white shadow-[0_0_15px_rgba(34,211,238,0.2)] hover:shadow-[0_0_30px_rgba(34,211,238,0.5)] active:scale-95'}
-               `}
-             >
-               {!(loading || isMaxedOut || (!isPromoUser && !userInfo)) && (
-                   <div className="absolute inset-0 bg-white/20 group-hover:translate-x-full -translate-x-full transition-transform duration-700 ease-out skew-x-12 hidden group-hover:block"></div>
-               )}
-               
-               {loading ? "VALIDATING HASH..." : (
-                 <span className="relative z-10 flex items-center gap-2">
-                   {isMaxedOut ? "APEX TIER ACHIEVED" : (isFirstTopup || !userInfo ? "EXECUTE INITIALIZATION" : "AUTHORIZE CONTRACT UPGRADE")}
-                   {!isMaxedOut && <span className={(!isPromoUser && !userInfo) ? "text-slate-600" : "text-cyan-100"}>(${nextAmount})</span>}
-                 </span>
-               )}
-             </button>
           </div>
         </div>
-      </div>
+      )}
 
       <SuccessModal
         isOpen={successModalOpen}
@@ -367,7 +367,7 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
         message={messageModal.message}
         type={messageModal.type}
       />
-    </div>
+    </>
   );
 };
 

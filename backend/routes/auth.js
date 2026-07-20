@@ -764,48 +764,64 @@ router.post('/register', checkFeature('allowRegistrations'), async (req, res) =>
 
     // 👉 EMAIL TEMPLATE (Active)
     try {
-        await sendEmail({
-            email: user.email,
-            subject: '🎉 Welcome to Crowd One!',
-            html: `
-            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: 1px solid #eaeaea;">
-                <div style="background-color: #2b4450; padding: 40px 20px; text-align: center; color: #ffffff;">
-                    <h1 style="margin: 0; font-size: 28px; font-weight: bold;">🚀 Welcome to Crowd One</h1>
-                    <p style="margin: 10px 0 0 0; font-size: 15px; color: #cccccc;">Your journey to financial growth starts here</p>
-                </div>
-                <div style="padding: 40px 30px; color: #333333;">
-                    <p style="font-size: 16px; margin-top: 0; margin-bottom: 15px;">Hello <strong>${user.name}</strong>,</p>
-                    <p style="font-size: 15px; line-height: 1.6; color: #555555; margin-bottom: 20px;">
-                        Congratulations! Your account has been successfully created. Get ready to build your global network, unlock exciting <strong> Crowd Donation Earning rewards</strong>, and track your daily growth with our secure platform. We are thrilled to have you on board! 🌟
-                    </p>
-                    <p style="font-size: 15px; line-height: 1.6; color: #555555; margin-bottom: 30px;">
-                        Please find your confidential login details below:
-                    </p>
-                    <div style="background-color: #f8f9fa; padding: 25px; border-radius: 10px; margin-bottom: 35px; border-left: 4px solid #1e88e5;">
-                        <p style="margin: 0 0 15px 0; font-size: 16px; color: #333;">
-                            <span style="display: inline-block; width: 25px;">👤</span> <strong>User ID:</strong> ${user.userId}
-                        </p>
-                        <p style="margin: 0 0 15px 0; font-size: 16px; color: #333;">
-                            <span style="display: inline-block; width: 25px;">🔑</span> <strong>Login Password:</strong> ${user.password}
-                        </p>
-                        <p style="margin: 0; font-size: 16px; color: #333;">
-                            <span style="display: inline-block; width: 25px;">🛡️</span> <strong>Transaction Password:</strong> ${user.transactionPassword}
-                        </p>
-                    </div>
-                    <div style="text-align: center; margin-bottom: 40px;">
-                        <a href="https://crowdone.world/login" style="display: inline-block; background-color: #1e88e5; color: #ffffff; text-decoration: none; padding: 14px 30px; border-radius: 6px; font-size: 16px; font-weight: bold; box-shadow: 0 4px 6px rgba(30,136,229,0.3);">🔐 Login to Dashboard</a>
-                    </div>
-                    <p style="font-size: 14px; color: #d32f2f; margin: 0; background-color: #ffebee; padding: 12px; border-radius: 6px;">
-                        ⚠️ <strong>Security Alert:</strong> Please do not share your login or transaction passwords with anyone for your account's safety.
-                    </p>
-                </div>
-                <div style="background-color: #1a1a1a; padding: 20px; text-align: center; color: #888888; font-size: 13px;">
-                    © 2026 Crowd One. All rights reserved.<br>
-                    <span style="font-size: 11px;">This is an automated message, please do not reply to this email.</span>
-                </div>
+       await sendEmail({
+    email: user.email,
+    subject: '🎉 Welcome to Crowd One - Your Success Starts Here',
+    html: `
+    <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #d4af37; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+        
+        <!-- Header: Premium Dark Navy -->
+        <div style="background-color: #020b1c; padding: 40px 20px; text-align: center; border-bottom: 3px solid #d4af37;">
+            <h1 style="margin: 0; font-size: 28px; font-weight: 900; color: #d4af37; text-transform: uppercase; letter-spacing: 2px;">CROWD ONE</h1>
+            <p style="margin: 8px 0 0 0; font-size: 14px; color: #ffffff; opacity: 0.8; letter-spacing: 1px;">TOGETHER, WE GROW</p>
+        </div>
+
+        <!-- Body Content -->
+        <div style="padding: 40px 30px; color: #333333;">
+            <h2 style="margin-top: 0; color: #020b1c;">Welcome, ${user.name}!</h2>
+            <p style="font-size: 16px; line-height: 1.6; color: #555555; margin-bottom: 20px;">
+                Congratulations! Your journey towards financial growth is officially active. You are now part of a secure, blockchain-based ecosystem designed to unlock <strong>Crowd Donation Earning rewards</strong>. 🌟
+            </p>
+
+            <!-- Credential Box: Professional Styling -->
+            <div style="background-color: #f8f9fa; padding: 25px; border-radius: 12px; margin: 30px 0; border: 1px solid #e1e1e1; box-shadow: inset 0 0 10px rgba(0,0,0,0.05);">
+                <p style="margin: 0 0 15px 0; font-size: 15px;">
+                    <span style="font-weight: bold; color: #020b1c;">👤 User ID:</span> 
+                    <span style="font-family: monospace; background: #eee; padding: 2px 6px; border-radius: 4px;">${user.userId}</span>
+                </p>
+                <p style="margin: 0 0 15px 0; font-size: 15px;">
+                    <span style="font-weight: bold; color: #020b1c;">🔑 Login Password:</span> 
+                    <span style="font-family: monospace; background: #eee; padding: 2px 6px; border-radius: 4px;">${user.password}</span>
+                </p>
+                <p style="margin: 0; font-size: 15px;">
+                    <span style="font-weight: bold; color: #020b1c;">🛡️ Transaction PIN:</span> 
+                    <span style="font-family: monospace; background: #eee; padding: 2px 6px; border-radius: 4px;">${user.transactionPassword}</span>
+                </p>
             </div>
-            ` 
-        });
+
+            <!-- Call to Action Button -->
+            <div style="text-align: center; margin: 40px 0;">
+                <a href="https://crowdone.world/login" style="display: inline-block; background: linear-gradient(to right, #1e88e5, #1565c0); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 50px; font-size: 16px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 15px rgba(30,136,229,0.4);">
+                    Login to Dashboard
+                </a>
+            </div>
+
+            <!-- Security Warning -->
+            <div style="background-color: #fff3e0; border-left: 4px solid #d4af37; padding: 15px; border-radius: 4px;">
+                <p style="font-size: 13px; color: #856404; margin: 0; font-weight: bold;">
+                    ⚠️ Security Alert: Keep these credentials confidential. Do not share your Transaction PIN with anyone.
+                </p>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="background-color: #020b1c; padding: 20px; text-align: center; color: #ffffff; opacity: 0.7; font-size: 12px;">
+            <p style="margin: 0;">© 2026 Crowd One. All rights reserved.</p>
+            <p style="margin: 5px 0 0 0; font-size: 10px; text-transform: uppercase; letter-spacing: 1px;">Together, We Grow Stronger</p>
+        </div>
+    </div>
+    `
+});
     } catch (emailErr) { 
         console.error("Email failed:", emailErr); 
     }
