@@ -606,13 +606,23 @@ function Register() {
               CERTIFICATE
             </h2>
 
-            <p className="text-slate-400 text-[11px] font-medium">This is to certify that</p>
-            <p className="text-lg font-black text-white mb-1 truncate px-2 italic">
-              {registeredData.name}
-            </p>
-            <p className="text-slate-400 text-[11px] font-medium mb-4 leading-relaxed px-2">
-              has successfully joined <span className="text-cyan-400 font-bold">CrowdOne</span> World.
-            </p>
+          <p className="text-slate-400 text-[11px] font-medium">This is to certify that</p>
+
+<div className="flex items-center justify-center my-3 gap-3">
+  {/* Left Decorative Line */}
+  <div className="h-px w-8 bg-gradient-to-r from-transparent to-amber-400/50"></div>
+  
+  <p className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-amber-200 via-yellow-400 to-amber-600 bg-clip-text text-transparent tracking-tight truncate px-2">
+    {registeredData.name}
+  </p>
+
+  {/* Right Decorative Line */}
+  <div className="h-px w-8 bg-gradient-to-l from-transparent to-amber-400/50"></div>
+</div>
+
+<p className="text-slate-400 mb-2 text-[11px] font-medium leading-relaxed px-2">
+  has successfully joined <span className="text-cyan-400 font-bold">CrowdOne</span> World.
+</p>
 
             {/* Details Box */}
             <div className="bg-black/40 border border-white/10 p-4 rounded-xl mb-4 text-left relative z-10 shadow-inner space-y-2.5">

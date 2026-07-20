@@ -108,15 +108,14 @@
 // };
 
 // export default UserLayout;
-
+ 
 import React, { useEffect, useState } from "react";
 import api from "../../api/axios"; 
 import TopNav from "../navbar/TopNav";
 import Sidebar from "../sidebar/Sidebar";
 import { useAuth } from "../../context/AuthContext";
 
-// QUICK ACTIONS & MODALS
-import QuickActions from "../dashboard/QuickActions"; 
+// MODALS IMPORT (QuickActions yahan se hata diya hai)
 import DepositModal from "../modals/DepositModal";
 import TopUpModal from "../modals/TopUpModalWithInput"; 
 import WalletTransferModal from "../modals/WalletTransferModal";
@@ -153,6 +152,24 @@ const UserLayout = ({ children }) => {
     }
   }, [modalState.showCctTransfer]);
 
+  // Niche se fix modals open karne ka custom handler taki Dashboard se easily access ho sake
+  const handleModalState = (modalName) => {
+    const modalMapping = {
+      'deposit': 'showDeposit',
+      'topup': 'showTopUpForm',
+      'transfer': 'showWalletTransfer',
+      'withdraw': 'showWithdrawalModal',
+      'credit': 'showCreditToWallet',
+      'cct': 'showCctTransfer',
+      'usdt': 'showUsdtBep20Transfer'
+    };
+
+    const targetState = modalMapping[modalName];
+    if (targetState) {
+      setModalState(prev => ({ ...prev, [targetState]: true }));
+    }
+  };
+
   return (
     <div className="bg-[#f8fafc] min-h-screen text-slate-900 font-sans flex flex-col w-full selection:bg-teal-500/20 selection:text-teal-900">
       
@@ -166,14 +183,15 @@ const UserLayout = ({ children }) => {
       {/* MAIN BODY */}
       <div className="flex flex-1 pt-16 md:pt-20 w-full min-h-screen">
         
-        {/* MAIN CONTENT - pb adjust kiya hai taaki niche gap na rahe */}
-        <main className={`flex-1 w-full min-w-0 relative pb-20 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'ml-0'}`}>
+        {/* MAIN CONTENT */}
+        <main className={`flex-1 w-full min-w-0 relative pb-10 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'ml-0'}`}>
           <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(circle_at_50%_-10%,_rgba(13,148,136,0.06),_transparent_50%)] z-0"></div>
 
           <div className="relative z-10 p-3 sm:p-6 lg:p-8 w-full max-w-7xl mx-auto overflow-x-hidden">
             {React.Children.map(children, child => {
               if (React.isValidElement(child)) {
-                return React.cloneElement(child, { modalState, setModalState });
+                // Dashboard ko setModalState pass ho raha hai yahan se
+                return React.cloneElement(child, { modalState, setModalState: handleModalState });
               }
               return child;
             })}
@@ -181,19 +199,7 @@ const UserLayout = ({ children }) => {
         </main>
       </div>
 
-      {/* GLOBAL BOTTOM BAR - padding kam ki hai */}
-      <div className={`fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-md border-t border-slate-200 z-[90] py-2 px-2 transition-all duration-300 ${sidebarOpen ? 'lg:pl-64' : ''}`}>
-        <div className="max-w-7xl mx-auto"> 
-          <QuickActions
-            // 🔥 Yahan sab functions empty kar diye gaye hain. Click karne par kuch open nahi hoga.
-            onDepositClick={() => {}}
-            onTopUpClick={() => {}}
-            onWalletTransferClick={() => {}}
-            onWithdrawClick={() => {}}
-onCreditToWalletClick={() => {}}
-          />
-        </div>
-      </div>
+      {/* 🔥 GLOBAL BOTTOM BAR YAHAN SE DELETE KAR DIYA GAYA HAI 🔥 */}
 
       {/* GLOBAL MODALS */}
       {modalState.showDeposit && <DepositModal user={user} userId={user?.userId} onClose={() => setModalState(prev => ({ ...prev, showDeposit: false }))} />}
