@@ -83,7 +83,7 @@ const Sidebar = ({ user, isOpen, setIsOpen }) => {
         { label: "Deposit History", icon: History, path: "/deposit-history" },
         { label: "Withdrawals", icon: Banknote, path: "/withdrawals" },
         { label: "Wallet History", icon: Wallet, path: "/wallet-history" },
-        { label: "Income To Wallet", icon: ArrowRightLeft, path: "/credit-to-wallet" },
+       // { label: "Income To Wallet", icon: ArrowRightLeft, path: "/credit-to-wallet" },
         { label: "P2P Transfers", icon: Send, path: "/my-transfers" },
         { label: "Transactions", icon: History, path: "/transaction-details" },
       ]
