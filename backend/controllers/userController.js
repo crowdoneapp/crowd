@@ -3,14 +3,14 @@ const User = require('../models/User');
 const sanitizeUser = require('../utils/sanitizeUser');
 const SystemStat = require('../models/SystemStat'); // 👈 SystemStat import kiya hai fake count ke liye
 
+
+ 
 // 🔍 1. Get User By ID (Ye function frontend Dashboard se call hota hai)
 exports.getUserById = async (req, res) => {
   try {
-    // 🔥 BUG 1 & 2 FIX: Route se ID nikal kar usko thik se NUMBER mein convert karna
     const rawId = req.params.userId || req.params.id; 
     const targetUserId = Number(rawId);
 
-    // Agar ID valid number nahi hai toh yahi block kar do
     if (!targetUserId) {
       return res.status(400).json({ message: 'Invalid User ID format' });
     }
@@ -21,35 +21,51 @@ exports.getUserById = async (req, res) => {
         return res.status(404).json({ message: 'User not found' });
     }
 
-    // 🔥 Total Real Users ka count nikalna
     const totalRealUsers = await User.countDocuments({ isToppedUp: true });
-
-    // 🔥 Total Fake Users (Cron wala) ka count nikalna
+    
+    // SystemStat ya Cron model ko fetch karein
     const stat = await SystemStat.findOne();
     const globalFakeCount = stat ? stat.globalFakeCount : 0; 
 
-    // ✅ FIX: sanitizeUser package details hata raha tha, isliye hum manually attach kar rahe hain
+    // 🔥 FIX: Mongoose se aaye data ko safely extract karna
+    const dbPackageStats = stat && stat.packageStats ? stat.packageStats : {};
+    const baseTotal = globalFakeCount + totalRealUsers;
+
+    // 🔥 Har Package ka All Crowd (Sabke liye alag-alag calculation).
+    const globalStats = {
+        "30": { allCrowd: dbPackageStats["30"]?.allCrowd || (baseTotal > 0 ? baseTotal : 0) },
+        "100": { allCrowd: dbPackageStats["100"]?.allCrowd || Math.floor(baseTotal * 0.45) },
+        "300": { allCrowd: dbPackageStats["300"]?.allCrowd || Math.floor(baseTotal * 0.25) },
+        "500": { allCrowd: dbPackageStats["500"]?.allCrowd || Math.floor(baseTotal * 0.10) },
+        "1000": { allCrowd: dbPackageStats["1000"]?.allCrowd || Math.floor(baseTotal * 0.05) }
+    };
+
     const sanitizedUserData = sanitizeUser(user);
     sanitizedUserData.highestPackage = user.highestPackage || 0;
     sanitizedUserData.topUpAmount = user.topUpAmount || 0;
     sanitizedUserData.packages = user.packages || [];
+    sanitizedUserData.purchasedPackages = user.purchasedPackages || [];
+    
+    // 🔥 Mongoose Map ko Plain Object me convert karke bhejna (taaki frontend easily read kar sake)
+    sanitizedUserData.packageStats = user.packageStats instanceof Map ? Object.fromEntries(user.packageStats) : (user.packageStats || {});
+
+    // Legacy support
     sanitizedUserData.directCount = user.directCount || 0;
     sanitizedUserData.globalTeamCount = user.globalTeamCount || 0;
     sanitizedUserData.isToppedUp = user.isToppedUp || false;
 
-    // Frontend ko user data, real count, aur fake count ek sath bhejo
     res.json({
       success: true,
-      user: sanitizedUserData, // 👈 Ab sahi data jayega
+      user: sanitizedUserData, 
       totalRealUsers: totalRealUsers, 
-      globalFakeCount: globalFakeCount 
+      globalFakeCount: globalFakeCount,
+      globalStats: globalStats // 👈 Ab har package ka separate "All Crowd" isme jayega
     });
   } catch (err) {
     console.error("Dashboard Fetch Error:", err);
     res.status(500).json({ message: 'Server error' });
   }
 };
-
 // 👤 2. Get Sponsor Name (Registration Verification ke liye)
 exports.getSponsorName = async (req, res) => {
   try {

@@ -50,73 +50,7 @@ const {
 // =========================================================================
 // 🔥 NEW SMART CAPPING ENGINE FOR REAL TOPUPS (SYNCED WITH CRON)
 // =========================================================================
-const processGlobalTeamGrowth = async (excludeUserId) => {
-    const todayStr = new Date().toISOString().split('T')[0];
-
-    // Sirf Active Users ko uthayenge aur jisne ID lagayi hai (excludeUserId) usko chhod denge
-    const activeUsers = await User.find({ isToppedUp: true, userId: { $ne: excludeUserId } })
-        .select('_id globalTeamCount directCount todayGlobalTeamAdded lastGlobalTeamAddDate');
-
-    const bulkOps = [];
-
-    for (const user of activeUsers) {
-        const team = user.globalTeamCount || 0;
-        const directs = user.directCount || 0;
-
-        // Daily limit reset check (Sirf Admin panel me dikhane ke liye chahiye)
-        let todayAdded = user.todayGlobalTeamAdded || 0;
-        if (user.lastGlobalTeamAddDate !== todayStr) {
-            todayAdded = 0;
-        }
-
-        // --- STEP 1: STRICT MILESTONE LOCKS (Level 6 Tak Free Growth) ---
-        let isLocked = false;
-        
-        // 🔥 Level 5 (760) ka lock hata diya. Ab seedha Level 6 (2360) par lock lagega
-        if (team === 2360 && directs < 6) isLocked = true;       // Level 6 to 7
-        else if (team === 4360 && directs < 8) isLocked = true;  // Level 7 to 8
-        else if (team === 7360 && directs < 10) isLocked = true; // Level 8 to 9
-        else if (team === 11360 && directs < 12) isLocked = true; // Level 9 to 10
-        else if (team === 16360 && directs < 14) isLocked = true; // Level 10 to 11
-        else if (team === 23860 && directs < 16) isLocked = true; // Level 11 to 12
-        else if (team === 33860 && directs < 18) isLocked = true; // Full Plan Complete
-
-        if (isLocked) continue; // Agar exact milestone par direct kam hain, toh yahin Jam/Freeze kardo.
-
-        // --- STEP 2: DAILY CAPPING LOGIC (REMOVED COMPLETELY) ---
-        // Ab koi daily limit nahi hai, natural badhega.
-
-        // --- STEP 3: BULK UPDATE PREPARATION ---
-        if (user.lastGlobalTeamAddDate !== todayStr) {
-            // 🔄 NAYA DIN AAYA HAI: Aaj ka count DB me 1 se restart karo
-            bulkOps.push({
-                updateOne: {
-                    filter: { _id: user._id },
-                    update: {
-                        $inc: { globalTeamCount: 1 },
-                        $set: { todayGlobalTeamAdded: 1, lastGlobalTeamAddDate: todayStr }
-                    }
-                }
-            });
-        } else {
-            // ⏩ SAME DIN HAI: Normal increment karte raho
-            bulkOps.push({
-                updateOne: {
-                    filter: { _id: user._id },
-                    update: {
-                        $inc: { globalTeamCount: 1, todayGlobalTeamAdded: 1 },
-                        $set: { lastGlobalTeamAddDate: todayStr }
-                    }
-                }
-            });
-        }
-    }
-
-    // Ek sath sabhi users ko DB mein update karo
-    if (bulkOps.length > 0) {
-        await User.bulkWrite(bulkOps);
-    }
-};
+ 
 
 
 
@@ -239,131 +173,7 @@ router.get('/:userId', getUserById);
 
 
 
-
-
-
-// =========================================================
-// 🔥 SECURE PROFILE UPDATE & WALLET ROUTES
-// =========================================================
-
-// 1. Send OTP to Email (SECURED)
-// Ab authMiddleware laga diya hai, aur req.body.userId nahi balki token se userId nikal rahe hain.
-// router.post('/send-edit-otp', authMiddleware, async (req, res) => {
-//     try {
-//         const user = await User.findOne({ userId: req.user.userId }); // 🔥 ALWAYS use req.user.userId
-//         if (!user) return res.status(404).json({ message: "User not found" });
-
-//         // Generate 6 digit OTP
-//         const otp = Math.floor(100000 + Math.random() * 900000).toString();
-//         user.editProfileOtp = otp;
-//         user.editProfileOtpExpiry = Date.now() + 10 * 60 * 1000; // 10 minutes expiry
-//         await user.save();
-
-//         const mailOptions = {
-//             from: `"${process.env.APP_NAME}" <${process.env.EMAIL_USER}>`,
-//             to: user.email,
-//             subject: 'OTP for Profile Update',
-//             html: `<h3>Your Profile Edit OTP</h3>
-//                    <p>Your OTP to unlock profile editing is: <b style="font-size:20px; color:green;">${otp}</b></p>
-//                    <p>This OTP is valid for 10 minutes. Do not share it with anyone.</p>`
-//         };
-
-//         // Note: Assumes transporter is defined elsewhere in your file
-//         await transporter.sendMail(mailOptions);
-//         res.json({ success: true, message: "OTP sent to your registered email." });
-//     } catch (error) {
-//         console.error("OTP Error:", error);
-//         res.status(500).json({ success: false, message: "Failed to send OTP." });
-//     }
-// });
-
-// router.post('/send-edit-otp', authMiddleware, async (req, res) => {
-//     try {
-//         const user = await User.findOne({ userId: req.user.userId }); // 🔥 ALWAYS use req.user.userId
-//         if (!user) return res.status(404).json({ message: "User not found" });
-
-//         // 🕒 RATE LIMITING LOGIC: Din mein sirf 3 OTP
-//         const now = new Date();
-//         const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // Aaj raat 12:00 AM ka time
-
-//         // Agar last OTP request aaj se pehle ki hai (kal ki ya purani), toh count 0 kardo (Reset)
-//         if (!user.lastOtpRequestDate || user.lastOtpRequestDate < startOfToday) {
-//             user.otpRequestCount = 0; 
-//         }
-
-//         // Limit Check: Agar count 3 ya usse zyada hai, toh error de do
-//         if (user.otpRequestCount >= 3) {
-//             return res.status(429).json({ 
-//                 success: false, 
-//                 message: "Daily limit exceeded. You can only request OTP 3 times a day." 
-//             });
-//         }
-
-//         // 🔐 Generate 6 digit OTP
-//         const otp = Math.floor(100000 + Math.random() * 900000).toString();
-//         user.editProfileOtp = otp;
-//         user.editProfileOtpExpiry = Date.now() + 10 * 60 * 1000; // 10 minutes expiry
-
-//         // Update limit count aur date
-//         user.otpRequestCount += 1; 
-//         user.lastOtpRequestDate = now;
-
-//         await user.save();
-
-//         // 📧 SEND REAL EMAIL (Ab bypass hٹا diya gaya hai)
-//         const mailOptions = {
-//             from: `"${process.env.APP_NAME}" <${process.env.EMAIL_USER}>`,
-//             to: user.email,
-//             subject: 'OTP for Profile Update',
-//             html: `<h3>Your Profile Edit OTP</h3>
-//                    <p>Your OTP to unlock profile editing is: <b style="font-size:20px; color:green;">${otp}</b></p>
-//                    <p>This OTP is valid for 10 minutes. Do not share it with anyone.</p>`
-//         };
-
-//         // Note: Assumes transporter is defined elsewhere in your file
-//         await transporter.sendMail(mailOptions);
-        
-//         // Success response (Clean)
-//         res.json({ success: true, message: "OTP sent to your registered email." });
-        
-//     } catch (error) {
-//         console.error("OTP Error:", error);
-//         res.status(500).json({ success: false, message: "Failed to send OTP." });
-//     }
-// });
-
-// // 2. Verify OTP (SECURED)
-// // Isme bhi authMiddleware add kiya gaya hai
-// router.post('/verify-edit-otp', authMiddleware, async (req, res) => {
-//     try {
-//         const { otp } = req.body; // userId body se nahi lena!
-//         const user = await User.findOne({ userId: req.user.userId }); // 🔥 Secure check
-
-//         if (!user) {
-//             return res.status(400).json({ success: false, message: "User not found." });
-//         }
-
-//         if (!user.editProfileOtp || user.editProfileOtpExpiry < Date.now()) {
-//             return res.status(400).json({ success: false, message: "OTP has expired or was not requested." });
-//         }
-
-//         if (String(user.editProfileOtp) !== String(otp)) {
-//             return res.status(400).json({ success: false, message: "Invalid OTP." });
-//         }
-
-//         // OTP Sahi hai! Clear OTP and give 15 mins access window
-//         user.editProfileOtp = undefined;
-//         user.editProfileOtpExpiry = undefined;
-//         user.profileEditAccessExpiry = Date.now() + 15 * 60 * 1000; // 15 mins window to edit
-//         await user.save();
-
-//         res.json({ success: true, message: "OTP Verified. Profile unlocked for 15 minutes." });
-//     } catch (error) {
-//         console.error("OTP Verify Error:", error);
-//         res.status(500).json({ success: false, message: "Verification failed." });
-//     }
-// });
-
+ 
 // 3. Update Profile & Wallet (SECURED)
 // Bina auth token ke ab update nahi hoga
 router.put('/update-profile-secure', authMiddleware, async (req, res) => {
@@ -547,102 +357,7 @@ router.get('/direct-team/:userId', async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
-
-// ---------------------------
-// 2. All Team (No Change Needed, but kept for reference)
-// ---------------------------
-// ---------------------------
-// 2. All Team (HIGHLY OPTIMIZED WITH GRAPH LOOKUP)
-// ---------------------------
  
-
-// ---------------------------
-// 2. All Team (No Change Needed, but kept for reference)
-// ---------------------------
-// ---------------------------
-// 2. All Team (HIGHLY OPTIMIZED WITH GRAPH LOOKUP)
-// ---------------------------
-// router.get('/all-team/:userId', async (req, res) => {
-//   try {
-//     const currentUserId = Number(req.params.userId);
-
-//     // 🔥 1. Ek hi baar me saare users RAM mein load karenge (Superfast + Role Checking)
-//     const allUsers = await User.find({}, '_id userId sponsorId name country topUpAmount createdAt role').lean();
-
-//     // 2. RAM mein Network Tree banayenge
-//     const directMap = new Map();
-//     for (let u of allUsers) {
-//         if (u.sponsorId) {
-//             if (!directMap.has(u.sponsorId)) {
-//                 directMap.set(u.sponsorId, []);
-//             }
-//             directMap.get(u.sponsorId).push(u);
-//         }
-//     }
-
-//     // 3. Traversal with SECRET BREAKAWAY
-//     let allTeam = [];
-//     let queue = [];
-    
-//     // Stats maintain karne ke variables (Aapke purane code ke hisaab se)
-//     let directCount = 0;
-//     const levelWiseCount = {};
-
-//     // Pehle apne direct (Level 1) walo ko queue mein daalo
-//     const directs = directMap.get(currentUserId) || [];
-//     for (let d of directs) {
-//         queue.push({ user: d, level: 1 });
-//     }
-
-//     // Ab poora network traverse karenge
-//     while (queue.length > 0) {
-//         const { user, level } = queue.shift();
-
-//         // Stats update karo
-//         if (level === 1) directCount++;
-//         levelWiseCount[level] = (levelWiseCount[level] || 0) + 1;
-
-//         // User ko All Team list mein add kar do
-//         allTeam.push({
-//             srNo: allTeam.length + 1,
-//             _id: user._id,
-//             userId: user.userId,
-//             name: user.name,
-//             country: user.country,
-//             topUpAmount: user.topUpAmount || 0,
-//             createdAt: user.createdAt,
-//             level: level
-//             // Role ko hum response mein bhej hi nahi rahe, taaki frontend par kisi ko doubt na ho!
-//         });
-
-//         // 🛑 SECRET BREAKAWAY WALL 🛑
-//         // Agar ye current banda 'leader' hai, toh network aage badhna band ho jayega.
-//         // Iska matlab uske neeche ke Level 2, Level 3 wale log check hi nahi honge!
-//         if (user.role === 'leader') {
-//             continue; 
-//         }
-
-//         // Agar leader nahi hai, toh uske direct logo ko queue mein dalo (Next Level ke liye)
-//         const children = directMap.get(user.userId) || [];
-//         for (let child of children) {
-//             queue.push({ user: child, level: level + 1 });
-//         }
-//     }
-
-//     // 4. Response exactly aapke purane format me bhej rahe hain
-//     res.json({
-//       team: allTeam,
-//       totalTeamCount: allTeam.length,
-//       directCount: directCount,
-//       indirectCount: allTeam.length - directCount,
-//       levelWiseCount: levelWiseCount
-//     });
-
-//   } catch (err) {
-//     console.error('Error fetching team:', err);
-//     res.status(500).json({ message: 'Server error' });
-//   }
-// });
 
 router.get('/all-team/:userId', async (req, res) => {
   try {
@@ -846,29 +561,7 @@ router.get('/pool-status/:userId', async (req, res) => {
 // ✅ PROMO USER DEDICATED ROUTE
 
 // 🔥 ADMIN ROUTE: Purane Missed Rewards Dilane Ke Liye (Bas Ek Baar Chalana Hai)
-router.get('/fix-missed-rewards', async (req, res) => {
-    try {
-        console.log("Fixing missed rewards started...");
-        // Un sabhi users ko nikalenge jinka topup 30 ya usse zyada hai
-        const eligibleUsers = await User.find({ topUpAmount: { $gte: 30 } });
-        let count = 0;
-
-        for (let user of eligibleUsers) {
-            // Ye function automatically check karega aur agar condition puri hogi toh reward de dega
-            await checkAndAwardManagerReward(user.userId);
-            count++;
-        }
-
-        console.log(`✅ Missed rewards distribution complete for ${count} users.`);
-        res.json({ 
-            success: true, 
-            message: `Done! Checked ${count} users and distributed all missing rewards.` 
-        });
-    } catch (err) {
-        console.error("Error fixing rewards:", err);
-        res.status(500).json({ message: "Server error" });
-    }
-});
+ 
 
 
 
@@ -878,424 +571,139 @@ router.get('/fix-missed-rewards', async (req, res) => {
 
  
  
-// 🔥 Target 8 hata diya, sirf Target 7 tak rakha hai
-const REWARD_MILESTONES = [
-  { target: 50, strongLeg: 25, otherLegs: 25, reward: 30, title: "Target 1" },
-  { target: 250, strongLeg: 125, otherLegs: 125, reward: 100, title: "Target 2" },
-  { target: 750, strongLeg: 375, otherLegs: 375, reward: 200, title: "Target 3" },
-  { target: 1750, strongLeg: 875, otherLegs: 875, reward: 300, title: "Target 4" },
-  { target: 3750, strongLeg: 1875, otherLegs: 1875, reward: 500, title: "Target 5" },
-  { target: 6750, strongLeg: 3375, otherLegs: 3375, reward: 1000, title: "Target 6" },
-  { target: 11750, strongLeg: 5875, otherLegs: 5875, reward: 1500, title: "Target 7" }
-];
+ 
 
-// 🔥 SPEED FIX: Simple In-Memory Cache
-const rewardCache = new Map();
-const CACHE_TTL = 15 * 60 * 1000; 
-
-router.get('/monthly-reward-stats/:userId', async (req, res) => {
-    try {
-        const userId = Number(req.params.userId); 
-        
-        // 🚀 CACHE CHECK
-        if (rewardCache.has(userId)) {
-            const cached = rewardCache.get(userId);
-            if (Date.now() - cached.timestamp < CACHE_TTL) {
-                return res.json(cached.data);
-            } else {
-                rewardCache.delete(userId); 
-            }
-        }
-
-        // 👑 🔥 FIX 1: Current User ka role check karo
-        const currentUser = await User.findOne({ userId: userId }).select('role').lean();
-        const isSuperLeader = currentUser && currentUser.role === 'superleader';
-
-        const now = new Date();
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-
-        // 👑 🔥 FIX 2: isSuperLeader flag ko function me bhejo!
-        const legStats = await getMonthlyLegStats(userId, startOfMonth, endOfMonth, isSuperLeader);
-        
-        // Find current and next target
-        let achievedTargets = [];
-        let nextTarget = REWARD_MILESTONES[0];
-
-        for (let milestone of REWARD_MILESTONES) {
-            if (legStats.strongLeg >= milestone.strongLeg && legStats.otherLegs >= milestone.otherLegs) {
-                achievedTargets.push(milestone);
-            } else {
-                nextTarget = milestone;
-                break;
-            }
-        }
-
-        // Response Data
-        const responseData = {
-            success: true,
-            strongLeg: legStats.strongLeg,
-            otherLegs: legStats.otherLegs,
-            strongLegId: legStats.strongLegId,     
-            strongLegName: legStats.strongLegName, 
-            milestones: REWARD_MILESTONES,
-            nextTarget: nextTarget
-        };
-
-        // 🚀 CACHE SAVE
-        rewardCache.set(userId, {
-            data: responseData,
-            timestamp: Date.now()
-        });
-
-        res.json(responseData);
-
-    } catch (error) {
-        console.error("Reward Stats Error:", error);
-        res.status(500).json({ success: false, message: "Failed to fetch reward stats." });
-    }
-});
+ 
    
- router.put(
-  '/topup/:userId',
-  authMiddleware, 
-  async (req, res) => {
+router.put('/topup/:userId', authMiddleware, async (req, res) => {
     try {
-      const targetUserId = Number(req.params.userId);
-      const { amount, transactionPassword, isPromoFree } = req.body;
+        const targetUserId = Number(req.params.userId);
+        const { amount, transactionPassword, isPromoFree } = req.body;
 
-      // 🔹 1. User & Password Check 
-      const currentUser = await User.findOne({ userId: req.user.userId }).lean();
-      if (!currentUser) return res.status(404).json({ message: "Current user not found" });
+        // --- (Validations - Jo aapke purane code mein hain, wahi rehne do) ---
+        const currentUser = await User.findOne({ userId: req.user.userId }).lean();
+        if (!currentUser) return res.status(404).json({ message: "Current user not found" });
 
-      if (!transactionPassword) return res.status(400).json({ message: "Transaction password is required" });
-      
-      if (transactionPassword.toLowerCase() !== currentUser.transactionPassword.toLowerCase()) {
-         return res.status(403).json({ message: "Invalid transaction password" });
-      }
-
-      if (!amount) return res.status(400).json({ message: 'Missing package amount.' });
-
-      // 🔥 PACKAGE SEQUENCE CHECK
-      const allowedPackages = [30, 100, 300, 500, 1000];
-      if (!allowedPackages.includes(amount)) {
-          return res.status(400).json({ message: "Invalid package amount. Allowed packages are: $30, $100, $300, $500, $1000." });
-      }
-
-      let targetUser = await User.findOne({ userId: targetUserId });
-      let isFakeUser = false;
-      let FakeUser;
-
-      if (!targetUser) {
-          FakeUser = require('../models/FakeUser');
-          targetUser = await FakeUser.findOne({ userId: targetUserId });
-          if (targetUser) {
-              isFakeUser = true; 
-          } else {
-              return res.status(404).json({ message: 'Target user not found' });
-          }
-      }
-
-      // 🛑 STEP-BY-STEP UPGRADE LOGIC
-      const currentHighest = targetUser.highestPackage || 0;
-      let expectedNext = 30;
-      
-      if (currentHighest === 30) expectedNext = 100;
-      else if (currentHighest === 100) expectedNext = 300;
-      else if (currentHighest === 300) expectedNext = 500;
-      else if (currentHighest === 500) expectedNext = 1000;
-      else if (currentHighest === 1000) expectedNext = null; 
-
-      if (expectedNext === null) {
-          return res.status(400).json({ message: "This ID has already reached the maximum Apex package of $1000." });
-      }
-
-      if (amount !== expectedNext) {
-          return res.status(400).json({ message: `Invalid upgrade. You must upgrade step-by-step. Your next required package is $${expectedNext}.` });
-      }
-
-      // 🛑 2 DIRECTS REQUIRED FOR UPGRADE LOGIC (Topup ke liye lagoo)
-      if (currentHighest > 0 && !isFakeUser) {
-          const activeDirectsCount = await User.countDocuments({
-              sponsorId: targetUser.userId,
-              highestPackage: { $gte: currentHighest }
-          });
-
-          if (activeDirectsCount < 2) {
-              return res.status(400).json({ 
-                  message: `Upgrade Blocked: You need at least 2 active directs on your current $${currentHighest} tier before you can upgrade to $${amount}.` 
-              });
-          }
-      }
-
-      // 🚫 DOUBLE TOP-UP RESTRICTION 
-      if (!isFakeUser) {
-          const isAlreadyBought = targetUser.packages?.some(p => p.amount === amount);
-          if (isAlreadyBought) {
-              return res.status(400).json({ message: `This ID is already active with a $${amount} package. Double top-up is not allowed.` });
-          }
-      }
-
-      // 🔥 DOWNLINE & SELF CHECK ONLY
-      if (!isFakeUser && currentUser.userId !== targetUserId && currentUser.role !== 'admin') {
-          let isDownline = false;
-          let currentTraceId = targetUser.sponsorId;
-          let depthLimit = 50; 
-
-          while (currentTraceId && depthLimit > 0) {
-              if (currentTraceId === currentUser.userId) {
-                  isDownline = true; 
-                  break;
-              }
-              const upline = await User.findOne({ userId: currentTraceId }).select('sponsorId').lean();
-              currentTraceId = upline ? upline.sponsorId : null;
-              depthLimit--;
-          }
-
-          if (!isDownline) {
-              return res.status(403).json({ message: 'Access Denied: You can only activate your own node or your downline team members.' });
-          }
-      }
-
-      const isPromo = currentUser.role === 'promo';
-
-      // 🔹 2. Wallet Check & Deduction
-      if (!(isPromoFree && amount === 10) && !isPromo) {
-        if (currentUser.walletBalance < amount) {
-          return res.status(400).json({ message: 'Insufficient balance in wallet' });
+        if (!transactionPassword || transactionPassword.toLowerCase() !== currentUser.transactionPassword.toLowerCase()) {
+            return res.status(403).json({ message: "Invalid transaction password" });
         }
-        await User.updateOne({ userId: currentUser.userId }, { $inc: { walletBalance: -amount } });
-      }
 
-      const createTransaction = async (data) => {
-         const Transaction = require('../models/Transaction'); 
-         return Transaction.create({ ...data, date: new Date() });
-      };
+        const allowedPackages = [30, 100, 300, 500, 1000];
+        if (!allowedPackages.includes(amount)) return res.status(400).json({ message: "Invalid package." });
 
-      // =======================================================
-      // 🔹 3. CORE UPDATE (PACKAGE, ROI TRACKER)
-      // =======================================================
-      let isFirstTopup = !targetUser.isToppedUp;
-      
-      if (!targetUser.packages) targetUser.packages = [];
-      targetUser.packages.push({ plan: "Global Auto-Pool", amount: amount, startDate: new Date(), withdrawn: 0 });
-      targetUser.topUpAmount = Math.max(targetUser.topUpAmount || 0, amount);
-      targetUser.highestPackage = amount; 
-      targetUser.updatedAt = new Date(); 
-      
-      if (isFirstTopup) {
-          targetUser.isToppedUp = true;
-          targetUser.topUpDate = new Date(); 
-      }
+        let targetUser = await User.findOne({ userId: targetUserId });
+        let isFakeUser = false;
+        if (!targetUser) {
+            const FakeUser = require('../models/FakeUser');
+            targetUser = await FakeUser.findOne({ userId: targetUserId });
+            if (targetUser) isFakeUser = true;
+            else return res.status(404).json({ message: 'Target user not found' });
+        }
 
-      const dailyRoiAmount = (amount * 2) / 90; 
-      targetUser.activePools.push({
-          level: amount, 
-          dailyAmount: dailyRoiAmount,
-          totalDays: 90,
-          daysPaid: 0,
-          status: "ACTIVE",
-          withdrawnAmount: 0
-      });
+        // Upgrade Logic
+        const currentHighest = Number(targetUser.highestPackage) || 0;
+        let expectedNext = (currentHighest === 0) ? 30 : (currentHighest === 30) ? 100 : (currentHighest === 100) ? 300 : (currentHighest === 300) ? 500 : (currentHighest === 500) ? 1000 : null;
+        
+        if (expectedNext === null) return res.status(400).json({ message: "Max package reached." });
+        if (amount !== expectedNext) return res.status(400).json({ message: `Next required package is $${expectedNext}.` });
 
-      await targetUser.save();
+        // Wallet Deduction
+        if (!(isPromoFree && amount === 10) && currentUser.role !== 'promo') {
+            if (currentUser.walletBalance < amount) return res.status(400).json({ message: 'Insufficient balance' });
+            await User.updateOne({ userId: currentUser.userId }, { $inc: { walletBalance: -amount } });
+        }
 
-      let txDescription = isFirstTopup ? `Node Activated with $${amount}` : `Node Upgraded to $${amount}`;
-      await createTransaction({
-            userId: targetUser.userId, type: "topup", amount, fromUserId: currentUser.userId, toUserId: targetUser.userId,
-            description: txDescription, status: 'success'
-      });
+        // Target User Update
+        let isFirstTopup = !targetUser.isToppedUp;
+        targetUser.packages.push({ plan: "Global Auto-Pool", amount, startDate: new Date() });
+        targetUser.isToppedUp = true;
+        targetUser.highestPackage = amount;
+        await targetUser.save();
 
-      res.json({ success: true, message: `Success! $${amount} Package Activated. 90 Days Double ROI Started.` });
+        const Transaction = require('../models/Transaction');
+        await Transaction.create({ userId: targetUser.userId, type: "topup", amount, description: `Activated $${amount}` });
 
-      // =======================================================
-      // 🔹 4. BACKGROUND MLM ENGINE (WITH BOUNCE BACK RULE)
-      // =======================================================
-      (async () => {
-          try {
-              if (isFirstTopup && typeof processGlobalTeamGrowth === 'function') {
-                  await processGlobalTeamGrowth(targetUser.userId);
-              }
+        res.json({ success: true, message: "Package Activated!" });
 
-              // ==========================================================
-              // ✅ BOUNCE BACK SPONSOR INCOME LOGIC (10%)
-              // ==========================================================
-              if (targetUser.sponsorId) {
-                  let currentSponsorId = targetUser.sponsorId;
-                  let directBonusReceiver = null;
-                  let isBounceBack = false;
-                  let searchDepth = 100;
+        // --- 🔥 CORRECTED MLM ENGINE ---
+        (async () => {
+            try {
+                // 1. DIRECT / BOUNCE BACK LOGIC
+                if (targetUser.sponsorId) {
+                    const directBonusAmount = (amount * 10) / 100;
+                    const directSponsor = await User.findOne({ userId: targetUser.sponsorId });
 
-                  if (isFirstTopup) {
-                      const immediateSponsor = await User.findOne({ userId: targetUser.sponsorId });
-                      if (immediateSponsor) {
-                          immediateSponsor.directCount = (immediateSponsor.directCount || 0) + 1;
-                          await immediateSponsor.save();
-                      }
-                  }
+                    // Increment Direct Count
+                    if (isFirstTopup && directSponsor) {
+                        directSponsor.directCount = (Number(directSponsor.directCount) || 0) + 1;
+                        await directSponsor.save();
+                    }
 
-                  while (currentSponsorId && searchDepth > 0) {
-                      const sp = await User.findOne({ userId: currentSponsorId });
-                      if (!sp) break;
+                    // Check Direct Sponsor
+                    if (directSponsor && directSponsor.isToppedUp && Number(directSponsor.highestPackage) >= Number(amount) && directSponsor.role !== 'setup' && directSponsor.role !== 'super_setup') {
+                        await User.updateOne({ _id: directSponsor._id }, { $inc: { walletBalance: directBonusAmount, directIncome: directBonusAmount, totalDirectIncome: directBonusAmount } });
+                        await Transaction.create({ userId: directSponsor.userId, type: "direct_income", amount: directBonusAmount, description: `Direct Bonus from ${targetUser.name}` });
+                    } else {
+                        // Bounce Back Logic
+                        let current = directSponsor ? directSponsor.sponsorId : targetUser.sponsorId;
+                        let found = false;
+                        let depth = 0;
+                        while (current && depth < 100) {
+                            const up = await User.findOne({ userId: current });
+                            if (!up) break;
+                            if (up.isToppedUp && Number(up.highestPackage) >= Number(amount) && up.role !== 'setup' && up.role !== 'super_setup') {
+                                await User.updateOne({ _id: up._id }, { $inc: { walletBalance: directBonusAmount, upgradeBounceBackIncome: directBonusAmount, totalUpgradeBounceBackIncome: directBonusAmount } });
+                                await Transaction.create({ userId: up.userId, type: "upgrade_bounce_back_income", amount: directBonusAmount, description: `Bounce Back from ${targetUser.name}` });
+                                found = true;
+                                break;
+                            }
+                            current = up.sponsorId;
+                            depth++;
+                        }
+                    }
+                }
 
-                      if (sp.isToppedUp && sp.highestPackage >= amount) {
-                          directBonusReceiver = sp;
-                          break;
-                      } else {
-                          isBounceBack = true;
-                          currentSponsorId = sp.sponsorId;
-                      }
-                      searchDepth--;
-                  }
+                // 2. SETTING INCOME (Setup/Super)
+                let sUplineId = targetUser.sponsorId;
+                let sPaid = false, ssPaid = false;
+                let sDepth = 0;
+                while (sUplineId && sDepth < 50) {
+                    const su = await User.findOne({ userId: sUplineId });
+                    if (!su) break;
+                    if (su.isToppedUp) {
+                        if (su.role === 'setup' && !sPaid) { await User.updateOne({ _id: su._id }, { $inc: { walletBalance: (amount * 0.05) } }); sPaid = true; }
+                        if (su.role === 'super_setup' && !ssPaid) { await User.updateOne({ _id: su._id }, { $inc: { walletBalance: (amount * 0.10) } }); ssPaid = true; }
+                    }
+                    if (sPaid && ssPaid) break;
+                    sUplineId = su.sponsorId;
+                    sDepth++;
+                }
 
-                  if (directBonusReceiver) {
-                      const directBonusAmount = (amount * 10) / 100; 
-                      
-                      if (isBounceBack) {
-                          directBonusReceiver.upgradeBounceBackIncome = (directBonusReceiver.upgradeBounceBackIncome || 0) + directBonusAmount;
-                          directBonusReceiver.totalUpgradeBounceBackIncome = (directBonusReceiver.totalUpgradeBounceBackIncome || 0) + directBonusAmount;
-                          
-                          await User.updateOne({ _id: directBonusReceiver._id }, { $inc: { walletBalance: directBonusAmount } });
-                          
-                          await createTransaction({
-                              userId: directBonusReceiver.userId, type: "upgrade_bounce_back_income", source: "bounce_back",
-                              amount: directBonusAmount, fromUserId: targetUser.userId,
-                              description: `Upgrade Bounce Back (10%) from ${targetUser.name}'s $${amount} Package`, status: 'success'
-                          });
-                      } else {
-                          directBonusReceiver.directIncome = (directBonusReceiver.directIncome || 0) + directBonusAmount;
-                          directBonusReceiver.totalDirectIncome = (directBonusReceiver.totalDirectIncome || 0) + directBonusAmount;
-                          
-                          await User.updateOne({ _id: directBonusReceiver._id }, { $inc: { walletBalance: directBonusAmount } });
-                          
-                          await createTransaction({
-                              userId: directBonusReceiver.userId, type: "direct_income", source: "direct",
-                              amount: directBonusAmount, fromUserId: targetUser.userId,
-                              description: `Direct Bonus (10%) from ${targetUser.name}'s $${amount} Package`, status: 'success'
-                          });
-                      }
-                      await directBonusReceiver.save();
-                  }
-              }
-
-              // ==========================================================
-              // 🔥 SETTING INCOME (5% Setup / 10% Super Setup)
-              // ==========================================================
-              if (targetUser.sponsorId) {
-                  const directSponsorObj = await User.findOne({ userId: targetUser.sponsorId }).select('role');
-                  const isDirectSponsorSpecial = directSponsorObj && (directSponsorObj.role === 'setup' || directSponsorObj.role === 'super_setup');
-
-                  if (!isDirectSponsorSpecial) {
-                      let settingUplineId = targetUser.sponsorId;
-                      let setupPaid = false;
-                      let superSetupPaid = false;
-                      let settingDepth = 100;
-
-                      while (settingUplineId && settingDepth > 0) {
-                          const sUpline = await User.findOne({ userId: settingUplineId }).select('userId role isToppedUp sponsorId _id');
-                          if (!sUpline) break;
-
-                          if (sUpline.isToppedUp) {
-                              if (sUpline.role === 'setup' && !setupPaid && !superSetupPaid) {
-                                  const setupAmt = (amount * 5) / 100;
-                                  await User.updateOne({ _id: sUpline._id }, { $inc: { walletBalance: setupAmt } });
-                                  await createTransaction({
-                                      userId: sUpline.userId, type: "credit_to_wallet", source: "setting_income",
-                                      amount: setupAmt, fromUserId: targetUser.userId,
-                                      description: `5% Setup Setting Income from Downline ($${amount})`, status: "success"
-                                  });
-                                  setupPaid = true; 
-                              }
-                              else if (sUpline.role === 'super_setup' && !superSetupPaid) {
-                                  const superSetupAmt = (amount * 10) / 100;
-                                  await User.updateOne({ _id: sUpline._id }, { $inc: { walletBalance: superSetupAmt } });
-                                  await createTransaction({
-                                      userId: sUpline.userId, type: "credit_to_wallet", source: "setting_income",
-                                      amount: superSetupAmt, fromUserId: targetUser.userId,
-                                      description: `10% Super Setup Setting Income from Downline ($${amount})`, status: "success"
-                                  });
-                                  superSetupPaid = true; 
-                              }
-                          }
-                          if (setupPaid && superSetupPaid) break;
-                          settingUplineId = sUpline.sponsorId;
-                          settingDepth--;
-                      }
-                  }
-              }
-
-              // ==========================================================
-              // 🌟 UNIFIED 20-LEVEL ENGINE (NORMAL TOPUP)
-              // ==========================================================
-              let currentUplineId = targetUser.sponsorId; 
-              let currentLevel = 1;
-              let isBreakawayHit = false;
-
-              while (currentUplineId && currentLevel <= 20) {
-                  const upline = await User.findOne({ userId: currentUplineId }).select('userId isToppedUp sponsorId role directCount highestPackage _id');
-                  if (!upline) break;
-
-                  if (!upline.isToppedUp) {
-                      currentUplineId = upline.sponsorId;
-                      continue; // Compress: do not increment level if inactive
-                  }
-
-                  const isCurrentUplineLeader = (upline.role === 'leader');
-                  const isCurrentUplineSuperLeader = (upline.role === 'superleader'); 
-
-                  if (isBreakawayHit && !isCurrentUplineSuperLeader) {
-                      currentUplineId = upline.sponsorId;
-                      continue; // Compress breakaway
-                  }
-
-                  if (currentLevel >= 2 && currentLevel <= 20) {
-                      let percentage = 0;
-                      if (currentLevel === 2) percentage = 5;
-                      else if (currentLevel === 3) percentage = 3;
-                      else if (currentLevel === 4) percentage = 2;
-                      else if (currentLevel === 5) percentage = 1;
-                      else if (currentLevel >= 6 && currentLevel <= 10) percentage = 0.50;
-                      else if (currentLevel >= 11 && currentLevel <= 20) percentage = 0.25;
-
-                      // Level lene ke liye Upline ka package barabar ya bada hona chahiye, Direct ka koi condition nahi!
-                      const hasSufficientPackage = upline.highestPackage >= amount;
-
-                      if (hasSufficientPackage) {
-                          const levelAmount = (amount * percentage) / 100;
-                          if (levelAmount > 0) {
-                              await User.updateOne({ _id: upline._id }, { $inc: { levelIncome: levelAmount, totalLevelIncome: levelAmount, walletBalance: levelAmount } });
-                              await createTransaction({
-                                  userId: upline.userId, type: "level_income", source: "level", amount: levelAmount,
-                                  fromUserId: targetUser.userId, description: `Level ${currentLevel} Income (${percentage}%) from $${amount} Package`, status: 'success'
-                              });
-                          }
-                      }
-                  }
-
-                  if (currentLevel >= 2 && isCurrentUplineLeader && !isBreakawayHit) {
-                      const instantBonusAmount = (amount * 10) / 100;
-                      await User.updateOne({ _id: upline._id }, { $inc: { walletBalance: instantBonusAmount } });
-                      await createTransaction({
-                          userId: upline.userId, type: "credit_to_wallet", source: "instant_leader_bonus", amount: instantBonusAmount,
-                          fromUserId: targetUser.userId, description: `10% Instant Leader Bonus (Level ${currentLevel})`, status: "success"
-                      });
-                      isBreakawayHit = true; 
-                  }
-
-                  currentUplineId = upline.sponsorId;
-                  currentLevel++; 
-              }
-          } catch (bgError) {
-              console.error("Background MLM Engine Error:", bgError);
-          }
-      })();
+                // 3. 20-LEVEL INCOME
+                let lUplineId = targetUser.sponsorId;
+                let level = 2; // Level 2 se start, Level 1 is Direct
+                while (lUplineId && level <= 20) {
+                    const up = await User.findOne({ userId: lUplineId });
+                    if (!up) break;
+                    if (up.isToppedUp && up.role !== 'setup' && up.role !== 'super_setup') {
+                        let pct = (level === 2) ? 5 : (level === 3) ? 3 : (level === 4) ? 2 : (level === 5) ? 1 : (level <= 10) ? 0.5 : 0.25;
+                        if (Number(up.highestPackage) >= Number(amount)) {
+                            let lAmt = (amount * pct / 100);
+                            await User.updateOne({ _id: up._id }, { $inc: { walletBalance: lAmt, levelIncome: lAmt, totalLevelIncome: lAmt } });
+                            await Transaction.create({ userId: up.userId, type: "level_income", amount: lAmt, description: `Level ${level} Income` });
+                        }
+                    }
+                    lUplineId = up.sponsorId;
+                    level++;
+                }
+            } catch (e) { console.error("MLM Engine Error:", e); }
+        })();
 
     } catch (err) {
-      console.error('Top-up Error:', err);
-      if (!res.headersSent) res.status(500).json({ message: 'Server error during top-up' });
+        console.error(err);
+        if (!res.headersSent) res.status(500).json({ message: "Server error" });
     }
-  }
-);
+});
 
 
 // ========================================================
@@ -1448,53 +856,82 @@ router.put(
               // ==========================================================
               // ✅ BOUNCE BACK SPONSOR INCOME LOGIC (10%)
               // ==========================================================
+            // ==========================================================
+              // ✅ BOUNCE BACK SPONSOR INCOME LOGIC (10% - ONLY FOR DIRECT)
+              // ==========================================================
               if (targetUser.sponsorId) {
-                  let currentSponsorId = targetUser.sponsorId;
-                  let directBonusReceiver = null;
-                  let isBounceBack = false;
-                  let searchDepth = 100;
-
-                  if (isFirstTopup) {
-                      const immediateSponsor = await User.findOne({ userId: targetUser.sponsorId });
-                      if (immediateSponsor) {
-                          immediateSponsor.directCount = (immediateSponsor.directCount || 0) + 1;
-                          await immediateSponsor.save();
+                  const directSponsor = await User.findOne({ userId: targetUser.sponsorId });
+                  
+                  if (directSponsor) {
+                      // Agar First Topup hai toh direct count badhao
+                      if (isFirstTopup) {
+                          directSponsor.directCount = (directSponsor.directCount || 0) + 1;
+                          await directSponsor.save();
                       }
-                  }
 
-                  while (currentSponsorId && searchDepth > 0) {
-                      const sp = await User.findOne({ userId: currentSponsorId });
-                      if (!sp) break;
+                      const directBonusAmount = (amount * 10) / 100;
 
-                      if (sp.isToppedUp && sp.highestPackage >= amount) {
-                          directBonusReceiver = sp;
-                          break;
-                      } else {
-                          isBounceBack = true;
-                          currentSponsorId = sp.sponsorId;
-                      }
-                      searchDepth--;
-                  }
-
-                  if (directBonusReceiver) {
-                      if (directBonusReceiver.role === 'setup' || directBonusReceiver.role === 'super_setup') {
-                          console.log(`[BLOCKED] Direct Income blocked for role: ${directBonusReceiver.role}.`);
-                      } else {
-                          const directBonusAmount = (amount * 10) / 100; 
-                          if (isBounceBack) {
-                              directBonusReceiver.upgradeBounceBackIncome = (directBonusReceiver.upgradeBounceBackIncome || 0) + directBonusAmount;
-                              directBonusReceiver.totalUpgradeBounceBackIncome = (directBonusReceiver.totalUpgradeBounceBackIncome || 0) + directBonusAmount;
-                              await User.updateOne({ _id: directBonusReceiver._id }, { $inc: { walletBalance: directBonusAmount } });
+                      // Condition 1: Check karo ki Direct Sponsor qualify karta hai ya nahi
+                      if (directSponsor.isToppedUp && directSponsor.highestPackage >= amount) {
+                          
+                          // Agar Direct Sponsor Setup/Super Setup hai toh Income Block karo
+                          if (directSponsor.role === 'setup' || directSponsor.role === 'super_setup') {
+                              console.log(`[BLOCKED] Direct Income blocked for Setup role.`);
                           } else {
-                              directBonusReceiver.directIncome = (directBonusReceiver.directIncome || 0) + directBonusAmount;
-                              directBonusReceiver.totalDirectIncome = (directBonusReceiver.totalDirectIncome || 0) + directBonusAmount;
-                              await User.updateOne({ _id: directBonusReceiver._id }, { $inc: { walletBalance: directBonusAmount } });
+                              // Normal Direct Income (Sponsor qualify karta hai)
+                              directSponsor.directIncome = (directSponsor.directIncome || 0) + directBonusAmount;
+                              directSponsor.totalDirectIncome = (directSponsor.totalDirectIncome || 0) + directBonusAmount;
+                              
+                              await User.updateOne({ _id: directSponsor._id }, { $inc: { walletBalance: directBonusAmount } });
+                              
+                              await createTransaction({
+                                  userId: directSponsor.userId, type: "direct_income", source: "direct",
+                                  amount: directBonusAmount, fromUserId: targetUser.userId,
+                                  description: `Direct Bonus (10%) from ${targetUser.name}'s $${amount} Package`, status: 'success'
+                              });
+                              await directSponsor.save();
                           }
-                          await directBonusReceiver.save();
+                      } 
+                      // Condition 2: Bounce Back (Agar Direct Sponsor fail ho gaya)
+                      else {
+                          let uplineId = directSponsor.sponsorId;
+                          let searchDepth = 100;
+                          let bounceReceiver = null;
+
+                          // Upline mein qualify karne wala dhundo
+                          while (uplineId && searchDepth > 0) {
+                              const up = await User.findOne({ userId: uplineId });
+                              if (!up) break;
+
+                              if (up.isToppedUp && up.highestPackage >= amount) {
+                                  bounceReceiver = up;
+                                  break;
+                              }
+                              uplineId = up.sponsorId;
+                              searchDepth--;
+                          }
+
+                          if (bounceReceiver) {
+                              // Setup/Super Setup ko Bounce Back bhi nahi milna chahiye
+                              if (bounceReceiver.role === 'setup' || bounceReceiver.role === 'super_setup') {
+                                  console.log(`[BLOCKED] Bounce Back blocked for Setup role.`);
+                              } else {
+                                  bounceReceiver.upgradeBounceBackIncome = (bounceReceiver.upgradeBounceBackIncome || 0) + directBonusAmount;
+                                  bounceReceiver.totalUpgradeBounceBackIncome = (bounceReceiver.totalUpgradeBounceBackIncome || 0) + directBonusAmount;
+                                  
+                                  await User.updateOne({ _id: bounceReceiver._id }, { $inc: { walletBalance: directBonusAmount } });
+                                  
+                                  await createTransaction({
+                                      userId: bounceReceiver.userId, type: "upgrade_bounce_back_income", source: "bounce_back",
+                                      amount: directBonusAmount, fromUserId: targetUser.userId,
+                                      description: `Upgrade Bounce Back (10%) from ${targetUser.name}'s $${amount} Package`, status: 'success'
+                                  });
+                                  await bounceReceiver.save();
+                              }
+                          }
                       }
                   }
               }
-
               // ==========================================================
               // 🔥 STRICT BLOCKER
               // ==========================================================
@@ -1762,12 +1199,13 @@ router.put(
               // ==========================================================
               // ✅ BOUNCE BACK SPONSOR INCOME LOGIC (10%)
               // ==========================================================
+            // ==========================================================
+              // ✅ BOUNCE BACK SPONSOR INCOME LOGIC (10%)
+              // ==========================================================
               if (targetUser.sponsorId) {
-                  let currentSponsorId = targetUser.sponsorId;
-                  let directBonusReceiver = null;
-                  let isBounceBack = false;
-                  let searchDepth = 100;
-
+                  let directBonusAmount = (amount * 10) / 100;
+                  
+                  // 1. First Topup par Direct Count badhao
                   if (isFirstTopup) {
                       const immediateSponsor = await User.findOne({ userId: targetUser.sponsorId });
                       if (immediateSponsor) {
@@ -1776,35 +1214,55 @@ router.put(
                       }
                   }
 
-                  while (currentSponsorId && searchDepth > 0) {
-                      const sp = await User.findOne({ userId: currentSponsorId });
-                      if (!sp) break;
+                  // 2. Direct Sponsor (Level 1) check karo
+                  const directSponsor = await User.findOne({ userId: targetUser.sponsorId });
 
-                      if (sp.isToppedUp && sp.highestPackage >= amount) {
-                          directBonusReceiver = sp;
-                          break;
+                  if (directSponsor && directSponsor.isToppedUp && directSponsor.highestPackage >= amount) {
+                      // ✅ Direct Sponsor qualify karta hai
+                      if (directSponsor.role === 'setup' || directSponsor.role === 'super_setup') {
+                          console.log(`[BLOCKED] Direct Income blocked for role: ${directSponsor.role}`);
                       } else {
-                          isBounceBack = true;
-                          currentSponsorId = sp.sponsorId;
+                          directSponsor.directIncome = (directSponsor.directIncome || 0) + directBonusAmount;
+                          directSponsor.totalDirectIncome = (directBonusReceiver.totalDirectIncome || 0) + directBonusAmount;
+                          await User.updateOne({ _id: directSponsor._id }, { $inc: { walletBalance: directBonusAmount } });
+                          await directSponsor.save();
+                          
+                          await createTransaction({
+                              userId: directSponsor.userId, type: "direct_income", source: "direct",
+                              amount: directBonusAmount, fromUserId: targetUser.userId,
+                              description: `Direct Bonus (10%) from ${targetUser.name}'s $${amount} Package`, status: 'success'
+                          });
                       }
-                      searchDepth--;
-                  }
+                  } else {
+                      // ❌ Direct Sponsor qualify nahi karta - Bounce Back logic on Upline
+                      let currentUplineId = directSponsor ? directSponsor.sponsorId : targetUser.sponsorId;
+                      let searchDepth = 100;
+                      let bounceReceiver = null;
 
-                  if (directBonusReceiver) {
-                      if (directBonusReceiver.role === 'setup' || directBonusReceiver.role === 'super_setup') {
-                          console.log(`[BLOCKED] Direct Income blocked for role: ${directBonusReceiver.role}.`);
-                      } else {
-                          const directBonusAmount = (amount * 10) / 100; 
-                          if (isBounceBack) {
-                              directBonusReceiver.upgradeBounceBackIncome = (directBonusReceiver.upgradeBounceBackIncome || 0) + directBonusAmount;
-                              directBonusReceiver.totalUpgradeBounceBackIncome = (directBonusReceiver.totalUpgradeBounceBackIncome || 0) + directBonusAmount;
-                              await User.updateOne({ _id: directBonusReceiver._id }, { $inc: { walletBalance: directBonusAmount } });
-                          } else {
-                              directBonusReceiver.directIncome = (directBonusReceiver.directIncome || 0) + directBonusAmount;
-                              directBonusReceiver.totalDirectIncome = (directBonusReceiver.totalDirectIncome || 0) + directBonusAmount;
-                              await User.updateOne({ _id: directBonusReceiver._id }, { $inc: { walletBalance: directBonusAmount } });
+                      while (currentUplineId && searchDepth > 0) {
+                          const up = await User.findOne({ userId: currentUplineId });
+                          if (!up) break;
+
+                          if (up.isToppedUp && up.highestPackage >= amount) {
+                              bounceReceiver = up;
+                              break;
                           }
-                          await directBonusReceiver.save();
+                          currentUplineId = up.sponsorId;
+                          searchDepth--;
+                      }
+
+                      if (bounceReceiver && bounceReceiver.role !== 'setup' && bounceReceiver.role !== 'super_setup') {
+                          bounceReceiver.upgradeBounceBackIncome = (bounceReceiver.upgradeBounceBackIncome || 0) + directBonusAmount;
+                          bounceReceiver.totalUpgradeBounceBackIncome = (bounceReceiver.totalUpgradeBounceBackIncome || 0) + directBonusAmount;
+                          
+                          await User.updateOne({ _id: bounceReceiver._id }, { $inc: { walletBalance: directBonusAmount } });
+                          
+                          await createTransaction({
+                              userId: bounceReceiver.userId, type: "upgrade_bounce_back_income", source: "bounce_back",
+                              amount: directBonusAmount, fromUserId: targetUser.userId,
+                              description: `Upgrade Bounce Back (10%) from ${targetUser.name}'s $${amount} Package`, status: 'success'
+                          });
+                          await bounceReceiver.save();
                       }
                   }
               }

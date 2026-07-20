@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { CheckCircle2, Lock, ArrowRight, ArrowLeft, ShieldAlert, Crown, Users, CalendarDays, Wallet, BadgeDollarSign, UserPlus, Globe, UserCheck } from "lucide-react";
+import api from "../../api/axios";
 
 // ✅ Neo-Banking Theme + Custom Flyer Table Styling
 const customStyles = `
@@ -36,24 +37,11 @@ const customStyles = `
   .neo-row:last-child {
     border-bottom: none;
   }
-  .custom-scroll::-webkit-scrollbar {
-    height: 5px;
-  }
-  .custom-scroll::-webkit-scrollbar-thumb {
-    background-color: #cbd5e1;
-    border-radius: 10px;
-  }
-  .hide-scroll::-webkit-scrollbar {
-    display: none;
-  }
-  .hide-scroll {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-  .flyer-header {
-    background-color: #0b1c3c;
-    color: #ffffff;
-  }
+  .custom-scroll::-webkit-scrollbar { height: 5px; }
+  .custom-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+  .hide-scroll::-webkit-scrollbar { display: none; }
+  .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+  .flyer-header { background-color: #0b1c3c; color: #ffffff; }
 `;
 
 const PACKAGES = [30, 100, 300, 500, 1000];
@@ -61,20 +49,13 @@ const LEVELS_PER_PAGE = 10;
 const TOTAL_LEVELS = 50;
 const ROI_DAYS = 90;
 
-// 🔥 Logic to generate 50 levels data
 const generateLevelsData = (pkgAmount) => {
   const levels = [];
   const totalReturnPerLevel = pkgAmount * 2; 
   const dailyReturnPerLevel = Math.floor((totalReturnPerLevel / ROI_DAYS) * 100) / 100; 
 
   for (let i = 1; i <= TOTAL_LEVELS; i++) {
-    
-    // 🔥 Left Side (UI) me Table me kya dikhega
-    // Har level me bas 100 dikhana hai (jaise direct me 1 dikhate hain)
     let displayTeamUI = 100;
-
-    // 🔥 Right Side (Status) me Unlock hone ke liye Asli calculation
-    // Level 1 = 100, Level 2 = 200, Level 3 = 300... (Cumulative)
     let unlockTeamLogic = i * 100;
 
     levels.push({
@@ -82,9 +63,9 @@ const generateLevelsData = (pkgAmount) => {
       totalEarning: totalReturnPerLevel,
       dailyEarning: dailyReturnPerLevel,
       days: ROI_DAYS,
-      reqDirectsActual: 1,            // ✅ Har level me 1 Direct dikhega
-      reqTeamActual: displayTeamUI,   // ✅ Table UI me sirf 100 dikhega har row me
-      unlockTeamReq: unlockTeamLogic, // ✅ Status check karne ke liye 100, 200, 300...
+      reqDirectsActual: 1,            
+      reqTeamActual: displayTeamUI,   
+      unlockTeamReq: unlockTeamLogic, 
     });
   }
   return levels;
@@ -95,16 +76,39 @@ export default function Plan() {
   const [selectedPackage, setSelectedPackage] = useState(30);
   const [currentPage, setCurrentPage] = useState(1);
   const [levelsData, setLevelsData] = useState([]);
+  const [globalData, setGlobalData] = useState({});
 
-  // Highest Package Fetch Logic
-  const userHighestPackage = user?.highestPackage || user?.topUpAmount || (user?.packages?.length > 0 ? Math.max(...user.packages.map(p => p.amount)) : 0);
-  
+  const userHighestPackage = user?.highestPackage || user?.topUpAmount || 0;
   const isToppedUp = user?.isToppedUp || userHighestPackage > 0;
+  const purchasedPackages = user?.purchasedPackages || [];
 
-  // 🔥 Yahan aap apne backend se selectedPackage ke hisaab se actual values map kar lena
-  const currentPackageAllCrowd = user?.packageStats?.[selectedPackage]?.allCrowd || 0; 
-  const currentPackageYourCrowd = user?.packageStats?.[selectedPackage]?.yourCrowd || (userHighestPackage >= selectedPackage ? (user?.globalTeamCount || 0) : 0); 
-  const currentPackageDirects = user?.packageStats?.[selectedPackage]?.directs || (userHighestPackage >= selectedPackage ? (user?.directCount || 0) : 0);
+  // 🔥 API Call for User & Global Data
+  useEffect(() => {
+    const fetchUserData = async () => {
+        try {
+            if (!user?.userId) return;
+            const res = await api.get(`/user/${user.userId}`);
+            
+            if (res.data) {
+                setGlobalData(res.data.globalStats || {}); 
+            }
+        } catch (err) {
+            console.error("Fetch Error:", err);
+        }
+    };
+    fetchUserData();
+  }, [user?.userId]);
+
+  // 🔥 LOGIC: Selected Package Check (Active hai ya nahi)
+  const isPackageActive = purchasedPackages.includes(selectedPackage) || userHighestPackage >= selectedPackage;
+
+  // ✅ Package Specific Calculations
+  // ALL CROWD: Har package ke hisaab se alag-alag aayega
+  const currentPackageAllCrowd = globalData[String(selectedPackage)]?.allCrowd || 0;
+  
+  // YOUR CROWD & DIRECTS: Sirf tabhi dikhega jab user ka wo package active ho
+  const currentPackageYourCrowd = isPackageActive ? (user?.packageStats?.[String(selectedPackage)]?.globalTeamCount || 0) : 0;
+  const currentPackageDirects = isPackageActive ? (user?.packageStats?.[String(selectedPackage)]?.directCount || 0) : 0;
 
   useEffect(() => {
     setCurrentPage(1); 
@@ -142,12 +146,11 @@ export default function Plan() {
            </div>
         )}
 
-        {/* ✅ SUMMARY CARDS (Top 2 Cards Only) */}
+        {/* ✅ SUMMARY CARDS */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-8">
-           {/* Card 1: Active Package */}
            <div className="neo-card p-5 sm:p-6 flex items-center justify-between group">
               <div>
-                <p className="text-slate-500 text-[10px] sm:text-xs font-bold uppercase tracking-widest mb-1">Active Package</p>
+                <p className="text-slate-500 text-[10px] sm:text-xs font-bold uppercase tracking-widest mb-1">Highest Package</p>
                 <h3 className="text-2xl sm:text-3xl font-black text-[#0b1c3c] tracking-tight flex items-center gap-1">
                   <span className="text-blue-600">$</span>{userHighestPackage}
                 </h3>
@@ -157,7 +160,6 @@ export default function Plan() {
               </div>
            </div>
 
-           {/* Card 2: Total Return Potential */}
            <div className="neo-card p-5 sm:p-6 flex items-center justify-between group">
               <div>
                 <p className="text-slate-500 text-[10px] sm:text-xs font-bold uppercase tracking-widest mb-1">50-Level Potential</p>
@@ -175,20 +177,29 @@ export default function Plan() {
         <div className="mb-4">
            <h4 className="text-slate-500 text-[10px] sm:text-xs font-bold uppercase tracking-widest mb-3 pl-1">Select Tier Level</h4>
            <div className="flex overflow-x-auto hide-scroll gap-2 sm:gap-3 bg-white p-2 rounded-2xl shadow-sm border border-slate-100">
-              {PACKAGES.map((pkg) => (
-                 <button
-                   key={pkg}
-                   onClick={() => setSelectedPackage(pkg)}
-                   className={`shrink-0 min-w-[80px] sm:flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all duration-300 ${
-                     selectedPackage === pkg 
-                     ? 'bg-[#0b1c3c] text-white shadow-md transform scale-[1.02]' 
-                     : 'bg-slate-50 text-slate-500 hover:bg-slate-100 border border-slate-100'
-                   }`}
-                 >
-                   ${pkg}
-                 </button>
-              ))}
+              {PACKAGES.map((pkg) => {
+                 const isActive = purchasedPackages.includes(pkg) || userHighestPackage >= pkg;
+                 return (
+                  <button
+                    key={pkg}
+                    onClick={() => setSelectedPackage(pkg)}
+                    className={`shrink-0 min-w-[80px] sm:flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all duration-300 relative overflow-hidden ${
+                      selectedPackage === pkg 
+                      ? 'bg-[#0b1c3c] text-white shadow-md transform scale-[1.02]' 
+                      : 'bg-slate-50 text-slate-500 hover:bg-slate-100 border border-slate-100'
+                    }`}
+                  >
+                    ${pkg}
+                    {isActive && <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-400"></div>}
+                  </button>
+                 );
+              })}
            </div>
+           {!isPackageActive && (
+             <p className="text-[10px] text-rose-500 font-bold mt-2 ml-1 animate-pulse flex items-center gap-1">
+               <Lock size={10} /> This package is currently inactive. Please upgrade to unlock stats.
+             </p>
+           )}
         </div>
 
         {/* ✅ PACKAGE SPECIFIC STATS BOXES */}
@@ -203,7 +214,7 @@ export default function Plan() {
               </div>
             </div>
 
-            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+            <div className={`bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between ${!isPackageActive && 'opacity-60 grayscale'}`}>
               <div>
                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Your Crowd (${selectedPackage})</p>
                 <h4 className="text-xl font-black text-emerald-600">{currentPackageYourCrowd.toLocaleString()}</h4>
@@ -213,7 +224,7 @@ export default function Plan() {
               </div>
             </div>
 
-            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+            <div className={`bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between ${!isPackageActive && 'opacity-60 grayscale'}`}>
               <div>
                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Directs (${selectedPackage})</p>
                 <h4 className="text-xl font-black text-indigo-600">{currentPackageDirects}</h4>
@@ -229,90 +240,31 @@ export default function Plan() {
           <div className="neo-table-wrapper overflow-hidden border-2 border-[#0b1c3c]/10">
             <div className="overflow-x-auto w-full custom-scroll">
               <table className="w-full text-center whitespace-nowrap">
-                
-                {/* 🔵 HEADER */}
                 <thead className="flyer-header text-[10px] sm:text-xs font-bold uppercase tracking-wider">
                   <tr>
-                    <th className="py-4 px-3 sm:py-5 sm:px-6">
-                      <div className="flex flex-col items-center gap-1">
-                        <Users size={18} className="text-blue-300" />
-                        <span>Team</span>
-                      </div>
-                    </th>
-                    <th className="py-4 px-3 sm:py-5 sm:px-6">
-                      <div className="flex flex-col items-center gap-1">
-                        <BadgeDollarSign size={18} className="text-blue-300" />
-                        <span>Income (USDT)</span>
-                      </div>
-                    </th>
-                    <th className="py-4 px-3 sm:py-5 sm:px-6">
-                      <div className="flex flex-col items-center gap-1">
-                        <UserPlus size={18} className="text-blue-300" />
-                        <span>Direct Required</span>
-                      </div>
-                    </th>
-                    <th className="py-4 px-3 sm:py-5 sm:px-6">
-                      <div className="flex flex-col items-center gap-1">
-                        <Wallet size={18} className="text-blue-300" />
-                        <span>Daily Income</span>
-                      </div>
-                    </th>
-                    <th className="py-4 px-3 sm:py-5 sm:px-6">
-                      <div className="flex flex-col items-center gap-1">
-                        <CalendarDays size={18} className="text-blue-300" />
-                        <span>Time ({ROI_DAYS} Days)</span>
-                      </div>
-                    </th>
-                    <th className="py-4 px-3 sm:py-5 sm:px-6">
-                      <div className="flex flex-col items-center gap-1">
-                        <ShieldAlert size={18} className="text-blue-300" />
-                        <span>Status</span>
-                      </div>
-                    </th>
+                    <th className="py-4 px-3 sm:py-5 sm:px-6"><div className="flex flex-col items-center gap-1"><Users size={18} className="text-blue-300" /><span>Team</span></div></th>
+                    <th className="py-4 px-3 sm:py-5 sm:px-6"><div className="flex flex-col items-center gap-1"><BadgeDollarSign size={18} className="text-blue-300" /><span>Income (USDT)</span></div></th>
+                    <th className="py-4 px-3 sm:py-5 sm:px-6"><div className="flex flex-col items-center gap-1"><UserPlus size={18} className="text-blue-300" /><span>Direct Required</span></div></th>
+                    <th className="py-4 px-3 sm:py-5 sm:px-6"><div className="flex flex-col items-center gap-1"><Wallet size={18} className="text-blue-300" /><span>Daily Income</span></div></th>
+                    <th className="py-4 px-3 sm:py-5 sm:px-6"><div className="flex flex-col items-center gap-1"><CalendarDays size={18} className="text-blue-300" /><span>Time ({ROI_DAYS} Days)</span></div></th>
+                    <th className="py-4 px-3 sm:py-5 sm:px-6"><div className="flex flex-col items-center gap-1"><ShieldAlert size={18} className="text-blue-300" /><span>Status</span></div></th>
                   </tr>
                 </thead>
-
-                {/* ⚪ ROWS */}
                 <tbody>
                   {currentLevels.map((lvl) => {
-                    const isPackageUnlocked = userHighestPackage >= selectedPackage;
-                    
-                    // 🔥 LOCK/UNLOCK LOGIC ab sahi se cumulative count check karegi (100, 200, 300...)
-                    const isLevelUnlocked = isPackageUnlocked && 
+                    const isLevelUnlocked = isPackageActive && 
                                             currentPackageDirects >= lvl.reqDirectsActual && 
                                             currentPackageYourCrowd >= lvl.unlockTeamReq;
 
                     return (
                       <tr key={lvl.level} className="neo-row border-b border-slate-100 hover:bg-blue-50/50">
-                        
-                        {/* TEAM (Left Side UI - Ab har row me strictly 100 dikhega) */}
-                        <td className="py-4 px-3 sm:py-5 sm:px-6 font-black text-slate-800 text-sm sm:text-base">
-                          {lvl.reqTeamActual.toLocaleString()}
-                        </td>
-
-                        {/* TOTAL INCOME (USDT) */}
-                        <td className="py-4 px-3 sm:py-5 sm:px-6 font-bold text-[#0b1c3c] text-sm sm:text-base">
-                          ${lvl.totalEarning.toFixed(2)} USDT
-                        </td>
-
-                        {/* DIRECT REQUIRED (UI me strictly 1 Direct) */}
-                        <td className="py-4 px-3 sm:py-5 sm:px-6 font-bold text-slate-600 text-xs sm:text-sm">
-                           1 Direct
-                        </td>
-
-                        {/* DAILY INCOME (USDT) */}
-                        <td className="py-4 px-3 sm:py-5 sm:px-6 font-black text-blue-600 text-sm sm:text-base">
-                          ${lvl.dailyEarning.toFixed(2)} USDT
-                        </td>
-
-                        {/* TIME (DAYS) */}
-                        <td className="py-4 px-3 sm:py-5 sm:px-6 font-bold text-slate-600 text-xs sm:text-sm">
-                          {lvl.days} Days
-                        </td>
-
-                        {/* STATUS BUTTON (Right Side Logic - cumulative count pe check karega) */}
+                        <td className="py-4 px-3 sm:py-5 sm:px-6 font-black text-slate-800 text-sm sm:text-base">{lvl.reqTeamActual.toLocaleString()}</td>
+                        <td className="py-4 px-3 sm:py-5 sm:px-6 font-bold text-[#0b1c3c] text-sm sm:text-base">${lvl.totalEarning.toFixed(2)} USDT</td>
+                        <td className="py-4 px-3 sm:py-5 sm:px-6 font-bold text-slate-600 text-xs sm:text-sm">1 Direct</td>
+                        <td className="py-4 px-3 sm:py-5 sm:px-6 font-black text-blue-600 text-sm sm:text-base">${lvl.dailyEarning.toFixed(2)} USDT</td>
+                        <td className="py-4 px-3 sm:py-5 sm:px-6 font-bold text-slate-600 text-xs sm:text-sm">{lvl.days} Days</td>
                         <td className="py-4 px-3 sm:py-5 sm:px-6">
-                          {!isPackageUnlocked ? (
+                          {!isPackageActive ? (
                              <button className="inline-flex items-center justify-center gap-1.5 text-rose-600 bg-rose-50 px-3 py-1.5 rounded-lg border border-rose-200 font-bold text-[9px] sm:text-[10px] uppercase tracking-wide whitespace-nowrap shadow-sm">
                                 <Lock size={12} /> Upgrade Tier
                              </button>
@@ -330,16 +282,10 @@ export default function Plan() {
                     );
                   })}
                 </tbody>
-
-                {/* ✅ TOTAL AMOUNT FOOTER */}
                 <tfoot className="bg-[#f8fafc] border-t-2 border-[#0b1c3c]/10">
                   <tr>
-                    <td colSpan="3" className="py-4 px-4 sm:py-5 sm:px-6 text-right font-bold uppercase tracking-widest text-[10px] sm:text-xs text-slate-500">
-                      Total 50 Levels Return
-                    </td>
-                    <td colSpan="3" className="py-4 px-4 sm:py-5 sm:px-6 text-left font-black text-xl sm:text-2xl text-[#0b1c3c]">
-                      ${total50LevelsAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT
-                    </td>
+                    <td colSpan="3" className="py-4 px-4 sm:py-5 sm:px-6 text-right font-bold uppercase tracking-widest text-[10px] sm:text-xs text-slate-500">Total 50 Levels Return</td>
+                    <td colSpan="3" className="py-4 px-4 sm:py-5 sm:px-6 text-left font-black text-xl sm:text-2xl text-[#0b1c3c]">${total50LevelsAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT</td>
                   </tr>
                 </tfoot>
               </table>
@@ -348,31 +294,13 @@ export default function Plan() {
             {/* ✅ PAGINATION CONTROLS */}
             <div className="bg-white border-t border-slate-100 p-3 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0">
                <div className="flex w-full sm:w-auto justify-between sm:justify-start gap-2">
-                 <button 
-                   onClick={handlePrev} 
-                   disabled={currentPage === 1}
-                   className={`flex-1 sm:flex-none flex justify-center items-center gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl font-bold text-[11px] sm:text-xs transition-all ${
-                     currentPage === 1 
-                     ? 'bg-slate-50 text-slate-300 cursor-not-allowed border border-transparent' 
-                     : 'bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 shadow-sm'
-                   }`}
-                 >
+                 <button onClick={handlePrev} disabled={currentPage === 1} className={`flex-1 sm:flex-none flex justify-center items-center gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl font-bold text-[11px] sm:text-xs transition-all ${currentPage === 1 ? 'bg-slate-50 text-slate-300 cursor-not-allowed border border-transparent' : 'bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 shadow-sm'}`}>
                     <ArrowLeft size={14} /> Prev
                  </button>
-                 
-                 <button 
-                   onClick={handleNext} 
-                   disabled={currentPage === totalPages}
-                   className={`flex-1 sm:flex-none flex justify-center items-center gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl font-bold text-[11px] sm:text-xs transition-all ${
-                     currentPage === totalPages 
-                     ? 'bg-slate-50 text-slate-300 cursor-not-allowed border border-transparent' 
-                     : 'bg-[#0b1c3c] hover:bg-[#1a3668] text-white shadow-sm'
-                   }`}
-                 >
+                 <button onClick={handleNext} disabled={currentPage === totalPages} className={`flex-1 sm:flex-none flex justify-center items-center gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl font-bold text-[11px] sm:text-xs transition-all ${currentPage === totalPages ? 'bg-slate-50 text-slate-300 cursor-not-allowed border border-transparent' : 'bg-[#0b1c3c] hover:bg-[#1a3668] text-white shadow-sm'}`}>
                     Next <ArrowRight size={14} />
                  </button>
                </div>
-               
                <div className="text-slate-400 font-medium text-[10px] sm:text-xs uppercase tracking-widest">
                  Page <span className="text-[#0b1c3c] font-black">{currentPage}</span> / {totalPages}
                </div>
