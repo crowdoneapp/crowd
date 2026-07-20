@@ -46,13 +46,13 @@ const QuickActions = ({
       gradient: "from-rose-400 to-red-500",
       glow: "shadow-[0_6px_18px_-6px_rgba(244,63,94,0.6)]",
     },
-    {
-      label: "Move to Wallet",
-      icon: CreditCard,
-      onClick: onCreditToWalletClick,
-      gradient: "from-sky-400 to-blue-500",
-      glow: "shadow-[0_6px_18px_-6px_rgba(56,189,248,0.6)]",
-    },
+    // {
+    //   label: "Move to Wallet",
+    //   icon: CreditCard,
+    //   onClick: onCreditToWalletClick,
+    //   gradient: "from-sky-400 to-blue-500",
+    //   glow: "shadow-[0_6px_18px_-6px_rgba(56,189,248,0.6)]",
+    // },
   ];
 
   return (

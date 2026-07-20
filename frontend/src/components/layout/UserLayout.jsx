@@ -190,7 +190,7 @@ const UserLayout = ({ children }) => {
             onTopUpClick={() => {}}
             onWalletTransferClick={() => {}}
             onWithdrawClick={() => {}}
-            onCreditToWalletClick={() => {}}
+onCreditToWalletClick={() => {}}
           />
         </div>
       </div>
