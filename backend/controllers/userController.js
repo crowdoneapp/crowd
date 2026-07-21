@@ -24,22 +24,57 @@ exports.getUserById = async (req, res) => {
     const totalRealUsers = await User.countDocuments({ isToppedUp: true });
     
     // SystemStat ya Cron model ko fetch karein
+//     const stat = await SystemStat.findOne();
+//     const globalFakeCount = stat ? stat.globalFakeCount : 0; 
+
+//     // 🔥 FIX: Mongoose se aaye data ko safely extract karna
+//     const dbPackageStats = stat && stat.packageStats ? stat.packageStats : {};
+//     const baseTotal = globalFakeCount + totalRealUsers;
+
+//     // 🔥 Har Package ka All Crowd (Sabke liye alag-alag calculation).
+//     // const globalStats = {
+//     //     "30": { allCrowd: dbPackageStats["30"]?.allCrowd || (baseTotal > 0 ? baseTotal : 0) },
+//     //     "100": { allCrowd: dbPackageStats["100"]?.allCrowd || Math.floor(baseTotal * 0.45) },
+//     //     "300": { allCrowd: dbPackageStats["300"]?.allCrowd || Math.floor(baseTotal * 0.25) },
+//     //     "500": { allCrowd: dbPackageStats["500"]?.allCrowd || Math.floor(baseTotal * 0.10) },
+//     //     "1000": { allCrowd: dbPackageStats["1000"]?.allCrowd || Math.floor(baseTotal * 0.05) }
+//     // };
+
+//     const globalStats = {
+//     "30": { allCrowd: dbPackageStats["30"]?.allCrowd ?? 50 },
+//     "100": { allCrowd: dbPackageStats["100"]?.allCrowd ?? 15 },
+//     "300": { allCrowd: dbPackageStats["300"]?.allCrowd ?? 5 },
+//     "500": { allCrowd: dbPackageStats["500"]?.allCrowd ?? 2 },
+//     "1000": { allCrowd: dbPackageStats["1000"]?.allCrowd ?? 1 }
+// };
+
+// SystemStat ya Cron model ko fetch karein
     const stat = await SystemStat.findOne();
     const globalFakeCount = stat ? stat.globalFakeCount : 0; 
 
-    // 🔥 FIX: Mongoose se aaye data ko safely extract karna
-    const dbPackageStats = stat && stat.packageStats ? stat.packageStats : {};
-    const baseTotal = globalFakeCount + totalRealUsers;
+    // 🔥 FIX: Mongoose Map se safe tarike se data nikalne ka tareeqa
+    const pStats = stat && stat.packageStats ? stat.packageStats : null;
 
-    // 🔥 Har Package ka All Crowd (Sabke liye alag-alag calculation).
-    const globalStats = {
-        "30": { allCrowd: dbPackageStats["30"]?.allCrowd || (baseTotal > 0 ? baseTotal : 0) },
-        "100": { allCrowd: dbPackageStats["100"]?.allCrowd || Math.floor(baseTotal * 0.45) },
-        "300": { allCrowd: dbPackageStats["300"]?.allCrowd || Math.floor(baseTotal * 0.25) },
-        "500": { allCrowd: dbPackageStats["500"]?.allCrowd || Math.floor(baseTotal * 0.10) },
-        "1000": { allCrowd: dbPackageStats["1000"]?.allCrowd || Math.floor(baseTotal * 0.05) }
+    // Helper function jo Map ya Object dono se value nikal lega
+    const getCrowdVal = (key, defaultVal) => {
+        if (!pStats) return defaultVal;
+        let val = null;
+        if (pStats instanceof Map) {
+            val = pStats.get(key);
+        } else {
+            val = pStats[key];
+        }
+        return (val && typeof val.allCrowd === 'number') ? val.allCrowd : defaultVal;
     };
 
+    const globalStats = {
+        "30": { allCrowd: getCrowdVal("30", 50) },
+        "100": { allCrowd: getCrowdVal("100", 15) },
+        "300": { allCrowd: getCrowdVal("300", 5) },
+        "500": { allCrowd: getCrowdVal("500", 2) },
+        "1000": { allCrowd: getCrowdVal("1000", 1) }
+    };
+    
     const sanitizedUserData = sanitizeUser(user);
     sanitizedUserData.highestPackage = user.highestPackage || 0;
     sanitizedUserData.topUpAmount = user.topUpAmount || 0;

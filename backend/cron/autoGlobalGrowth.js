@@ -63,17 +63,46 @@ const startGlobalGrowthCron = () => {
 
             // 🔥 2. ADMIN & GLOBAL TRACKING ("ALL CROWD")
             // Ye record sabko same dikhega front-end par us package ke tab mein
-            await SystemStat.findOneAndUpdate(
-                {}, 
-                { 
-                    $inc: { 
-                        globalFakeCount: 1,
-                        [`packageStats.${randomPkg}.allCrowd`]: 1, // Har package ka global count
-                        [`countryStats.${randomCountry}.${randomPkg}`]: 1 
-                    } 
-                }, 
-                { upsert: true }
-            );            
+            // await SystemStat.findOneAndUpdate(
+            //     {}, 
+            //     { 
+            //         $inc: { 
+            //             globalFakeCount: 1,
+            //             [`packageStats.${randomPkg}.allCrowd`]: 1, // Har package ka global count
+            //             [`countryStats.${randomCountry}.${randomPkg}`]: 1 
+            //         } 
+            //     }, 
+            //     { upsert: true }
+            // );        
+            
+            // 🔥 2. ADMIN & GLOBAL TRACKING ("ALL CROWD") - 100% Guaranteed Fix for Map
+            let statDoc = await SystemStat.findOne();
+            if (!statDoc) {
+                statDoc = new SystemStat({ globalFakeCount: 0 });
+            }
+
+            statDoc.globalFakeCount = (statDoc.globalFakeCount || 0) + 1;
+
+            if (!statDoc.packageStats) {
+                statDoc.packageStats = new Map();
+            }
+
+            const pkgKey = String(randomPkg);
+            
+            // Map se data nikalo ya naya banao
+            let pkgData = statDoc.packageStats.get(pkgKey) || { allCrowd: 0, globalTeamCount: 0 };
+            
+            // All Crowd mein 1 badhao
+            pkgData.allCrowd = (pkgData.allCrowd || 0) + 1;
+            
+            // Map ke andar wapas set karo
+            statDoc.packageStats.set(pkgKey, pkgData);
+
+            // ⚠️ Sabse Zaroori Line: Mongoose ko batane ke liye ki Map change hua hai
+            statDoc.markModified('packageStats');
+
+            // Database mein save karo
+            await statDoc.save();
 
             // 🔥 3. USER SPECIFIC TRACKING ("YOUR CROWD")
             // Un users ki team badhao jinka package active hai

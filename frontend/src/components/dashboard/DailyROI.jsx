@@ -83,14 +83,33 @@ export default function Plan() {
   const purchasedPackages = user?.purchasedPackages || [];
 
   // 🔥 API Call for User & Global Data
+  // useEffect(() => {
+  //   const fetchUserData = async () => {
+  //       try {
+  //           if (!user?.userId) return;
+  //           const res = await api.get(`/user/${user.userId}`);
+            
+  //           if (res.data) {
+  //               setGlobalData(res.data.globalStats || {}); 
+  //           }
+  //       } catch (err) {
+  //           console.error("Fetch Error:", err);
+  //       }
+  //   };
+  //   fetchUserData();
+  // }, [user?.userId]);
+
+
+  // 🔥 API Call for User & Global Data
   useEffect(() => {
     const fetchUserData = async () => {
         try {
             if (!user?.userId) return;
             const res = await api.get(`/user/${user.userId}`);
             
-            if (res.data) {
-                setGlobalData(res.data.globalStats || {}); 
+            // ✅ Fix: Check karein ki response mein globalStats aa raha hai ya nahi
+            if (res.data && res.data.globalStats) {
+                setGlobalData(res.data.globalStats); 
             }
         } catch (err) {
             console.error("Fetch Error:", err);
@@ -274,7 +293,7 @@ export default function Plan() {
                              </button>
                           ) : isLevelUnlocked ? (
                              <button className="inline-flex items-center justify-center gap-1.5 text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200 font-bold text-[9px] sm:text-[10px] uppercase tracking-wide whitespace-nowrap shadow-sm">
-                                <CheckCircle2 size={12} strokeWidth={2.5} /> UNLOCKED
+                                <CheckCircle2 size={12} strokeWidth={2.5} /> Acheive
                              </button>
                           ) : isDirectMet ? (
                              // 🔥 UPDATE: Direct complete ho gaya hai par Team bachi hai toh "UNLOCKING..." dikhayega
