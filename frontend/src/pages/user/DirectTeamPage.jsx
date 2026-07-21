@@ -158,8 +158,8 @@ const DirectTeamPage = () => {
           <div className="bg-indigo-50 border border-indigo-100 p-3 rounded-2xl flex items-center gap-3 shadow-sm">
              <ShieldCheck size={24} className="text-indigo-600" />
              <div>
-                <p className="text-[10px] font-black text-indigo-800 uppercase tracking-widest">Super Setup Access</p>
-                <p className="text-xs font-bold text-indigo-600">Setups Assigned: {setupCount} <span className="text-indigo-400">/ 100</span></p>
+                <p className="text-[10px] font-black text-indigo-800 uppercase tracking-widest">SS</p>
+                <p className="text-xs font-bold text-indigo-600">{setupCount} <span className="text-indigo-400">/ 100</span></p>
              </div>
           </div>
         )}
@@ -275,7 +275,7 @@ const DirectTeamPage = () => {
                           {/* 🔥 NEW LOGIC: Agar direct user pehle se super_setup (ya superleader) hai, toh option hide kar do */}
                           {member.role === 'super_setup' || member.role === 'superleader' ? (
                             <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-600 text-[10px] font-black uppercase tracking-widest shadow-sm cursor-default">
-                              <Crown size={14} strokeWidth={2.5} /> SUPER SETUP
+                              <Crown size={14} strokeWidth={2.5} /> S S
                             </div>
                           ) : member.role === 'setup' ? (
                             // 🔥 GREEN ACTIVE (Agar user Setup hai)
