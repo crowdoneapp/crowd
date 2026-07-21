@@ -48,7 +48,7 @@ const DirectTeamPage = () => {
   const handlePromote = (memberId, memberName) => {
     Swal.fire({
       title: 'Are You Sure?',
-      html: `<b>${memberName}</b> (${memberId}) <br/><br/><span style="color: #ef4444; font-size: 13px; font-weight: bold;">Promote to Setup Role?</span>`,
+      html: `<b>${memberName}</b> (${memberId}) <br/><br/><span style="color: #ef4444; font-size: 13px; font-weight: bold;"></span>`,
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#2563eb',

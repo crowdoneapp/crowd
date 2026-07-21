@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import api from "../../api/axios";
-import { Search, ChevronLeft, ChevronRight, Wallet, History, ArrowDownLeft, ArrowUpRight, ArrowRightLeft, Zap, Landmark } from "lucide-react";
+import { format } from "date-fns";
+import { Search, ChevronLeft, ChevronRight, Wallet, History, ArrowDownLeft, ArrowUpRight, ArrowRightLeft, Zap, Landmark, Activity } from "lucide-react";
 
 const WalletHistory = () => {
   const [transactions, setTransactions] = useState([]);
@@ -125,7 +126,7 @@ const WalletHistory = () => {
 
     return transactions.map((txn) => {
       let mathImpact = 0;
-      let colorStyle = "text-black";
+      let colorStyle = "text-slate-300";
       let operator = "";
       let finalDescription = txn.description || "";
       let displayTypeUI = "UNKNOWN";
@@ -143,78 +144,78 @@ const WalletHistory = () => {
         case "credit_to_wallet":
         case "credit":
           mathImpact = amt;
-          colorStyle = "text-emerald-600";
+          colorStyle = "text-emerald-400";
           operator = "+";
           displayTypeUI = "CREDIT";
-          icon = <ArrowDownLeft size={14} className="text-emerald-500" />;
+          icon = <ArrowDownLeft size={14} className="text-emerald-400" />;
           break;
 
         case "fast_track":
           mathImpact = amt;
-          colorStyle = "text-blue-600";
+          colorStyle = "text-amber-400";
           operator = "+";
           displayTypeUI = "FAST TRACK";
-          icon = <Zap size={14} className="text-blue-500" />;
+          icon = <Zap size={14} className="text-amber-400" />;
           break;
 
         case "manual_debit":
           mathImpact = -amt;
-          colorStyle = "text-rose-600";
+          colorStyle = "text-rose-400";
           operator = "-";
           displayTypeUI = "DEBIT";
-          icon = <ArrowUpRight size={14} className="text-rose-500" />;
+          icon = <ArrowUpRight size={14} className="text-rose-400" />;
           break;
 
         case "withdrawal":
           mathImpact = txn.status === "success" || txn.status === "completed" ? -amt : 0;
-          colorStyle = "text-slate-500";
+          colorStyle = "text-slate-400";
           operator = mathImpact < 0 ? "-" : "";
           displayTypeUI = "WITHDRAWAL";
-          icon = <Landmark size={14} className="text-slate-500" />;
+          icon = <Landmark size={14} className="text-slate-400" />;
           break;
 
         case "transfer":
           if (toId === myId) {
             mathImpact = amt;
-            colorStyle = "text-emerald-600";
+            colorStyle = "text-emerald-400";
             operator = "+";
             displayTypeUI = "RECEIVED";
-            icon = <ArrowDownLeft size={14} className="text-emerald-500" />;
+            icon = <ArrowDownLeft size={14} className="text-emerald-400" />;
             finalDescription = `Received $${amt} from ID #${fromId || txnOwnerId}`;
           } else if (fromId === myId || (!fromId && txnOwnerId === myId)) {
             mathImpact = -amt;
-            colorStyle = "text-rose-600";
+            colorStyle = "text-rose-400";
             operator = "-";
             displayTypeUI = "SENT P2P";
-            icon = <ArrowRightLeft size={14} className="text-rose-500" />;
+            icon = <ArrowRightLeft size={14} className="text-rose-400" />;
           }
           break;
 
         case "topup":
         case "debit_topup": {
           displayTypeUI = "TOPUP";
-          icon = <Zap size={14} className="text-amber-500" />;
+          icon = <Zap size={14} className="text-amber-400" />;
           const isMyMoneySpent = fromId === myId || (!fromId && txnOwnerId === myId);
 
           if (isMyMoneySpent) {
             if (amt === 10 && finalDescription.includes("Pre-launch")) {
               mathImpact = 0;
-              colorStyle = "text-amber-500";
+              colorStyle = "text-amber-400";
               operator = "";
             }
             else if (userRole === "leader" || finalDescription.toLowerCase().includes("leader")) {
               mathImpact = 0;
-              colorStyle = "text-slate-500";
+              colorStyle = "text-slate-400";
               operator = "";
             }
             else {
               mathImpact = -amt;
-              colorStyle = "text-rose-600";
+              colorStyle = "text-rose-400";
               operator = "-";
             }
           } else {
             mathImpact = 0;
-            colorStyle = "text-slate-500";
+            colorStyle = "text-slate-400";
             operator = "";
           }
           break;
@@ -269,62 +270,65 @@ const WalletHistory = () => {
   const currentItems = reversedData.slice(indexOfFirstItem, indexOfLastItem);
 
   return (
-    <div className="w-full max-w-7xl mx-auto pb-10 relative z-10 animate-in fade-in duration-500">
+    <div className="w-full max-w-7xl mx-auto p-4 md:p-8 relative z-10 animate-in fade-in duration-500 rounded-3xl bg-[#0b0f19] shadow-2xl border border-slate-800 overflow-hidden font-sans">
 
       <style>{`
-        .custom-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
-        .custom-scroll::-webkit-scrollbar-track { background: #f1f5f9; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 10px; }
+        .crowd-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
+        .crowd-scroll::-webkit-scrollbar-track { background: #0f172a; border-radius: 10px; }
+        .crowd-scroll::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        .crowd-scroll::-webkit-scrollbar-thumb:hover { background: #eab308; }
       `}</style>
 
       {/* Header */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
         <div>
-          <h2 className="text-2xl md:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-cyan-500 uppercase tracking-wide flex items-center gap-3">
-            <History className="text-blue-500" size={28} /> Wallet Statement
+          <h2 className="text-2xl md:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-yellow-200 uppercase tracking-wide flex items-center gap-3">
+             <div className="p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl shadow-[0_0_15px_rgba(251,191,36,0.15)]">
+                <History className="text-amber-400" size={24} /> 
+             </div>
+             Wallet Statement
           </h2>
-          <p className="text-slate-500 text-xs md:text-sm font-bold tracking-widest uppercase mt-1">
-            Complete wallet transaction history
-          </p>
+          
         </div>
       </div>
 
-      {/* Balance Card (Main Wallet only) */}
-      <div className="mb-8">
-        <div className="bg-white rounded-2xl border border-slate-100 p-5 md:p-6 shadow-sm relative overflow-hidden max-w-md">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/10 blur-[40px]"></div>
-          <h3 className="text-slate-400 text-[10px] md:text-xs font-black uppercase tracking-widest flex items-center gap-2 mb-2">
-            <Wallet size={14} className="text-blue-500" /> Current Wallet Balance
+      {/* Balance Card */}
+      {/* <div className="mb-8 relative group max-w-sm">
+        <div className="absolute inset-0 bg-amber-500/10 rounded-3xl blur-[40px] opacity-50 group-hover:opacity-80 transition-opacity duration-500 pointer-events-none"></div>
+        <div className="bg-[#131b2f] shadow-inner rounded-3xl border border-amber-500/20 p-5 md:p-6 relative overflow-hidden flex flex-col justify-center">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-amber-400/10 rounded-full blur-[40px] -mr-10 -mt-10 pointer-events-none"></div>
+          <h3 className="text-amber-400/80 text-[10px] md:text-xs font-black uppercase tracking-widest flex items-center gap-2 mb-2">
+            <Wallet size={14} className="text-amber-400" /> Current Wallet Balance
           </h3>
-          <p className="text-3xl md:text-4xl font-black text-slate-800">
+          <p className="text-3xl md:text-4xl font-black text-white font-mono drop-shadow-[0_0_8px_rgba(251,191,36,0.4)]">
             ${currentWalletBalance}
           </p>
         </div>
-      </div>
+      </div> */}
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-6 justify-between items-center">
-        <div className="relative w-full sm:w-96 group">
-          <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-            <Search size={18} className="text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+      <div className="flex flex-col sm:flex-row gap-4 mb-8 justify-between items-center bg-[#131b2f] shadow-inner p-4 rounded-2xl border border-slate-800">
+        <div className="relative w-full sm:w-80 group">
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+            <Search size={16} className="text-slate-500 group-focus-within:text-amber-400 transition-colors" />
           </div>
           <input
             type="text"
             placeholder="Search by ID or details..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-slate-100 border border-slate-200 text-slate-700 text-sm font-semibold rounded-full px-5 py-3.5 pl-12 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 focus:bg-white focus:outline-none transition-all placeholder-slate-400 shadow-sm"
+            className="w-full bg-[#0b0f19] border border-slate-700 text-slate-200 text-sm font-bold tracking-wide rounded-xl px-4 py-3.5 pl-11 focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 focus:outline-none transition-all placeholder-slate-600 shadow-inner"
           />
         </div>
         <div className="flex items-center gap-3 w-full sm:w-auto">
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Filter:</span>
+          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap hidden sm:block">Filter:</span>
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="w-full sm:w-auto bg-white border border-slate-200 text-slate-700 text-sm font-bold rounded-xl px-4 py-3 focus:border-blue-400 focus:outline-none transition-all appearance-none cursor-pointer uppercase shadow-sm"
+            className="w-full sm:w-auto bg-[#0b0f19] border border-slate-700 text-slate-200 text-sm font-bold rounded-xl px-4 py-3.5 focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 focus:outline-none transition-all appearance-none cursor-pointer uppercase shadow-inner outline-none"
           >
             {dropdownTypes.map((type) => (
-              <option key={type} value={type}>
+              <option key={type} value={type} className="bg-[#0b0f19] text-slate-200">
                 {type === "all" ? "All Types" : type.replace(/_/g, " ")}
               </option>
             ))}
@@ -334,33 +338,34 @@ const WalletHistory = () => {
 
       {/* Table wrapper */}
       <div className="w-full">
-        <div className="overflow-x-auto custom-scroll w-full">
-          <div className="min-w-[900px]">
+        <div className="overflow-x-auto crowd-scroll w-full pb-4">
+          <div className="min-w-[950px]">
 
             {/* Header row */}
-            <div className="bg-slate-100 rounded-2xl px-6 py-4 grid grid-cols-7 gap-3 mb-3 shadow-sm">
-              <div className="text-blue-500 text-[11px] md:text-xs font-black uppercase tracking-widest text-center">Sr.</div>
-              <div className="text-blue-500 text-[11px] md:text-xs font-black uppercase tracking-widest text-right">Date & Time</div>
-              <div className="text-blue-500 text-[11px] md:text-xs font-black uppercase tracking-widest">Type</div>
-              <div className="text-blue-500 text-[11px] md:text-xs font-black uppercase tracking-widest">Amount</div>
-              <div className="text-blue-500 text-[11px] md:text-xs font-black uppercase tracking-widest">Balance</div>
-              <div className="text-blue-500 text-[11px] md:text-xs font-black uppercase tracking-widest">From / To</div>
-              <div className="text-blue-500 text-[11px] md:text-xs font-black uppercase tracking-widest">Details</div>
+            <div className="bg-[#1a233a] border-b border-slate-700/50 rounded-xl px-6 py-4 grid grid-cols-7 gap-3 mb-4 shadow-md text-slate-400 text-[11px] md:text-xs font-black uppercase tracking-widest">
+              <div className="text-center">Sr.</div>
+              <div className="text-right">Date</div>
+              <div>Type</div>
+              <div>Amount</div>
+              <div>Balance</div>
+              <div>From / To</div>
+              <div>Details</div>
             </div>
 
             {/* Rows */}
-            <div className="space-y-2.5">
+            <div className="space-y-3">
               {loading ? (
-                <div className="bg-white rounded-2xl py-10 text-center shadow-sm border border-slate-100">
-                  <span className="text-xs font-bold uppercase tracking-widest text-slate-400">Loading Statement...</span>
+                <div className="bg-[#131b2f] rounded-xl py-12 text-center border border-slate-800 shadow-sm">
+                  <Activity size={32} className="text-amber-400 animate-pulse mx-auto mb-3" />
+                  <span className="text-xs font-bold uppercase tracking-widest text-slate-500">Syncing Statement...</span>
                 </div>
               ) : error ? (
-                <div className="bg-white rounded-2xl py-10 text-center shadow-sm border border-slate-100">
-                  <span className="text-rose-500 font-bold text-sm uppercase tracking-widest bg-rose-50 px-4 py-2 rounded-lg border border-rose-200">{error}</span>
+                <div className="bg-rose-500/10 rounded-xl py-10 text-center border border-rose-500/20">
+                  <span className="text-rose-400 font-bold text-sm uppercase tracking-widest">{error}</span>
                 </div>
               ) : currentItems.length === 0 ? (
-                <div className="bg-white rounded-2xl py-10 text-center shadow-sm border border-slate-100">
-                  <span className="text-slate-400 font-bold text-sm uppercase tracking-widest">No Transactions Found</span>
+                <div className="bg-[#131b2f] rounded-xl py-12 text-center border border-slate-800">
+                  <span className="text-slate-500 font-bold text-sm uppercase tracking-widest">No Transactions Found</span>
                 </div>
               ) : (
                 currentItems.map((txn, idx) => {
@@ -386,38 +391,34 @@ const WalletHistory = () => {
                   return (
                     <div
                       key={`${txn._id}-${txn.date}-${idx}`}
-                      className="bg-white hover:bg-blue-50/50 rounded-2xl px-6 py-4 grid grid-cols-7 gap-3 items-center shadow-sm border border-slate-100 transition-colors"
+                      className="bg-[#131b2f] hover:bg-[#1a233a] rounded-xl px-6 py-4 grid grid-cols-7 gap-3 items-center shadow-sm border border-slate-800 transition-colors"
                     >
-                      <div className="font-bold text-slate-400 text-sm text-center">{serialNumber}</div>
+                      <div className="font-bold text-slate-500 text-center">{serialNumber}</div>
 
-                      <div className="text-slate-400 font-mono text-[10px] sm:text-xs text-right">
-                        <div className="flex flex-col items-end">
-                          <span className="text-slate-600">
-                            {new Date(txn.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
-                          </span>
-                          <span>{new Date(txn.date).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })}</span>
-                        </div>
+                      {/* 🔥 SIRF DATE DIKHEGI, TIME REMOVED */}
+                      <div className="text-slate-200 font-mono text-[12px] sm:text-sm font-bold tracking-wide text-right">
+                        {txn.date ? format(new Date(txn.date), "dd MMM yyyy") : "N/A"}
                       </div>
 
                       <div>
-                        <span className="inline-flex items-center gap-1.5 bg-slate-100 border border-slate-200 px-2 py-1 rounded-lg text-[10px] font-black tracking-widest text-slate-600">
+                        <span className="inline-flex items-center gap-1.5 bg-[#0b0f19] border border-slate-700 px-2.5 py-1.5 rounded-lg text-[10px] font-black tracking-widest text-slate-300">
                           {txn.icon} {txn.displayTypeUI}
                         </span>
                       </div>
 
-                      <div className={`font-black ${txn.colorStyle}`}>
+                      <div className={`font-black font-mono text-sm ${txn.colorStyle}`}>
                         {txn.formattedAmount}
                       </div>
 
-                      <div className="font-black text-slate-800">
+                      <div className="font-black text-white font-mono text-sm">
                         ${txn.balance}
                       </div>
 
-                      <div className="font-mono text-slate-600 text-xs">
-                        {partyInfo !== "-" ? <span className="bg-slate-100 px-2 py-1 border border-slate-200 rounded">{partyInfo}</span> : "-"}
+                      <div className="font-mono text-slate-300 text-xs">
+                        {partyInfo !== "-" ? <span className="bg-[#0b0f19] px-2.5 py-1.5 border border-slate-700 rounded-lg">{partyInfo}</span> : "-"}
                       </div>
 
-                      <div className="text-slate-500 text-[11px] md:text-xs font-bold tracking-wide capitalize whitespace-normal" title={txn.description || "-"}>
+                      <div className="text-slate-400 text-[11px] md:text-xs font-medium tracking-wide capitalize truncate" title={txn.description || "-"}>
                         {txn.description
                           ? txn.description
                               .replace(/leader settlement:?\s*/gi, "")
@@ -435,13 +436,13 @@ const WalletHistory = () => {
 
         {/* Pagination Footer */}
         {!loading && !error && filtered.length > 0 && (
-          <div className="mt-5 p-4 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4 shadow-sm">
+          <div className="mt-6 p-4 bg-[#1a233a] rounded-xl border border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-4 shadow-sm">
             <div className="flex items-center gap-3">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-widest whitespace-nowrap">Rows:</span>
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Rows:</span>
               <select
                 value={itemsPerPage}
                 onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
-                className="bg-white border border-slate-200 text-slate-700 text-xs font-bold rounded-lg px-2 py-1.5 focus:border-blue-400 outline-none cursor-pointer shadow-sm"
+                className="bg-[#0b0f19] border border-slate-700 text-slate-200 text-xs font-bold rounded-lg px-3 py-2 focus:border-amber-400 outline-none cursor-pointer"
               >
                 <option value={10}>10</option>
                 <option value={20}>20</option>
@@ -449,34 +450,38 @@ const WalletHistory = () => {
                 <option value={100}>100</option>
               </select>
             </div>
+            
             <span className="text-slate-400 text-[10px] md:text-xs font-black uppercase tracking-widest">
-              Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filtered.length)} of {filtered.length}
+              Showing <span className="text-amber-400">{indexOfFirstItem + 1}</span> to <span className="text-amber-400">{Math.min(indexOfLastItem, filtered.length)}</span> of <span className="text-amber-400">{filtered.length}</span> Entries
             </span>
+            
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                 disabled={currentPage === 1}
-                className={`p-2.5 rounded-xl flex items-center justify-center transition-all ${
+                className={`p-2.5 rounded-lg flex items-center justify-center transition-all ${
                   currentPage === 1
-                    ? "bg-slate-100 text-slate-300 cursor-not-allowed"
-                    : "bg-white text-slate-600 hover:bg-blue-50 hover:text-blue-600 border border-slate-200 shadow-sm"
+                    ? "bg-[#0b0f19] text-slate-600 cursor-not-allowed border border-slate-800"
+                    : "bg-[#131b2f] text-slate-300 hover:bg-amber-500/10 hover:text-amber-400 hover:border-amber-500/30 border border-slate-700"
                 }`}
               >
-                <ChevronLeft size={18} />
+                <ChevronLeft size={16} strokeWidth={2.5} />
               </button>
-              <span className="bg-white border border-slate-200 text-slate-700 text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm">
-                {currentPage} / {totalPages}
+              
+              <span className="bg-[#131b2f] border border-slate-700 text-slate-200 text-xs font-bold px-4 py-2.5 rounded-lg">
+                {currentPage} <span className="text-slate-600 mx-1">/</span> {totalPages}
               </span>
+              
               <button
                 onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
                 disabled={currentPage === totalPages}
-                className={`p-2.5 rounded-xl flex items-center justify-center transition-all ${
+                className={`p-2.5 rounded-lg flex items-center justify-center transition-all ${
                   currentPage === totalPages
-                    ? "bg-slate-100 text-slate-300 cursor-not-allowed"
-                    : "bg-white text-slate-600 hover:bg-blue-50 hover:text-blue-600 border border-slate-200 shadow-sm"
+                    ? "bg-[#0b0f19] text-slate-600 cursor-not-allowed border border-slate-800"
+                    : "bg-[#131b2f] text-slate-300 hover:bg-amber-500/10 hover:text-amber-400 hover:border-amber-500/30 border border-slate-700"
                 }`}
               >
-                <ChevronRight size={18} />
+                <ChevronRight size={16} strokeWidth={2.5} />
               </button>
             </div>
           </div>

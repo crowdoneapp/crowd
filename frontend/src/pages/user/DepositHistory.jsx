@@ -5,11 +5,9 @@ import {
   Search, 
   History, 
   ArrowDownCircle, 
-  Calendar, 
-  Clock, 
   ExternalLink, 
-  Activity, 
-  Wallet 
+  Activity,
+  Wallet
 } from 'lucide-react'; 
 
 const DepositHistory = () => {
@@ -87,7 +85,7 @@ const DepositHistory = () => {
     const filtered = deposits.filter((d) => {
       const amt = getSafeAmount(d.amount || d.grossAmount).toString();
       const recordDate = d.createdAt || d.date; 
-      const dateStr = recordDate ? format(new Date(recordDate), 'dd-MM-yyyy HH:mm').toLowerCase() : '';
+      const dateStr = recordDate ? format(new Date(recordDate), 'dd-MM-yyyy').toLowerCase() : '';
       const hashString = (d.displayHash || '').toLowerCase(); 
       return amt.includes(query) || dateStr.includes(query) || hashString.includes(query);
     });
@@ -95,116 +93,116 @@ const DepositHistory = () => {
   }, [search, deposits]);
 
   return (
-    <div className="w-full max-w-7xl mx-auto pb-10 relative z-10 animate-in fade-in duration-500 font-sans">
+    <div className="w-full max-w-7xl mx-auto p-4 md:p-8 relative z-10 animate-in fade-in duration-500 rounded-3xl bg-[#0b0f19] shadow-2xl border border-slate-800 overflow-hidden font-sans">
       
       <style>{`
-        .custom-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
-        .custom-scroll::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
-        .custom-scroll::-webkit-scrollbar-thumb { background: rgba(34, 211, 238, 0.3); border-radius: 10px; }
-        .custom-scroll::-webkit-scrollbar-thumb:hover { background: rgba(34, 211, 238, 0.6); }
+        .crowd-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
+        .crowd-scroll::-webkit-scrollbar-track { background: #0f172a; border-radius: 10px; }
+        .crowd-scroll::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        .crowd-scroll::-webkit-scrollbar-thumb:hover { background: #eab308; }
       `}</style>
 
       {/* Header */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
         <div>
-          <h2 className="text-2xl md:text-3xl font-black text-white uppercase tracking-wide flex items-center gap-3">
-             <div className="p-2.5 bg-cyan-500/10 border border-cyan-500/20 rounded-2xl shadow-[0_0_15px_rgba(34,211,238,0.1)]">
-               <History className="text-cyan-400" size={24} /> 
-             </div>
-             Deposit History
+          <h2 className="text-2xl md:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-yellow-200 uppercase tracking-wide flex items-center gap-3">
+            <Wallet className="text-amber-400" size={28} /> 
+            Deposit History
           </h2>
-         
+          
         </div>
       </div>
 
       {/* Search Input */}
-      <div className="mb-6 relative group w-full sm:w-[400px]">
-         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-           <Search size={16} className="text-slate-500 group-focus-within:text-cyan-400 transition-colors" />
+      <div className="mb-8 relative group w-full sm:w-[400px]">
+         <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+           <Search size={18} className="text-slate-500 group-focus-within:text-amber-400 transition-colors" />
          </div>
          <input
            type="text"
            placeholder="Search amount, date, or hash..."
            value={search}
            onChange={(e) => setSearch(e.target.value)}
-           className="w-full bg-[#0f172a]/80 backdrop-blur-md border border-white/10 text-white text-sm font-bold tracking-wide rounded-2xl px-4 py-4 pl-12 focus:border-cyan-400 focus:outline-none transition-all placeholder-slate-600 shadow-inner"
+           className="w-full bg-[#131b2f] border border-slate-700 text-slate-200 text-sm font-semibold rounded-xl px-5 py-3.5 pl-12 focus:border-amber-400/50 focus:ring-2 focus:ring-amber-400/20 focus:outline-none transition-all placeholder-slate-500 shadow-inner"
          />
       </div>
 
       {/* Table Box */}
-      <div className="bg-[#0f172a]/60 backdrop-blur-xl shadow-[0_0_30px_rgba(0,0,0,0.3)] rounded-3xl border border-white/5 overflow-hidden relative">
-        <div className="overflow-x-auto custom-scroll w-full relative z-10">
-          <table className="w-full text-xs sm:text-sm text-left whitespace-nowrap">
-            <thead className="bg-black/40 text-cyan-400 text-[10px] md:text-xs uppercase tracking-widest border-b border-white/5">
-              <tr>
-                <th className="p-5 font-black text-center">Sr.</th>
-                <th className="p-5 font-black">Date & Time</th>
-                <th className="p-5 font-black">Type</th>
-                <th className="p-5 font-black text-center">TxHash (BscScan)</th>
-                <th className="p-5 font-black text-center">Amount</th>
-              </tr>
-            </thead>
-            <tbody className="text-slate-300">
-              {loading ? (
+      <div className="w-full">
+        <div className="overflow-x-auto crowd-scroll w-full pb-4">
+          <div className="min-w-[800px]">
+            <table className="w-full text-xs sm:text-sm text-left whitespace-nowrap">
+              <thead className="bg-[#1a233a] border-b border-slate-700/50 text-slate-400 text-[11px] md:text-xs font-black uppercase tracking-widest">
                 <tr>
-                  <td colSpan="5" className="text-center py-16">
-                    <div className="flex flex-col items-center gap-3">
-                       <Activity size={28} className="text-cyan-400 animate-pulse" />
-                       <span className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400/70">Syncing Records...</span>
-                    </div>
-                  </td>
+                  <th className="p-5 text-center rounded-tl-xl">Sr.</th>
+                  <th className="p-5">Date</th>
+                  <th className="p-5">Type</th>
+                  <th className="p-5 text-center">TxHash (BscScan)</th>
+                  <th className="p-5 text-center rounded-tr-xl">Amount</th>
                 </tr>
-              ) : filteredDeposits.length === 0 ? (
-                <tr>
-                  <td colSpan="5" className="text-center py-16">
-                    <span className="text-slate-500 font-bold text-xs uppercase tracking-widest bg-black/40 px-6 py-3 rounded-xl border border-white/5">
-                      No Records Found
-                    </span>
-                  </td>
-                </tr>
-              ) : (
-                filteredDeposits.map((record, index) => {
-                  const recordDate = record.createdAt || record.date;
-                  const finalAmount = getSafeAmount(record.amount || record.grossAmount);
-                  const shortHash = formatHash(record.displayHash);
-                  
-                  return (
-                    <tr key={record._id || index} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                      <td className="p-5 font-bold text-slate-500 text-center">{index + 1}</td>
+              </thead>
+              <tbody className="text-slate-300">
+                {loading ? (
+                  <tr>
+                    <td colSpan="5" className="text-center py-16 bg-[#131b2f] border-b border-slate-800">
+                      <div className="flex flex-col items-center gap-3">
+                         <Activity size={32} className="text-amber-400 animate-pulse" />
+                         <span className="text-xs font-bold uppercase tracking-widest text-slate-500">Syncing Records...</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : filteredDeposits.length === 0 ? (
+                  <tr>
+                    <td colSpan="5" className="text-center py-16 bg-[#131b2f] border-b border-slate-800">
+                      <span className="text-slate-500 font-bold text-sm uppercase tracking-widest">
+                        No Deposit Records Found
+                      </span>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredDeposits.map((record, index) => {
+                    const recordDate = record.createdAt || record.date;
+                    const finalAmount = getSafeAmount(record.amount || record.grossAmount);
+                    const shortHash = formatHash(record.displayHash);
+                    
+                    return (
+                      <tr key={record._id || index} className="bg-[#131b2f] hover:bg-[#1a233a] border-b border-slate-800 transition-colors group">
+                        <td className="p-5 font-bold text-slate-500 text-center group-hover:text-amber-400 transition-colors">
+                          {index + 1}
+                        </td>
 
-                      <td className="p-5 text-slate-400 font-mono text-[11px]">
-                        <div className="flex flex-col gap-0.5">
-                          <span className="text-white font-bold">{recordDate ? format(new Date(recordDate), 'dd MMM yyyy') : 'N/A'}</span>
-                          <span className="text-slate-500 text-[10px]">{recordDate ? format(new Date(recordDate), 'hh:mm a') : '--:--'}</span>
-                        </div>
-                      </td>
+                        {/* 🔥 SIRF DATE DIKHEGI, TIME REMOVED */}
+                        <td className="p-5 text-slate-200 font-mono text-[12px] sm:text-sm font-bold tracking-wide">
+                          {recordDate ? format(new Date(recordDate), 'dd MMM yyyy') : 'N/A'}
+                        </td>
 
-                      <td className="p-5">
-                        <span className="inline-flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 py-1 px-3 rounded-lg text-[10px] font-black tracking-widest uppercase shadow-[0_0_10px_rgba(16,185,129,0.1)]">
-                          <ArrowDownCircle size={12} /> Deposit
-                        </span>
-                      </td>
+                        <td className="p-5">
+                          <span className="inline-flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 py-1.5 px-3 rounded-lg text-[10px] font-black tracking-widest uppercase">
+                            <ArrowDownCircle size={14} /> Deposit
+                          </span>
+                        </td>
 
-                      <td className="p-5 text-center">
-                        <a 
-                          href={`https://bscscan.com/tx/${record.displayHash}`} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center justify-center gap-1.5 font-mono text-[11px] font-bold text-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 px-3 py-1.5 rounded-lg transition-all"
-                        >
-                          {shortHash} <ExternalLink size={12} />
-                        </a>
-                      </td>
+                        <td className="p-5 text-center">
+                          <a 
+                            href={`https://bscscan.com/tx/${record.displayHash}`} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center justify-center gap-1.5 font-mono text-[11px] font-bold text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 px-3 py-1.5 rounded-lg transition-all"
+                          >
+                            {shortHash} <ExternalLink size={12} />
+                          </a>
+                        </td>
 
-                      <td className="p-5 font-black text-center text-emerald-400 text-base drop-shadow-[0_0_5px_rgba(16,185,129,0.3)]">
-                        + ${finalAmount.toFixed(2)}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                        <td className="p-5 font-black text-center text-emerald-400 text-base">
+                          + ${finalAmount.toFixed(2)}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
