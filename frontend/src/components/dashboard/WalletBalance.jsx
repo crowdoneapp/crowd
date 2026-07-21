@@ -1,23 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { TrendingUp } from "lucide-react";
 
-const globalPoolConfig = {
-  levels: [
-    { level: 1, globalTeam: 20, earning: 10 },
-    { level: 2, globalTeam: 40, earning: 20 },
-    { level: 3, globalTeam: 100, earning: 40 },
-    { level: 4, globalTeam: 200, earning: 80 },
-    { level: 5, globalTeam: 400, earning: 150 },
-    { level: 6, globalTeam: 1600, earning: 200 },
-    { level: 7, globalTeam: 2000, earning: 500 },
-    { level: 8, globalTeam: 3000, earning: 700 },
-    { level: 9, globalTeam: 4000, earning: 1000 },
-    { level: 10, globalTeam: 5000, earning: 1500 },
-    { level: 11, globalTeam: 7500, earning: 3000 },
-    { level: 12, globalTeam: 10000, earning: 5000 }
-  ]
-};
+// 🔥 PACKAGES AUR LEVELS CONFIG (Plan.jsx aur IncomeSummary.jsx ke jaisa)
+const PACKAGES = [30, 100, 300, 500, 1000];
+const TOTAL_LEVELS = 50;
 
 const WalletBalance = ({ income = {} }) => {
   const { user } = useAuth();
@@ -34,20 +21,33 @@ const WalletBalance = ({ income = {} }) => {
   const cctStakingDirectIncome = Number(income.cctStakingDirectIncome) || Number(user?.cctStakingDirectIncome) || 0;
   const cctStakingLevelIncome = Number(income.cctStakingLevelIncome) || Number(user?.cctStakingLevelIncome) || 0;
 
-  // 3.  Crowd Donation Earning (Global Growth) CALCULATION
+  // 🔥 3. Crowd Donation Earning (50-Level Package-Wise Calculation - Only Team Crowd Logic)
   useEffect(() => {
     if (!user) return;
 
-    const realGlobalTeamCount = Number(user?.globalTeamCount) || 0;
     let totalFrontendAchieved = 0;
-    let cumulative = 0;
 
-    globalPoolConfig.levels.forEach((lvl) => {
-      cumulative += lvl.globalTeam;
-      if (realGlobalTeamCount >= cumulative) {
-        totalFrontendAchieved += lvl.earning;
-      }
+    const purchased = user.purchasedPackages || [];
+    const highestPkg = user.highestPackage || user.topUpAmount || 0;
+    
+    // Sirf un packages ko check karo jo active hain
+    const activePkgs = PACKAGES.filter(p => purchased.includes(p) || highestPkg >= p);
+
+    activePkgs.forEach(pkg => {
+        // Har package ki apni crowd nikalo
+        const currentPackageYourCrowd = user?.packageStats?.[String(pkg)]?.globalTeamCount || user?.globalTeamCount || 0;
+
+        // 50 Levels ka check (Direct condition removed)
+        for (let i = 1; i <= TOTAL_LEVELS; i++) {
+            const unlockTeamReq = i * 100; // Level 1 = 100, Level 2 = 200
+
+            if (currentPackageYourCrowd >= unlockTeamReq) {
+                // Agar Your Crowd ne requirement meet kar li, toh earning add kar do (Package * 2)
+                totalFrontendAchieved += (pkg * 2);
+            }
+        }
     });
+
     setGlobalGrowthIncome(totalFrontendAchieved);
   }, [user]);
 
