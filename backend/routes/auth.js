@@ -854,15 +854,15 @@ router.post('/login', async (req, res) => {
                 return res.status(403).json({ message: "Access Denied: Your IP has been blocked by the Administrator." });
             }
 
-            // ✅ Login IP Limit Wapas Laga Di (Default 5)
-            const allowedLimit = (rule && rule.limit) ? rule.limit : 5;
-            const uniqueUsersOnThisIP = await LoginHistory.distinct('userId', { ipAddress: userIP });
+            // // ✅ Login IP Limit Wapas Laga Di (Default 5)
+            // const allowedLimit = (rule && rule.limit) ? rule.limit : 5;
+            // const uniqueUsersOnThisIP = await LoginHistory.distinct('userId', { ipAddress: userIP });
 
-            if (uniqueUsersOnThisIP.length >= allowedLimit && !uniqueUsersOnThisIP.includes(user.userId)) {
-                return res.status(403).json({ 
-                    message: `Access Denied: You have reached the maximum limit of ${allowedLimit} accounts per network.` 
-                });
-            }
+            // if (uniqueUsersOnThisIP.length >= allowedLimit && !uniqueUsersOnThisIP.includes(user.userId)) {
+            //     return res.status(403).json({ 
+            //         message: `Access Denied: You have reached the maximum limit of ${allowedLimit} accounts per network.` 
+            //     });
+            // }
         }
     }
 
