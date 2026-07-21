@@ -1,0 +1,20 @@
+// C:\Users\HP\Desktop\crowdone\backend\models\Support.js
+const mongoose = require("mongoose");
+
+const supportSchema = new mongoose.Schema(
+  {
+    userId: { type: String, required: true },
+    name: { type: String, required: true },
+    email: String,
+    referralId: String,
+    message: { type: String, required: true },
+    walletAddress: String,
+    optional: String,
+    status: { type: String, default: "Pending" },
+    adminDeleted: { type: Boolean, default: false }, // ✅ soft delete flag
+    adminReply: { type: String, default: "" },       // 🔥 NAYA FIELD ADD KIYA HAI
+  },
+  { timestamps: true }
+);
+
+module.exports = mongoose.model("Support", supportSchema);
