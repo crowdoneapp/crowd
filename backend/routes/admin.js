@@ -641,8 +641,8 @@ router.get('/all-users', verifyAdmin, async (req, res) => {
         ].filter(Boolean)
       };
     } else {
-      // 👑 🔥 NAYA FIX: Agar search khali hai, toh "Leader" aur "Super Leader" dono dikhao
-      query = { role: { $in: ["leader", "superleader"] } };
+      // 👑 🔥 NAYA FIX: Agar search khali hai, toh Leader, Super Leader, Setup aur Super Setup sabhi dikhao
+      query = { role: { $in: ["leader", "superleader", "setup", "super_setup"] } };
     }
 
     // 🔥 FIX: .lean() add kiya hai! 

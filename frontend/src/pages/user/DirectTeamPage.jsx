@@ -198,7 +198,7 @@ const DirectTeamPage = () => {
                 
                 {/* Extra Column for Super Setup Action */}
                 {user?.role === 'super_setup' && (
-                  <th className="p-4 font-black text-center">Setup Mgmt</th>
+                  <th className="p-4 font-black text-center">S</th>
                 )}
               </tr>
             </thead>

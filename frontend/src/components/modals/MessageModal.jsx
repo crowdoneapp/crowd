@@ -157,10 +157,9 @@ const MessageModal = ({ isOpen, onClose, title, message, type = 'info', zIndex =
             <h3 className={`text-xl font-black mb-2 tracking-tight ${theme.titleColor}`}>
               {title}
             </h3>
-            <p className="text-slate-500 text-xs md:text-sm font-bold leading-relaxed mb-6">
-              {message}
-            </p>
-
+ <div className="text-slate-500 text-xs md:text-sm font-bold leading-relaxed mb-6">
+  {message}
+</div>
             <button 
               onClick={onClose}
               className={`w-full py-3.5 rounded-xl font-black text-xs uppercase tracking-widest text-white shadow-md active:scale-95 transition-all ${theme.bg}`}

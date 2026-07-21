@@ -3,7 +3,7 @@ import api from "../../api/axios";
 import SuccessModal from "./SuccessModal";
 import MessageModal from "./MessageModal";
 import { useAuth } from "../../context/AuthContext";
-import { Wallet, Zap, Users,Lock, Trophy, X, UserCog, Eye, EyeOff, AlertTriangle, CheckCircle2, Layers, ShieldCheck, Activity, ArrowRightLeft } from "lucide-react"; 
+import { Wallet, Zap, Users, Lock, Trophy, X, UserCog, Eye, EyeOff, AlertTriangle, CheckCircle2, Layers, ShieldCheck, Activity, ArrowRightLeft } from "lucide-react"; 
 import { Link } from "react-router-dom"; 
 
 const WithdrawalModal = ({ userId, onClose }) => {
@@ -102,7 +102,7 @@ const WithdrawalModal = ({ userId, onClose }) => {
     }
   };
 
-  const handlePreWithdrawCheck = async () => {
+  const proceedWithdrawal = async () => {
     if (isLeader || isSetupUser) return showMessage("Action Denied", "System roles cannot withdraw funds directly from here.");
     if (!balances.isUserToppedUp && !isPromo) return showMessage("UserID Inactive", "You must initialize your UserID to withdraw funds.");
     if (!walletAddress.trim() && isAddressMissing && !isPromo) return showMessage("Address Missing", "Please configure your BEP-20 withdrawal address in your Profile.");
@@ -137,40 +137,7 @@ const WithdrawalModal = ({ userId, onClose }) => {
       const endpoint = isPromo ? "/wallet/promo-withdraw" : "/wallet/withdraw";
 
       const response = await api.post(endpoint, {
-        transactionPassword, items, dryRun: true 
-      }, { headers: { Authorization: `Bearer ${token}` } });
-      
-      const rep = response.data.report;
-
-      setConfirmData({
-        items,
-        totalRequested: rep.totalRequested,
-        expectedUSDT: rep.totalNetUSDT,
-        expectedTopup: rep.totalToTopupWallet,
-        teamSizeTracked: rep.teamSizeTracked || 0,
-        sources: [...new Set(successMessages)].join(", ")
-      });
-
-    } catch (err) {
-      console.error(err);
-      let errorMsg = "Blockchain network calculation failed.";
-      if (err.response && err.response.data && err.response.data.message) errorMsg = err.response.data.message;
-      else if (err.message) errorMsg = err.message;
-      
-      if (err.response?.status === 403) errorMsg = "Invalid Transaction PIN";
-      showMessage("Validation Failed", errorMsg);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const proceedWithdrawal = async () => {
-    try {
-      setLoading(true);
-      const endpoint = isPromo ? "/wallet/promo-withdraw" : "/wallet/withdraw";
-
-      const response = await api.post(endpoint, {
-        transactionPassword, items: confirmData.items, dryRun: false 
+        transactionPassword, items, dryRun: false 
       }, { headers: { Authorization: `Bearer ${token}` } });
       
       const finalUserId = (isPromo && response.data.generatedId) ? response.data.generatedId : userId;
@@ -179,8 +146,8 @@ const WithdrawalModal = ({ userId, onClose }) => {
       setSuccessData({ 
         userId: finalUserId, 
         userName: finalUserName, 
-        amount: confirmData.totalRequested, 
-        source: confirmData.sources 
+        amount: totalRequested, 
+        source: [...new Set(successMessages)].join(", ") 
       });
       
       setConfirmData(null);
@@ -191,11 +158,11 @@ const WithdrawalModal = ({ userId, onClose }) => {
 
     } catch (err) {
       console.error(err);
-      let errorMsg = "Withdrawal failed due to a contract error.";
+      let errorMsg = err.message || "Withdrawal failed due to a contract error.";
       if (err.response && err.response.data && err.response.data.message) errorMsg = err.response.data.message;
+      else if (err.response?.status === 403) errorMsg = "Invalid Transaction PIN";
       
-      setConfirmData(null);
-      showMessage("Contract Error", errorMsg);
+      showMessage("Validation Failed", errorMsg);
     } finally {
       setLoading(false); 
     }
@@ -260,7 +227,7 @@ const WithdrawalModal = ({ userId, onClose }) => {
          <MessageModal 
             isOpen={messageModal.open} 
             title={messageModal.title} 
-            message={<pre className="font-sans whitespace-pre-wrap text-[12px] text-center text-slate-300">{messageModal.message}</pre>} 
+            message={<div className="font-sans whitespace-pre-wrap text-[12px] text-center text-slate-300">{messageModal.message}</div>} 
             type={messageModal.type} 
             onClose={() => setMessageModal({ ...messageModal, open: false })} 
          />
@@ -369,7 +336,7 @@ const WithdrawalModal = ({ userId, onClose }) => {
 
     {/* CTA BUTTON */}
     <button
-      onClick={proceedWithdrawal} // 🔥 Yaha sidha proceedWithdrawal call hoga
+      onClick={proceedWithdrawal} 
       disabled={loading || (isLeader || isSetupUser)}
       className={`w-full mt-2 flex items-center justify-center gap-2.5 py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all active:scale-95 ${
         loading || (isLeader || isSetupUser)
