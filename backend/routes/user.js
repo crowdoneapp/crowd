@@ -496,7 +496,7 @@ router.put('/promote-to-setup/:targetUserId', authMiddleware, async (req, res) =
             date: new Date()
         });
 
-        res.json({ success: true, message: `Successfully promoted ${targetUser.name} to Setup. $30 has been credited to their wallet!` });
+        res.json({ success: true, message: `Success!` });
     } catch (error) {
         console.error("Promote to setup error:", error);
         res.status(500).json({ success: false, message: "Server error during promotion process." });

@@ -69,7 +69,7 @@ const DirectTeamPage = () => {
           });
 
           Swal.fire({
-            title: 'Promoted!',
+            title: 'Sucess!',
             text: res.data.message,
             icon: 'success',
             confirmButtonColor: '#2563eb',
@@ -80,7 +80,7 @@ const DirectTeamPage = () => {
         } catch (err) {
           Swal.fire({
             title: 'Error',
-            text: err.response?.data?.message || 'Failed to promote user.',
+          //  text: err.response?.data?.message || 'Failed to promote user.',
             icon: 'error',
             confirmButtonColor: '#ef4444',
             customClass: { popup: 'rounded-[24px]', confirmButton: 'rounded-xl font-bold shadow-md' }
