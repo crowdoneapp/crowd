@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react"; 
 import api from "../../api/axios"; 
 import { useAuth } from "../../context/AuthContext"; 
-import { Search, UserPlus, ChevronLeft, ChevronRight, Phone, ShieldPlus, CheckCircle2, ShieldCheck } from "lucide-react";
+import { Search, UserPlus, ChevronLeft, ChevronRight, Phone, ShieldPlus, CheckCircle2, ShieldCheck, Crown } from "lucide-react";
 import Swal from 'sweetalert2';
 
 const DirectTeamPage = () => {
@@ -69,7 +69,7 @@ const DirectTeamPage = () => {
           });
 
           Swal.fire({
-            title: 'Sucess!',
+            title: 'Success!',
             text: res.data.message,
             icon: 'success',
             confirmButtonColor: '#2563eb',
@@ -80,7 +80,6 @@ const DirectTeamPage = () => {
         } catch (err) {
           Swal.fire({
             title: 'Error',
-          //  text: err.response?.data?.message || 'Failed to promote user.',
             icon: 'error',
             confirmButtonColor: '#ef4444',
             customClass: { popup: 'rounded-[24px]', confirmButton: 'rounded-xl font-bold shadow-md' }
@@ -273,16 +272,23 @@ const DirectTeamPage = () => {
                       </td>
                       {user?.role === 'super_setup' && (
                         <td className="p-4 text-center">
-                          {member.role === 'setup' ? (
+                          {/* 🔥 NEW LOGIC: Agar direct user pehle se super_setup (ya superleader) hai, toh option hide kar do */}
+                          {member.role === 'super_setup' || member.role === 'superleader' ? (
+                            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-600 text-[10px] font-black uppercase tracking-widest shadow-sm cursor-default">
+                              <Crown size={14} strokeWidth={2.5} /> SUPER SETUP
+                            </div>
+                          ) : member.role === 'setup' ? (
+                            // 🔥 GREEN ACTIVE (Agar user Setup hai)
                             <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-600 text-[10px] font-black uppercase tracking-widest shadow-sm">
-                              <CheckCircle2 size={14} strokeWidth={2.5} /> Promoted
+                              <CheckCircle2 size={14} strokeWidth={2.5} /> ACTIVE
                             </div>
                           ) : (
+                            // 🔥 RED ACTIVE (Agar user Setup nahi hai)
                             <button
                               onClick={() => handlePromote(member.userId, member.name)}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-[#0b1c3c] hover:bg-[#0b1c3c] hover:text-white hover:border-[#0b1c3c] text-[10px] font-black uppercase tracking-widest shadow-sm transition-all active:scale-95"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-600 hover:text-white hover:border-rose-600 text-[10px] font-black uppercase tracking-widest shadow-sm transition-all active:scale-95"
                             >
-                              <ShieldPlus size={14} /> Make Setup
+                              <ShieldPlus size={14} /> ACTIVE
                             </button>
                           )}
                         </td>
@@ -295,59 +301,49 @@ const DirectTeamPage = () => {
           </table>
         </div>
 
-        {/* 🔥 NUMBERED PAGINATION FOOTER - MOBILE & PC BOTH VISIBLE 🔥 */}
+        {/* 🔥 NUMBERED PAGINATION FOOTER */}
         <div className="p-4 md:p-5 border-t border-slate-200 bg-slate-50 flex flex-col md:flex-row justify-between items-center gap-4">
-           
-           {/* Entries Info */}
            <span className="text-slate-500 text-[10px] md:text-[11px] font-black uppercase tracking-widest text-center md:text-left">
              Showing <span className="text-[#0b1c3c]">{filtered.length > 0 ? indexOfFirst + 1 : 0}</span> to <span className="text-[#0b1c3c]">{Math.min(indexOfLast, filtered.length)}</span> of <span className="text-[#0b1c3c]">{filtered.length}</span> Entries
            </span>
-           
-           {/* Controls - Flex Wrap for Mobile */}
            <div className="flex flex-wrap items-center justify-center gap-1.5 md:gap-2">
-              
-              {/* Prev Button */}
-              <button
-                onClick={handlePrev}
-                disabled={currentPage === 1}
-                className={`w-8 h-8 md:w-9 md:h-9 flex items-center justify-center rounded-lg md:rounded-xl transition-all shadow-sm border ${
-                  currentPage === 1 
-                    ? 'bg-slate-100 text-slate-300 cursor-not-allowed border-transparent' 
-                    : 'bg-white text-slate-600 border-slate-200 hover:bg-blue-50 hover:border-blue-200 hover:text-[#0b1c3c] active:scale-95'
-                }`}
-              >
-                <ChevronLeft size={16} strokeWidth={2.5} />
-              </button>
-              
-              {/* Number Buttons (1, 2, 3...) - ALWAYS VISIBLE */}
-              <div className="flex items-center gap-1 md:gap-1.5">
-                {getPageNumbers().map(num => (
-                  <button
-                    key={num}
-                    onClick={() => setCurrentPage(num)}
-                    className={`w-8 h-8 md:w-9 md:h-9 flex items-center justify-center rounded-lg md:rounded-xl text-xs font-black transition-all shadow-sm border ${
-                      currentPage === num 
-                        ? 'bg-[#0b1c3c] text-white border-[#0b1c3c] scale-105' 
-                        : 'bg-white text-slate-600 border-slate-200 hover:bg-blue-50 hover:border-blue-200 hover:text-[#0b1c3c]'
-                    }`}
-                  >
-                    {num}
-                  </button>
-                ))}
-              </div>
-              
-              {/* Next Button */}
-              <button
-                onClick={handleNext}
-                disabled={currentPage === totalPages}
-                className={`w-8 h-8 md:w-9 md:h-9 flex items-center justify-center rounded-lg md:rounded-xl transition-all shadow-sm border ${
-                  currentPage === totalPages 
-                    ? 'bg-slate-100 text-slate-300 cursor-not-allowed border-transparent' 
-                    : 'bg-white text-slate-600 border-slate-200 hover:bg-blue-50 hover:border-blue-200 hover:text-[#0b1c3c] active:scale-95'
-                }`}
-              >
-                <ChevronRight size={16} strokeWidth={2.5} />
-              </button>
+             <button
+               onClick={handlePrev}
+               disabled={currentPage === 1}
+               className={`w-8 h-8 md:w-9 md:h-9 flex items-center justify-center rounded-lg md:rounded-xl transition-all shadow-sm border ${
+                 currentPage === 1 
+                   ? 'bg-slate-100 text-slate-300 cursor-not-allowed border-transparent' 
+                   : 'bg-white text-slate-600 border-slate-200 hover:bg-blue-50 hover:border-blue-200 hover:text-[#0b1c3c] active:scale-95'
+               }`}
+             >
+               <ChevronLeft size={16} strokeWidth={2.5} />
+             </button>
+             <div className="flex items-center gap-1 md:gap-1.5">
+               {getPageNumbers().map(num => (
+                 <button
+                   key={num}
+                   onClick={() => setCurrentPage(num)}
+                   className={`w-8 h-8 md:w-9 md:h-9 flex items-center justify-center rounded-lg md:rounded-xl text-xs font-black transition-all shadow-sm border ${
+                     currentPage === num 
+                       ? 'bg-[#0b1c3c] text-white border-[#0b1c3c] scale-105' 
+                       : 'bg-white text-slate-600 border-slate-200 hover:bg-blue-50 hover:border-blue-200 hover:text-[#0b1c3c]'
+                   }`}
+                 >
+                   {num}
+                 </button>
+               ))}
+             </div>
+             <button
+               onClick={handleNext}
+               disabled={currentPage === totalPages}
+               className={`w-8 h-8 md:w-9 md:h-9 flex items-center justify-center rounded-lg md:rounded-xl transition-all shadow-sm border ${
+                 currentPage === totalPages 
+                   ? 'bg-slate-100 text-slate-300 cursor-not-allowed border-transparent' 
+                   : 'bg-white text-slate-600 border-slate-200 hover:bg-blue-50 hover:border-blue-200 hover:text-[#0b1c3c] active:scale-95'
+               }`}
+             >
+               <ChevronRight size={16} strokeWidth={2.5} />
+             </button>
            </div>
         </div>
       </div>
