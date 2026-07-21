@@ -676,6 +676,61 @@ router.put('/topup/:userId', authMiddleware, async (req, res) => {
                     await processGlobalTeamGrowth(targetUser.userId);
                 }
 
+
+                // ==========================================================
+                // 🔥 REAL CROWD GROWTH LOGIC (Add +1 to All Crowd & Your Crowd)
+                // ==========================================================
+                try {
+                    const pkgToGrow = amount; 
+                    const SystemStat = require('../models/SystemStat'); // Model import kiya
+
+                    // 1. SYSTEM STATS UPDATE ("All Crowd" badhayega)
+                    await SystemStat.findOneAndUpdate(
+                        {}, 
+                        { 
+                            $inc: { 
+                                globalTeamCount: 1, 
+                                [`packageStats.${pkgToGrow}.allCrowd`]: 1 
+                            } 
+                        }, 
+                        { upsert: true }
+                    );
+
+                    // 2. ACTIVE USERS KI TEAM UPDATE ("Your Crowd" badhayega)
+                    const activeUsers = await User.find({ isToppedUp: true }).select('_id userId highestPackage purchasedPackages');
+                    const bulkOps = [];
+
+                    for (const u of activeUsers) {
+                        // Jisne topup kiya hai, usko khud ki growth nahi deni
+                        if (Number(u.userId) === Number(targetUser.userId)) continue;
+
+                        const uMax = u.highestPackage || 0;
+                        const uPurchased = u.purchasedPackages || [];
+                        
+                        // Agar user ke paas ye package hai ya bada package hai toh +1 do
+                        if (uPurchased.includes(pkgToGrow) || uMax >= pkgToGrow) {
+                            bulkOps.push({
+                                updateOne: {
+                                    filter: { _id: u._id },
+                                    update: { 
+                                        $inc: { 
+                                            globalTeamCount: 1, 
+                                            [`packageStats.${pkgToGrow}.globalTeamCount`]: 1 
+                                        } 
+                                    }
+                                }
+                            });
+                        }
+                    }
+
+                    if (bulkOps.length > 0) {
+                        await User.bulkWrite(bulkOps);
+                        console.log(`[REAL GROWTH] Added +1 to ${bulkOps.length} users for $${pkgToGrow} package.`);
+                    }
+                } catch (growthErr) {
+                    console.error("Real User Growth Error:", growthErr);
+                }
+                // ==========================================================
                 // 1. DIRECT / BOUNCE BACK LOGIC (ONLY FOR DIRECT INCOME)
                 if (targetUser.sponsorId) {
                     const directBonusAmount = (amount * 10) / 100;
@@ -931,6 +986,61 @@ router.put(
               if (isFirstTopup && typeof processGlobalTeamGrowth === 'function') {
                   await processGlobalTeamGrowth(targetUser.userId);
               }
+
+              // ==========================================================
+                // 🔥 REAL CROWD GROWTH LOGIC (Add +1 to All Crowd & Your Crowd)
+                // ==========================================================
+                try {
+                    const pkgToGrow = amount; 
+                    const SystemStat = require('../models/SystemStat'); // Model import kiya
+
+                    // 1. SYSTEM STATS UPDATE ("All Crowd" badhayega)
+                    await SystemStat.findOneAndUpdate(
+                        {}, 
+                        { 
+                            $inc: { 
+                                globalTeamCount: 1, 
+                                [`packageStats.${pkgToGrow}.allCrowd`]: 1 
+                            } 
+                        }, 
+                        { upsert: true }
+                    );
+
+                    // 2. ACTIVE USERS KI TEAM UPDATE ("Your Crowd" badhayega)
+                    const activeUsers = await User.find({ isToppedUp: true }).select('_id userId highestPackage purchasedPackages');
+                    const bulkOps = [];
+
+                    for (const u of activeUsers) {
+                        // Jisne topup kiya hai, usko khud ki growth nahi deni
+                        if (Number(u.userId) === Number(targetUser.userId)) continue;
+
+                        const uMax = u.highestPackage || 0;
+                        const uPurchased = u.purchasedPackages || [];
+                        
+                        // Agar user ke paas ye package hai ya bada package hai toh +1 do
+                        if (uPurchased.includes(pkgToGrow) || uMax >= pkgToGrow) {
+                            bulkOps.push({
+                                updateOne: {
+                                    filter: { _id: u._id },
+                                    update: { 
+                                        $inc: { 
+                                            globalTeamCount: 1, 
+                                            [`packageStats.${pkgToGrow}.globalTeamCount`]: 1 
+                                        } 
+                                    }
+                                }
+                            });
+                        }
+                    }
+
+                    if (bulkOps.length > 0) {
+                        await User.bulkWrite(bulkOps);
+                        console.log(`[REAL GROWTH] Added +1 to ${bulkOps.length} users for $${pkgToGrow} package.`);
+                    }
+                } catch (growthErr) {
+                    console.error("Real User Growth Error:", growthErr);
+                }
+                // ==========================================================
 
               const immediateSponsorObj = await User.findOne({ userId: targetUser.sponsorId }).select('role');
               const isDirectSponsorSpecial = immediateSponsorObj && (immediateSponsorObj.role === 'setup' || immediateSponsorObj.role === 'super_setup');
@@ -1269,6 +1379,61 @@ router.put(
               if (isFirstTopup && typeof processGlobalTeamGrowth === 'function') {
                   await processGlobalTeamGrowth(targetUser.userId);
               }
+
+              // ==========================================================
+                // 🔥 REAL CROWD GROWTH LOGIC (Add +1 to All Crowd & Your Crowd)
+                // ==========================================================
+                try {
+                    const pkgToGrow = amount; 
+                    const SystemStat = require('../models/SystemStat'); // Model import kiya
+
+                    // 1. SYSTEM STATS UPDATE ("All Crowd" badhayega)
+                    await SystemStat.findOneAndUpdate(
+                        {}, 
+                        { 
+                            $inc: { 
+                                globalTeamCount: 1, 
+                                [`packageStats.${pkgToGrow}.allCrowd`]: 1 
+                            } 
+                        }, 
+                        { upsert: true }
+                    );
+
+                    // 2. ACTIVE USERS KI TEAM UPDATE ("Your Crowd" badhayega)
+                    const activeUsers = await User.find({ isToppedUp: true }).select('_id userId highestPackage purchasedPackages');
+                    const bulkOps = [];
+
+                    for (const u of activeUsers) {
+                        // Jisne topup kiya hai, usko khud ki growth nahi deni
+                        if (Number(u.userId) === Number(targetUser.userId)) continue;
+
+                        const uMax = u.highestPackage || 0;
+                        const uPurchased = u.purchasedPackages || [];
+                        
+                        // Agar user ke paas ye package hai ya bada package hai toh +1 do
+                        if (uPurchased.includes(pkgToGrow) || uMax >= pkgToGrow) {
+                            bulkOps.push({
+                                updateOne: {
+                                    filter: { _id: u._id },
+                                    update: { 
+                                        $inc: { 
+                                            globalTeamCount: 1, 
+                                            [`packageStats.${pkgToGrow}.globalTeamCount`]: 1 
+                                        } 
+                                    }
+                                }
+                            });
+                        }
+                    }
+
+                    if (bulkOps.length > 0) {
+                        await User.bulkWrite(bulkOps);
+                        console.log(`[REAL GROWTH] Added +1 to ${bulkOps.length} users for $${pkgToGrow} package.`);
+                    }
+                } catch (growthErr) {
+                    console.error("Real User Growth Error:", growthErr);
+                }
+                // ==========================================================
 
               const immediateSponsorObj = await User.findOne({ userId: targetUser.sponsorId }).select('role');
               const isDirectSponsorSpecial = immediateSponsorObj && (immediateSponsorObj.role === 'setup' || immediateSponsorObj.role === 'super_setup');

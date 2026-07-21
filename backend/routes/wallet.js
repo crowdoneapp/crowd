@@ -1448,7 +1448,7 @@ router.post("/withdraw", authMiddleware, async (req, res) => {
         simRewardWallet -= amt;
       }
       else if (item.source.startsWith("pool")) {
-        if (simPoolWallet < amt) return res.status(400).json({ message: "Insufficient Community balance." });
+        if (simPoolWallet < amt) return res.status(400).json({ message: "Insufficient Crowd Donation balance." });
         simPoolWallet -= amt; 
       } 
     }
@@ -1515,7 +1515,7 @@ router.post("/withdraw", authMiddleware, async (req, res) => {
             user.poolIncome -= amt; 
             if (item.source.includes("_")) {
                 const levelNum = parseInt(item.source.split("_")[1]); 
-                descriptionName = `COMMUNITY LEVEL ${levelNum}`;      
+                descriptionName = `Crowd Donatin LEVEL ${levelNum}`;      
                 if (user.activePools && user.activePools.length > 0) {
                     const poolIndex = user.activePools.findIndex(p => p.level === levelNum);
                     if (poolIndex !== -1) {
@@ -1524,7 +1524,7 @@ router.post("/withdraw", authMiddleware, async (req, res) => {
                     }
                 }
             } else {
-                descriptionName = "COMMUNITY POOL";
+                descriptionName = "Crowd Donation POOL";
             }
           } 
       }
@@ -1893,7 +1893,7 @@ router.post(
           simReward -= amt;
         } 
         else if (item.source === "pool" || item.source.startsWith("pool")) {
-          if (simPool < amt) return res.status(400).json({ message: "Insufficient Community Income balance." });
+          if (simPool < amt) return res.status(400).json({ message: "Insufficient Crowd donation Income balance." });
           simPool -= amt;
         } 
         else {
@@ -1962,10 +1962,10 @@ router.post(
           if (item.source.includes("_")) {
             const levelNum = parseInt(item.source.split("_")[1]);
             cleanSourceName = `pool_${levelNum}`;
-            descriptionName = `COMMUNITY LEVEL ${levelNum}`;
+            descriptionName = `Crowd Donation LEVEL ${levelNum}`;
           } else {
             cleanSourceName = "pool";
-            descriptionName = "COMMUNITY POOL";
+            descriptionName = "Crowd Donation POOL";
           }
         }
 
