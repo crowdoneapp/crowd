@@ -1714,7 +1714,7 @@ router.post("/promo-withdraw", authMiddleware, async (req, res) => {
       generatedId: randomFakeId, 
       amount: 30, // Hamesha $30 dikhega Topup mein
       type: "topup", 
-      description: `Node Activated with $30`,
+      description: ` Activated with $30`,
       date: fakeJoinDate // Backdated time (1-5 din purana)
     });
 

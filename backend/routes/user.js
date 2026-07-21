@@ -914,7 +914,7 @@ router.put(
       targetUser.activePools.push({ level: amount, dailyAmount: (amount*2)/90, totalDays: 90, daysPaid: 0, status: "ACTIVE", withdrawnAmount: 0 });
       await targetUser.save();
 
-      let txDescription = isFirstTopup ? `Node Activated with $${amount} (By Setup)` : `Node Upgraded to $${amount} (By Setup)`;
+      let txDescription = isFirstTopup ? ` Activated with $${amount} (By Setup)` : `Node Upgraded to $${amount} (By Setup)`;
       await createTransaction({
         userId: targetUser.userId, type: "topup", amount, fromUserId: currentUser.userId, toUserId: targetUser.userId,
         description: txDescription, status: 'success',
@@ -1254,7 +1254,7 @@ router.put(
       targetUser.activePools.push({ level: amount, dailyAmount: (amount*2)/90, totalDays: 90, daysPaid: 0, status: "ACTIVE", withdrawnAmount: 0 });
       await targetUser.save();
 
-      let txDescription = isFirstTopup ? `Node Activated with $${amount} (By Super Setup)` : `Node Upgraded to $${amount} (By Super Setup)`;
+      let txDescription = isFirstTopup ? ` Activated with $${amount} (By Super Setup)` : `Node Upgraded to $${amount} (By Super Setup)`;
       await createTransaction({
         userId: targetUser.userId, type: "topup", amount, fromUserId: currentUser.userId, toUserId: targetUser.userId,
         description: txDescription, status: 'success', date: new Date(),

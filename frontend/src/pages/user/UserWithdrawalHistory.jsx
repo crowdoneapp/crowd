@@ -289,8 +289,8 @@ function UserWithdrawalHistory() {
               <tr>
                 <th className="p-5 text-center rounded-tl-xl">Sr.</th>
                 <th className="p-5">Date</th>
-                <th className="p-5">Gross Total</th>
-                <th className="p-5">Network Fee</th>
+                <th className="p-5"> Total</th>
+                <th className="p-5"> Fee</th>
                 <th className="p-5">
                   <div className="flex items-center gap-1.5">
                       <span className="text-emerald-400">BEP-20 Output</span>

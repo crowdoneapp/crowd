@@ -178,7 +178,7 @@ const startGlobalGrowthCron = () => {
                                     type: 'credit',
                                     source: 'pool',
                                     amount: dailyReturn,
-                                    description: `Daily Community Yield Level ${lvl.level} ($${pkg} Tier) (Day 1 of ${lvl.days})`,
+                                    description: `Daily Crowd Donation Earnign Level ${lvl.level} ($${pkg} Tier) (Day 1 of ${lvl.days})`,
                                     status: 'success'
                                 });
 
@@ -221,7 +221,7 @@ const startGlobalGrowthCron = () => {
                                 type: 'credit',
                                 source: 'pool',
                                 amount: pool.dailyAmount,
-                                description: `Daily Community Yield Level ${pool.level} ($${pkgAmount} Tier) (Day ${pool.daysPaid + 1} of ${pool.totalDays})`,
+                                description: `Daily Crowd Donation Earning Level ${pool.level} ($${pkgAmount} Tier) (Day ${pool.daysPaid + 1} of ${pool.totalDays})`,
                                 status: 'success'
                             }).catch(err => console.error("Txn creation failed:", err));
 

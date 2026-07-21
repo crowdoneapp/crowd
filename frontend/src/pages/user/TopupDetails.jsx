@@ -93,7 +93,7 @@ const TopupDetails = () => {
   const handleNext = () => currentPage < totalPages && setCurrentPage((prev) => prev + 1);
 
   return (
-    <div className="w-full max-w-7xl mx-auto p-4 md:p-8 relative z-10 animate-in fade-in duration-500 rounded-3xl bg-[#0b0f19] shadow-2xl border border-slate-800 overflow-hidden">
+    <div className="w-full max-w-7xl mx-auto p-4 md:p-8 relative z-10 animate-in fade-in duration-500 rounded-3xl bg-[#0b0f19] shadow-2xl border border-slate-800 overflow-hidden font-sans">
       
       <style>{`
         .crowd-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
@@ -103,20 +103,30 @@ const TopupDetails = () => {
       `}</style>
 
       {/* Header */}
-       
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
+        <div>
+          <h2 className="text-2xl md:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-yellow-200 uppercase tracking-wide flex items-center gap-3">
+             <div className="p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl shadow-[0_0_15px_rgba(251,191,36,0.15)]">
+                <Activity className="text-amber-400" size={24} /> 
+             </div>
+              Activations
+          </h2>
+        
+        </div>
+      </div>
 
       {/* Search Bar */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-8 justify-between items-center">
-        <div className="relative w-full sm:w-96 group">
-          <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-            <Search size={18} className="text-slate-500 group-focus-within:text-amber-400 transition-colors" />
+      <div className="flex flex-col sm:flex-row gap-4 mb-8 justify-between items-center bg-[#131b2f] shadow-inner p-4 rounded-2xl border border-slate-800">
+        <div className="relative w-full sm:w-80 group">
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+            <Search size={16} className="text-slate-500 group-focus-within:text-amber-400 transition-colors" />
           </div>
           <input
             type="text"
             placeholder="Search ID, details, amount..."
             value={searchQuery}
             onChange={handleSearch}
-            className="w-full bg-[#131b2f] border border-slate-700 text-slate-200 text-sm font-semibold rounded-xl px-5 py-3.5 pl-12 focus:border-amber-400/50 focus:ring-2 focus:ring-amber-400/20 focus:outline-none transition-all placeholder-slate-500 shadow-inner"
+            className="w-full bg-[#0b0f19] border border-slate-700 text-slate-200 text-sm font-bold tracking-wide rounded-xl px-4 py-3.5 pl-11 focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 focus:outline-none transition-all placeholder-slate-600 shadow-inner"
           />
         </div>
       </div>
@@ -127,14 +137,14 @@ const TopupDetails = () => {
           <div className="min-w-[1000px]">
 
             {/* Header row */}
-            <div className="bg-[#1a233a] border border-slate-700/50 rounded-xl px-6 py-4 grid grid-cols-7 gap-3 mb-4 shadow-md">
-              <div className="text-slate-400 text-[11px] md:text-xs font-black uppercase tracking-widest text-center">Sr.</div>
-              <div className="text-slate-400 text-[11px] md:text-xs font-black uppercase tracking-widest">Date</div>
-              <div className="text-slate-400 text-[11px] md:text-xs font-black uppercase tracking-widest">Action Type</div>
-              <div className="text-slate-400 text-[11px] md:text-xs font-black uppercase tracking-widest">Sender ID</div>
-              <div className="text-slate-400 text-[11px] md:text-xs font-black uppercase tracking-widest">Receiver ID</div>
-              <div className="text-slate-400 text-[11px] md:text-xs font-black uppercase tracking-widest text-center">Amount</div>
-              <div className="text-slate-400 text-[11px] md:text-xs font-black uppercase tracking-widest">Details</div>
+            <div className="bg-[#1a233a] border border-slate-700/50 rounded-xl px-6 py-4 grid grid-cols-7 gap-3 mb-4 shadow-md text-slate-400 text-[11px] md:text-xs font-black uppercase tracking-widest">
+              <div className="text-center">Sr.</div>
+              <div>Date</div>
+              <div>Action Type</div>
+              <div>Sender ID</div>
+              <div>Receiver ID</div>
+              <div className="text-center">Amount</div>
+              <div>Details</div>
             </div>
 
             {/* Rows */}
@@ -181,11 +191,14 @@ const TopupDetails = () => {
                   } else if (senderId === currentUserId && receiverId !== currentUserId) {
                     tagDetails = { icon: <ArrowUpRight size={12} />, text: "TEAM ACTIVATION", style: "bg-amber-500/10 text-amber-400 border-amber-500/20" };
                   } else if (receiverId === currentUserId && senderId !== currentUserId) {
-                    // 🔥 UPLINE WALA NAAM HATA DIYA, SPONSORED LIKH DIYA
                     tagDetails = { icon: <ArrowDownLeft size={12} />, text: "SPONSORED ACTIVATION", style: "bg-blue-500/10 text-blue-400 border-blue-500/20" };
                   } else {
                     tagDetails = { icon: <Zap size={12} />, text: "ACTIVATED", style: "bg-slate-800 text-slate-300 border-slate-700" };
                   }
+
+                  // 🔥 CLEAN DESCRIPTION: REMOVED "NODE" WORD COMPLETELY
+                  const rawDesc = t.description || "Package Activation";
+                  const cleanDesc = rawDesc.replace(/node/gi, "").replace(/\s+/g, " ").trim();
 
                   return (
                     <div
@@ -241,8 +254,8 @@ const TopupDetails = () => {
                         </span>
                       </div>
 
-                      <div className="text-slate-400 text-[11px] md:text-xs font-medium tracking-wide capitalize truncate group-hover:text-slate-200 transition-colors" title={t.description || "Top-up package"}>
-                        {t.description || "Top-up package"}
+                      <div className="text-slate-400 text-[11px] md:text-xs font-medium tracking-wide capitalize truncate group-hover:text-slate-200 transition-colors" title={cleanDesc}>
+                        {cleanDesc}
                       </div>
                     </div>
                   );
@@ -271,7 +284,7 @@ const TopupDetails = () => {
             </div>
 
             <span className="text-slate-400 text-[10px] md:text-xs font-black uppercase tracking-widest">
-              Showing <span className="text-amber-400">{indexOfFirstRow + 1}</span> to <span className="text-amber-400">{Math.min(indexOfLastRow, filteredTopups.length)}</span> of {filteredTopups.length}
+              Showing <span className="text-amber-400">{indexOfFirstRow + 1}</span> to <span className="text-amber-400">{Math.min(indexOfLastRow, filteredTopups.length)}</span> of {filteredTopups.length} Entries
             </span>
 
             <div className="flex items-center gap-2">
@@ -284,7 +297,7 @@ const TopupDetails = () => {
                     : "bg-[#131b2f] text-slate-300 hover:bg-amber-500/10 hover:text-amber-400 hover:border-amber-500/30 border border-slate-700"
                 }`}
               >
-                <ChevronLeft size={18} />
+                <ChevronLeft size={16} strokeWidth={2.5} />
               </button>
 
               <span className="bg-[#131b2f] border border-slate-700 text-slate-200 text-xs font-bold px-4 py-2.5 rounded-lg">
@@ -300,7 +313,7 @@ const TopupDetails = () => {
                     : "bg-[#131b2f] text-slate-300 hover:bg-amber-500/10 hover:text-amber-400 hover:border-amber-500/30 border border-slate-700"
                 }`}
               >
-                <ChevronRight size={18} />
+                <ChevronRight size={16} strokeWidth={2.5} />
               </button>
             </div>
           </div>
