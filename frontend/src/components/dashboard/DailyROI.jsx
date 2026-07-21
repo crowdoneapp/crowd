@@ -63,7 +63,7 @@ const generateLevelsData = (pkgAmount) => {
       totalEarning: totalReturnPerLevel,
       dailyEarning: dailyReturnPerLevel,
       days: ROI_DAYS,
-      reqDirectsActual: 1,            
+      reqDirectsActual: i, // 🔥 Logic cumulative cumulative direct check karega (1, 2, 3...)
       reqTeamActual: displayTeamUI,   
       unlockTeamReq: unlockTeamLogic, 
     });
@@ -103,12 +103,9 @@ export default function Plan() {
   const isPackageActive = purchasedPackages.includes(selectedPackage) || userHighestPackage >= selectedPackage;
 
   // ✅ Package Specific Calculations
-  // ALL CROWD: Har package ke hisaab se alag-alag aayega
   const currentPackageAllCrowd = globalData[String(selectedPackage)]?.allCrowd || 0;
-  
-  // YOUR CROWD & DIRECTS: Sirf tabhi dikhega jab user ka wo package active ho
-  const currentPackageYourCrowd = isPackageActive ? (user?.packageStats?.[String(selectedPackage)]?.globalTeamCount || 0) : 0;
-  const currentPackageDirects = isPackageActive ? (user?.packageStats?.[String(selectedPackage)]?.directCount || 0) : 0;
+  const currentPackageYourCrowd = isPackageActive ? (user?.packageStats?.[String(selectedPackage)]?.globalTeamCount || user?.globalTeamCount || 0) : 0;
+  const currentPackageDirects = isPackageActive ? (user?.packageStats?.[String(selectedPackage)]?.directCount || user?.directCount || 0) : 0;
 
   useEffect(() => {
     setCurrentPage(1); 
@@ -242,6 +239,7 @@ export default function Plan() {
               <table className="w-full text-center whitespace-nowrap">
                 <thead className="flyer-header text-[10px] sm:text-xs font-bold uppercase tracking-wider">
                   <tr>
+                    {/* 🔥 Header reverted to "Team" to match UI image perfectly */}
                     <th className="py-4 px-3 sm:py-5 sm:px-6"><div className="flex flex-col items-center gap-1"><Users size={18} className="text-blue-300" /><span>Team</span></div></th>
                     <th className="py-4 px-3 sm:py-5 sm:px-6"><div className="flex flex-col items-center gap-1"><BadgeDollarSign size={18} className="text-blue-300" /><span>Income (USDT)</span></div></th>
                     <th className="py-4 px-3 sm:py-5 sm:px-6"><div className="flex flex-col items-center gap-1"><UserPlus size={18} className="text-blue-300" /><span>Direct Required</span></div></th>
@@ -252,29 +250,40 @@ export default function Plan() {
                 </thead>
                 <tbody>
                   {currentLevels.map((lvl) => {
-                    const isLevelUnlocked = isPackageActive && 
-                                            currentPackageDirects >= lvl.reqDirectsActual && 
-                                            currentPackageYourCrowd >= lvl.unlockTeamReq;
+                    // Logic states check
+                    const isDirectMet = currentPackageDirects >= lvl.reqDirectsActual;
+                    const isTeamMet = currentPackageYourCrowd >= lvl.unlockTeamReq;
+                    const isLevelUnlocked = isPackageActive && isDirectMet && isTeamMet;
 
                     return (
                       <tr key={lvl.level} className="neo-row border-b border-slate-100 hover:bg-blue-50/50">
                         <td className="py-4 px-3 sm:py-5 sm:px-6 font-black text-slate-800 text-sm sm:text-base">{lvl.reqTeamActual.toLocaleString()}</td>
                         <td className="py-4 px-3 sm:py-5 sm:px-6 font-bold text-[#0b1c3c] text-sm sm:text-base">${lvl.totalEarning.toFixed(2)} USDT</td>
-                        <td className="py-4 px-3 sm:py-5 sm:px-6 font-bold text-slate-600 text-xs sm:text-sm">1 Direct</td>
+                        
+                        {/* 🔥 Applies Green color if user met the direct requirement for this level */}
+                        <td className={`py-4 px-3 sm:py-5 sm:px-6 font-bold text-xs sm:text-sm transition-colors duration-300 ${isDirectMet ? 'text-emerald-500' : 'text-slate-600'}`}>
+                           1 Direct
+                        </td>
+
                         <td className="py-4 px-3 sm:py-5 sm:px-6 font-black text-blue-600 text-sm sm:text-base">${lvl.dailyEarning.toFixed(2)} USDT</td>
                         <td className="py-4 px-3 sm:py-5 sm:px-6 font-bold text-slate-600 text-xs sm:text-sm">{lvl.days} Days</td>
                         <td className="py-4 px-3 sm:py-5 sm:px-6">
                           {!isPackageActive ? (
                              <button className="inline-flex items-center justify-center gap-1.5 text-rose-600 bg-rose-50 px-3 py-1.5 rounded-lg border border-rose-200 font-bold text-[9px] sm:text-[10px] uppercase tracking-wide whitespace-nowrap shadow-sm">
-                                <Lock size={12} /> Upgrade Tier
+                                <Lock size={12} /> UPGRADE TIER
                              </button>
-                          ) : !isLevelUnlocked ? (
-                             <button className="inline-flex items-center justify-center gap-1.5 text-slate-500 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 font-bold text-[9px] sm:text-[10px] uppercase tracking-wide whitespace-nowrap shadow-sm">
-                                <Lock size={12} /> Locked
+                          ) : isLevelUnlocked ? (
+                             <button className="inline-flex items-center justify-center gap-1.5 text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200 font-bold text-[9px] sm:text-[10px] uppercase tracking-wide whitespace-nowrap shadow-sm">
+                                <CheckCircle2 size={12} strokeWidth={2.5} /> UNLOCKED
+                             </button>
+                          ) : isDirectMet ? (
+                             // 🔥 UPDATE: Direct complete ho gaya hai par Team bachi hai toh "UNLOCKING..." dikhayega
+                             <button className="inline-flex items-center justify-center gap-1.5 text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200 font-bold text-[9px] sm:text-[10px] uppercase tracking-wide whitespace-nowrap shadow-sm">
+                                <Users size={12} /> UNLOCKING...
                              </button>
                           ) : (
-                             <button className="inline-flex items-center justify-center gap-1.5 text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200 font-bold text-[9px] sm:text-[10px] uppercase tracking-wide whitespace-nowrap shadow-sm">
-                                <CheckCircle2 size={12} strokeWidth={2.5} /> Unlocked
+                             <button className="inline-flex items-center justify-center gap-1.5 text-slate-500 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 font-bold text-[9px] sm:text-[10px] uppercase tracking-wide whitespace-nowrap shadow-sm">
+                                <Lock size={12} /> LOCKED
                              </button>
                           )}
                         </td>

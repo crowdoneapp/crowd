@@ -205,7 +205,7 @@ const TopUpModal = ({ onClose, onTopUpSuccess }) => {
                       <Wallet size={16} className="text-blue-400" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-white text-sm font-bold">Main Balance</p>
+                      <p className="text-white text-sm font-bold">Wallet Balance</p>
                       <p className="text-slate-500 text-[11px] font-medium">
                         Available: {walletBalance !== null ? `$${(Math.floor(Number(walletBalance) * 100) / 100).toFixed(2)}` : "..."}
                       </p>

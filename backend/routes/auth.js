@@ -631,22 +631,18 @@ router.post('/register', checkFeature('allowRegistrations'), async (req, res) =>
     const userIP = getClientIP(req);
 
     // 🛡️ ANTI-BOT CHECK 1: Honeypot field must be empty.
-    // Real users never see or fill this field (hidden via CSS on the frontend).
-    // Bots that auto-fill every input will fill it, exposing themselves.
     if (hp && hp.trim() !== '') {
       console.log(`[ANTI-BOT] Honeypot triggered from IP: ${userIP}`);
       return res.status(400).json({ message: 'Registration failed. Please try again.' });
     }
 
     // 🛡️ ANTI-BOT CHECK 2: Timing check.
-    // A human needs at least ~2.5s to fill the form. Bots submit near-instantly.
     if (formLoadedAt) {
       const elapsed = Date.now() - Number(formLoadedAt);
       if (isNaN(elapsed) || elapsed < 2500) {
         console.log(`[ANTI-BOT] Submission too fast (${elapsed}ms) from IP: ${userIP}`);
         return res.status(400).json({ message: 'Please take a moment to fill the form before submitting.' });
       }
-      // Optional: reject absurdly stale submissions too (e.g. > 1 hour = stale/replayed form)
       if (elapsed > 60 * 60 * 1000) {
         return res.status(400).json({ message: 'Form expired. Please refresh and try again.' });
       }
@@ -674,46 +670,44 @@ router.post('/register', checkFeature('allowRegistrations'), async (req, res) =>
         return res.status(400).json({ message: 'Registration failed: Only @gmail.com emails are accepted.' });
     }
 
-    // 🔥 4. SPONSOR CHECK LOGIC (Modified for FIRST ID)
-    let actualSponsorId = null; // Default null rakha hai (First ID ke liye)
+    // 🔥 4. SPONSOR CHECK LOGIC (MANDATORY SPONSOR)
+    // 👉 Bina Sponsor ID ke registration allow NAHI hoga
+    if (!sponsorId || sponsorId.toString().trim() === '') {
+        return res.status(400).json({ message: 'Sponsor ID is strictly required for registration.' });
+    }
+
+    let actualSponsorId = parseInt(sponsorId);
     let isFakeSponsor = false;
 
-    // Check agar sponsorId di gayi hai tabhi validation chalega
-    if (sponsorId) {
-        actualSponsorId = parseInt(sponsorId);
-        
-        if (isNaN(actualSponsorId)) {
-            return res.status(400).json({ message: 'Invalid Sponsor ID format. It must be a number.' });
+    if (isNaN(actualSponsorId)) {
+        return res.status(400).json({ message: 'Invalid Sponsor ID format. It must be a number.' });
+    }
+
+    let sponsorExists = await User.findOne({ userId: actualSponsorId });
+
+    if (!sponsorExists) {
+         sponsorExists = await FakeUser.findOne({ userId: actualSponsorId });
+        if (sponsorExists) {
+            isFakeSponsor = true; 
         }
+    }
 
-        let sponsorExists = await User.findOne({ userId: actualSponsorId });
+    if (!sponsorExists) return res.status(400).json({ message: 'Invalid Sponsor ID.' });
 
-        if (!sponsorExists) {
-             sponsorExists = await FakeUser.findOne({ userId: actualSponsorId });
-            if (sponsorExists) {
-                isFakeSponsor = true; 
-            }
+    if (!isFakeSponsor && sponsorExists.isSponsorDeactivated) {
+        return res.status(403).json({ message: 'Policy violation: The provided sponsor link is invalid or deactivated.' });    
+    }
+
+    // ✨ Fake Sponsor Logic
+    if (isFakeSponsor) {
+        const SYSTEM_TOP_ID = 100000; 
+        const topUser = await User.findOne({ userId: SYSTEM_TOP_ID }); 
+        if (topUser) {
+            actualSponsorId = topUser.userId; 
+            console.log(`[SYSTEM ATTACH] Fake Sponsor (${sponsorId}) used. Redirecting to Top Earning ID: ${topUser.userId}`);
+        } else {
+            console.log(`⚠️ WARNING: Top ID ${SYSTEM_TOP_ID} not found in database!`);
         }
-
-        if (!sponsorExists) return res.status(400).json({ message: 'Invalid Sponsor ID.' });
-
-        if (!isFakeSponsor && sponsorExists.isSponsorDeactivated) {
-            return res.status(403).json({ message: 'Policy violation: The provided sponsor link is invalid or deactivated.' });    
-        }
-
-        // ✨ Fake Sponsor Logic
-        if (isFakeSponsor) {
-            const SYSTEM_TOP_ID = 100000; 
-            const topUser = await User.findOne({ userId: SYSTEM_TOP_ID }); 
-            if (topUser) {
-                actualSponsorId = topUser.userId; 
-                console.log(`[SYSTEM ATTACH] Fake Sponsor (${sponsorId}) used. Redirecting to Top Earning ID: ${topUser.userId}`);
-            } else {
-                console.log(`⚠️ WARNING: Top ID ${SYSTEM_TOP_ID} not found in database!`);
-            }
-        }
-    } else {
-        console.log("No Sponsor ID provided. Registering as First/Root ID.");
     }
 
     // 🛡️ SMART REGISTRATION LIMIT
@@ -754,7 +748,7 @@ router.post('/register', checkFeature('allowRegistrations'), async (req, res) =>
       name, mobile, email, country,
       password: generatedPassword, 
       transactionPassword: generatedPassword, // Same password dono ke liye
-      sponsorId: actualSponsorId, // Agar First ID hai toh ye null save hoga
+      sponsorId: actualSponsorId, // Mandatory Sponsor ID saved here
       role: 'user',
       ipAddress: userIP,
       deviceId: deviceId || null 
