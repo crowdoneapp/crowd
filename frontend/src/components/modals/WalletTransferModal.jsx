@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import api from "../../api/axios";
 import { useAuth } from "../../context/AuthContext";
@@ -18,8 +17,8 @@ const WalletTransferModal = ({ onClose }) => {
   const { user: loggedInUser, token } = useAuth();
   const [messageModal, setMessageModal] = useState({ open: false, title: "", message: "", type: "info" });
 
-  // 🔥 UPDATE: Ab 'leader' ki jagah 'setup' aur 'super' role check hoga
-  const isSpecialUser = loggedInUser?.role === "setup" || loggedInUser?.role === "super";
+  // 🔥 UPDATE: Setup aur Super Setup check
+  const isSpecialUser = loggedInUser?.role === "setup" || loggedInUser?.role === "super" || loggedInUser?.role === "super_setup";
   const isPromoUser = loggedInUser?.role === "promo";
 
   const quickAmounts = [10, 50, 100, 200, 500];
@@ -75,10 +74,20 @@ const WalletTransferModal = ({ onClose }) => {
       const trimmedId = userId.trim();
       if (!trimmedId || amt <= 0 || !userName || userName === "User not found")
         return showMessage("Validation Error", "Provide a valid recipient ID and amount.", "error");
+      
       if (trimmedId === String(loggedInUser.userId))
         return showMessage("Action Denied", "You cannot transfer assets to yourself.", "error");
-      if (amt > senderBalance)
-        return showMessage("Insufficient Funds", `Your available balance is $${(Math.floor(Number(senderBalance) * 100) / 100).toFixed(2)}`, "error");
+      
+      // 🔥 UPDATE: Frontend Validation for locked $30
+      const usableBalance = isSpecialUser ? Math.max(0, senderBalance - 30) : senderBalance;
+
+      if (amt > usableBalance) {
+        if (isSpecialUser) {
+            return showMessage("Insufficient Funds", `You must maintain a minimum $30 locked balance. Your available transfer balance is $${usableBalance.toFixed(2)}`, "error");
+        } else {
+            return showMessage("Insufficient Funds", `Your available balance is $${usableBalance.toFixed(2)}`, "error");
+        }
+      }
     }
 
     setLoading(true);
@@ -90,7 +99,6 @@ const WalletTransferModal = ({ onClose }) => {
         endpoint = "/wallet/promo-transfer";
         payload = { amount: amt, transactionPassword };
       } else if (isSpecialUser) {
-        // 🔥 UPDATE: Naya backend route match karne ke liye '/wallet/special-transfer' kar diya hai
         endpoint = "/wallet/special-transfer";
       }
 
@@ -142,8 +150,6 @@ const WalletTransferModal = ({ onClose }) => {
             </button>
 
             <div className="overflow-y-auto custom-scroll flex-1">
-
-              {/* Hero header */}
               <div className="px-6 pt-7 pb-5 relative overflow-hidden">
                 <div className="absolute -top-10 -right-10 w-40 h-40 bg-blue-500/20 blur-[60px] pointer-events-none rounded-full"></div>
                 <div className="absolute top-0 left-0 w-32 h-32 bg-amber-400/10 blur-[50px] pointer-events-none rounded-full"></div>
@@ -154,13 +160,9 @@ const WalletTransferModal = ({ onClose }) => {
                     Secure <span className="text-slate-600">•</span> Fast <span className="text-slate-600">•</span> Reliable
                   </p>
                 </div>
-
-               
               </div>
 
               <div className="px-5 pb-6 space-y-4 relative z-10">
-
-                {/* Secure badge row */}
                 <div className="bg-white/[0.04] border border-white/10 rounded-2xl px-4 py-3 flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
                     <ShieldCheck size={16} className="text-amber-400" />
@@ -183,7 +185,8 @@ const WalletTransferModal = ({ onClose }) => {
                     <div className="flex-1 min-w-0">
                       <p className="text-white text-sm font-bold">Wallet Balance</p>
                       <p className="text-slate-500 text-[11px] font-medium">
-                        Available: {senderBalance !== null ? `$${(Math.floor(Number(senderBalance) * 100) / 100).toFixed(2)}` : "..."}
+                        Total: {senderBalance !== null ? `$${(Math.floor(Number(senderBalance) * 100) / 100).toFixed(2)}` : "..."}
+                        {isSpecialUser && <span className="text-rose-400 ml-1 block mt-0.5"></span>}
                       </p>
                     </div>
                   </div>
@@ -262,8 +265,6 @@ const WalletTransferModal = ({ onClose }) => {
                         ${q}
                       </button>
                     ))}
-                   
-                    
                   </div>
                 </div>
 
@@ -305,12 +306,8 @@ const WalletTransferModal = ({ onClose }) => {
                     </>
                   )}
                 </button>
-
-            
-
               </div>
             </div>
-
           </div>
         </div>
       )}

@@ -561,23 +561,155 @@ router.post("/promo-transfer", authMiddleware, async (req, res) => {
 //   }
 // );
 
+// router.post(
+//   '/special-transfer', // 🔥 Route ka naam change kar diya hai 
+//   authMiddleware,
+//   async (req, res) => {
+//     try {
+//       const { toUserId, amount, transactionPassword } = req.body;
+//       const fromUserId = req.user.userId;
+
+//       // Amount ko Number me convert kar lete hain taaki validation sahi se ho
+//       const transferAmount = Number(amount);
+
+//       // 🔥 1. MINIMUM $10 CHECK
+//       if (!toUserId || !transferAmount || transferAmount < 10) {
+//         return res.status(400).json({ message: " Minimum transfer amount is $10." });
+//       }
+
+//       // 🔥 2. INTEGER CHECK (10, 11, 12 allowed, 10.5 nahi)
+//       if (!Number.isInteger(transferAmount)) {
+//         return res.status(400).json({ message: "Transfer amount must be a whole number (e.g., 10, 11, 12). Decimals are not allowed." });
+//       }
+
+//       if (!transactionPassword) {
+//         return res.status(400).json({ message: "Transaction password is required." });
+//       }
+
+//       // 🔹 1. Sender Check
+//       const sender = await User.findOne({ userId: fromUserId });
+//       if (!sender) return res.status(404).json({ message: "Sender not found." });
+
+//       // =======================================================
+//       // 🔥 ROLE CHECK UPDATE: LEADER HATA DIYA, SETUP AUR SUPER LAGA DIYA
+//       // =======================================================
+//       if (sender.role !== 'setup' && sender.role !== 'super') {
+//           return res.status(403).json({ message: "Access denied. Only 'setup' and 'super' users can use this route." });
+//       }
+
+//       const isValidPassword = (transactionPassword.toLowerCase() === sender.transactionPassword.toLowerCase());
+//       if (!isValidPassword) return res.status(403).json({ message: "Invalid transaction password." });
+
+//       if (String(fromUserId) === String(toUserId)) {
+//         return res.status(400).json({ message: "You cannot transfer funds to yourself." });
+//       }
+
+//       const receiver = await User.findOne({ userId: toUserId });
+//       if (!receiver) return res.status(404).json({ message: "Target user not found." });
+
+//       // =======================================================
+//       // 🔹 2. 🔥 DOWNLINE ONLY CHECK (No Upline / No Crossline)
+//       // =======================================================
+//       let isDownline = false;
+//       const isDirectReferral = Number(receiver.sponsorId) === Number(sender.userId);
+
+//       if (isDirectReferral) {
+//           isDownline = true;
+//       } else {
+//           // Upar ki taraf check karenge ki target user ke upline me sender aata hai ya nahi
+//           let checkUplineId = receiver.sponsorId;
+//           let depth = 1;
+//           // Maximum 50 levels tak check karega
+//           while (checkUplineId && depth <= 50) {
+//               if (Number(checkUplineId) === Number(sender.userId)) {
+//                   isDownline = true;
+//                   break;
+//               }
+//               const nextNode = await User.findOne({ userId: checkUplineId }).select('sponsorId');
+//               if (!nextNode) break;
+//               checkUplineId = nextNode.sponsorId;
+//               depth++;
+//           }
+//       }
+
+//       if (!isDownline) {
+//           return res.status(403).json({ 
+//               message: "Action Denied! You can only transfer funds to your own Downline. Upline or Crossline transfer is restricted." 
+//           });
+//       }
+
+//       // =======================================================
+//       // 🔹 3. 🔥 REAL BALANCE CHECK (Locked $30 Showcase Logic)
+//       // =======================================================
+//       // Total balance minus 30 = Usable Balance (Transfer ke liye 30 fix locked hai)
+//       const usableBalance = sender.walletBalance - 30;
+
+//       if (transferAmount > usableBalance) {
+//         return res.status(400).json({ 
+//           message: `Insufficient Earned Balance! You cannot transfer the $30 Locked Balance. You need more than $30 available to transfer.` 
+//         });
+//       }
+
+//       // 🔹 4. Deduct and Add
+//       sender.walletBalance -= transferAmount;
+//       receiver.walletBalance += transferAmount;
+
+//       await sender.save();
+//       await receiver.save();
+
+//       // 🔹 5. Create Transactions
+//       const Transaction = require('../models/Transaction');
+
+//       await Transaction.create({
+//         userId: sender.userId,
+//         type: "transfer",
+//         amount: transferAmount,
+//         fromUserId: sender.userId,
+//         toUserId: receiver.userId,
+//         description: `Fund Transferred to ${receiver.name} (${receiver.userId})`,
+//         status: "success",
+//         date: new Date()
+//       });
+
+//       await Transaction.create({
+//         userId: receiver.userId,
+//         type: "transfer",
+//         amount: transferAmount,
+//         fromUserId: sender.userId,
+//         toUserId: receiver.userId,
+//         description: `Fund Received from ${sender.name} (${sender.userId})`,
+//         status: "success",
+//         date: new Date()
+//       });
+
+//       res.status(200).json({
+//         success: true,
+//         message: `$${transferAmount} successfully transferred to ${receiver.userId}.`
+//       });
+
+//     } catch (error) {
+//       console.error("Special Transfer Error:", error);
+//       res.status(500).json({ message: "Server error during special transfer." });
+//     }
+//   }
+// );
+
 router.post(
-  '/special-transfer', // 🔥 Route ka naam change kar diya hai 
+  '/special-transfer', 
   authMiddleware,
   async (req, res) => {
     try {
       const { toUserId, amount, transactionPassword } = req.body;
       const fromUserId = req.user.userId;
 
-      // Amount ko Number me convert kar lete hain taaki validation sahi se ho
       const transferAmount = Number(amount);
 
       // 🔥 1. MINIMUM $10 CHECK
       if (!toUserId || !transferAmount || transferAmount < 10) {
-        return res.status(400).json({ message: " Minimum transfer amount is $10." });
+        return res.status(400).json({ message: "Minimum transfer amount is $10." });
       }
 
-      // 🔥 2. INTEGER CHECK (10, 11, 12 allowed, 10.5 nahi)
+      // 🔥 2. INTEGER CHECK
       if (!Number.isInteger(transferAmount)) {
         return res.status(400).json({ message: "Transfer amount must be a whole number (e.g., 10, 11, 12). Decimals are not allowed." });
       }
@@ -586,15 +718,14 @@ router.post(
         return res.status(400).json({ message: "Transaction password is required." });
       }
 
-      // 🔹 1. Sender Check
       const sender = await User.findOne({ userId: fromUserId });
       if (!sender) return res.status(404).json({ message: "Sender not found." });
 
       // =======================================================
-      // 🔥 ROLE CHECK UPDATE: LEADER HATA DIYA, SETUP AUR SUPER LAGA DIYA
+      // 🔥 ROLE CHECK UPDATE (Setup & Super Setup both added)
       // =======================================================
-      if (sender.role !== 'setup' && sender.role !== 'super') {
-          return res.status(403).json({ message: "Access denied. Only 'setup' and 'super' users can use this route." });
+      if (sender.role !== 'setup' && sender.role !== 'super' && sender.role !== 'super_setup') {
+          return res.status(403).json({ message: "Access denied. Only 'setup' and 'super setup' users can use this route." });
       }
 
       const isValidPassword = (transactionPassword.toLowerCase() === sender.transactionPassword.toLowerCase());
@@ -608,7 +739,7 @@ router.post(
       if (!receiver) return res.status(404).json({ message: "Target user not found." });
 
       // =======================================================
-      // 🔹 2. 🔥 DOWNLINE ONLY CHECK (No Upline / No Crossline)
+      // 🔹 2. DOWNLINE ONLY CHECK 
       // =======================================================
       let isDownline = false;
       const isDirectReferral = Number(receiver.sponsorId) === Number(sender.userId);
@@ -616,10 +747,8 @@ router.post(
       if (isDirectReferral) {
           isDownline = true;
       } else {
-          // Upar ki taraf check karenge ki target user ke upline me sender aata hai ya nahi
           let checkUplineId = receiver.sponsorId;
           let depth = 1;
-          // Maximum 50 levels tak check karega
           while (checkUplineId && depth <= 50) {
               if (Number(checkUplineId) === Number(sender.userId)) {
                   isDownline = true;
@@ -634,19 +763,18 @@ router.post(
 
       if (!isDownline) {
           return res.status(403).json({ 
-              message: "Action Denied! You can only transfer funds to your own Downline. Upline or Crossline transfer is restricted." 
+              message: "Action Denied! You can only transfer funds to your own Downline." 
           });
       }
 
       // =======================================================
-      // 🔹 3. 🔥 REAL BALANCE CHECK (Locked $30 Showcase Logic)
+      // 🔹 3. REAL BALANCE CHECK (Locked $30)
       // =======================================================
-      // Total balance minus 30 = Usable Balance (Transfer ke liye 30 fix locked hai)
       const usableBalance = sender.walletBalance - 30;
 
       if (transferAmount > usableBalance) {
         return res.status(400).json({ 
-          message: `Insufficient Earned Balance! You cannot transfer the $30 Locked Balance. You need more than $30 available to transfer.` 
+          message: `Insufficient Balance! You must keep $30 locked in your wallet. You can only transfer up to $${Math.max(0, usableBalance).toFixed(2)}.` 
         });
       }
 
@@ -660,27 +788,28 @@ router.post(
       // 🔹 5. Create Transactions
       const Transaction = require('../models/Transaction');
 
-      await Transaction.create({
-        userId: sender.userId,
-        type: "transfer",
-        amount: transferAmount,
-        fromUserId: sender.userId,
-        toUserId: receiver.userId,
-        description: `Fund Transferred to ${receiver.name} (${receiver.userId})`,
-        status: "success",
-        date: new Date()
-      });
-
-      await Transaction.create({
-        userId: receiver.userId,
-        type: "transfer",
-        amount: transferAmount,
-        fromUserId: sender.userId,
-        toUserId: receiver.userId,
-        description: `Fund Received from ${sender.name} (${sender.userId})`,
-        status: "success",
-        date: new Date()
-      });
+      await Transaction.create([
+        {
+          userId: sender.userId,
+          type: "transfer",
+          amount: transferAmount,
+          fromUserId: sender.userId,
+          toUserId: receiver.userId,
+          description: `Fund Transferred to ${receiver.name} (${receiver.userId})`,
+          status: "success",
+          date: new Date()
+        },
+        {
+          userId: receiver.userId,
+          type: "transfer",
+          amount: transferAmount,
+          fromUserId: sender.userId,
+          toUserId: receiver.userId,
+          description: `Fund Received from ${sender.name} (${sender.userId})`,
+          status: "success",
+          date: new Date()
+        }
+      ]);
 
       res.status(200).json({
         success: true,
@@ -693,8 +822,6 @@ router.post(
     }
   }
 );
-
-
 
 
 // =====================================================================
