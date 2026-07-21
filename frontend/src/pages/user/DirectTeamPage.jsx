@@ -219,72 +219,77 @@ const DirectTeamPage = () => {
                   </td>
                 </tr>
               ) : (
-                currentItems.map((member, index) => (
-                  <tr
-                    key={member._id || index}
-                    className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors bg-white"
-                  >
-                    <td className="p-4 font-bold text-slate-500 text-center">
-                      {indexOfFirst + index + 1}
-                    </td>
-                    <td className="p-4 text-slate-600 font-mono text-xs text-right">
-                      {member.createdAt ? new Date(member.createdAt).toLocaleDateString("en-GB") : "-"}
-                    </td>
-                    <td className="p-4 font-black">
-                      {member.userId}
-                    </td>
-                    <td className="p-4 font-bold text-slate-600">
-                      {member.name || "-"}
-                    </td>
-                    <td className="p-4 text-center">
-                      <span className="bg-slate-50 border border-slate-200 text-slate-700 py-1 px-2.5 rounded-md text-[10px] font-black tracking-widest shadow-sm">
-                        {member.role === 'leader' && user?.role !== 'superleader' ? 0 : (member.totalDirects || member.directCount || 0)}
-                      </span>
-                    </td>
-                    <td className="p-4 text-center">
-                      <span className="bg-indigo-50 border border-indigo-100 text-indigo-700 py-1 px-2.5 rounded-md text-[10px] font-black tracking-widest shadow-sm">
-                        {member.role === 'leader' && user?.role !== 'superleader' ? 0 : (member.totalTeam || member.teamCount || 0)}
-                      </span>
-                    </td>
-                    <td className="p-4 font-black text-center">
-                       {Number(member.topUpAmount) > 0 ? (
-                          <span className="text-emerald-600">${member.topUpAmount}</span>
-                       ) : (
-                          <span className="text-slate-400">$0</span>
-                       )}
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-3">
-                          <span className="text-slate-600 font-bold">{member.mobile || "-"}</span>
-                          {member.mobile && (
-                              <a 
-                                  href={`tel:+91${member.mobile}`} 
-                                  title="Call User"
-                                  className="p-1.5 rounded-lg bg-white border border-slate-200 hover:bg-blue-50 hover:border-blue-200 shadow-sm transition-all active:scale-95 flex items-center justify-center"
-                              >
-                                  <Phone size={14} className="text-blue-600 fill-blue-600" />
-                              </a>
-                          )}
-                      </div>
-                    </td>
-                    {user?.role === 'super_setup' && (
-                      <td className="p-4 text-center">
-                        {member.role === 'setup' ? (
-                          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-600 text-[10px] font-black uppercase tracking-widest shadow-sm">
-                            <CheckCircle2 size={14} strokeWidth={2.5} /> Promoted
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => handlePromote(member.userId, member.name)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-[#0b1c3c] hover:bg-[#0b1c3c] hover:text-white hover:border-[#0b1c3c] text-[10px] font-black uppercase tracking-widest shadow-sm transition-all active:scale-95"
-                          >
-                            <ShieldPlus size={14} /> Make Setup
-                          </button>
-                        )}
+                currentItems.map((member, index) => {
+                  // 🔥 FIX: Check both topUpAmount and highestPackage for older users
+                  const activeAmount = Number(member.topUpAmount) || Number(member.highestPackage) || 0;
+
+                  return (
+                    <tr
+                      key={member._id || index}
+                      className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors bg-white"
+                    >
+                      <td className="p-4 font-bold text-slate-500 text-center">
+                        {indexOfFirst + index + 1}
                       </td>
-                    )}
-                  </tr>
-                ))
+                      <td className="p-4 text-slate-600 font-mono text-xs text-right">
+                        {member.createdAt ? new Date(member.createdAt).toLocaleDateString("en-GB") : "-"}
+                      </td>
+                      <td className="p-4 font-black">
+                        {member.userId}
+                      </td>
+                      <td className="p-4 font-bold text-slate-600">
+                        {member.name || "-"}
+                      </td>
+                      <td className="p-4 text-center">
+                        <span className="bg-slate-50 border border-slate-200 text-slate-700 py-1 px-2.5 rounded-md text-[10px] font-black tracking-widest shadow-sm">
+                          {member.role === 'leader' && user?.role !== 'superleader' ? 0 : (member.totalDirects || member.directCount || 0)}
+                        </span>
+                      </td>
+                      <td className="p-4 text-center">
+                        <span className="bg-indigo-50 border border-indigo-100 text-indigo-700 py-1 px-2.5 rounded-md text-[10px] font-black tracking-widest shadow-sm">
+                          {member.role === 'leader' && user?.role !== 'superleader' ? 0 : (member.totalTeam || member.teamCount || 0)}
+                        </span>
+                      </td>
+                      <td className="p-4 font-black text-center">
+                         {activeAmount > 0 ? (
+                            <span className="text-emerald-600">${activeAmount}</span>
+                         ) : (
+                            <span className="text-slate-400">$0</span>
+                         )}
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-3">
+                            <span className="text-slate-600 font-bold">{member.mobile || "-"}</span>
+                            {member.mobile && (
+                                <a 
+                                    href={`tel:+91${member.mobile}`} 
+                                    title="Call User"
+                                    className="p-1.5 rounded-lg bg-white border border-slate-200 hover:bg-blue-50 hover:border-blue-200 shadow-sm transition-all active:scale-95 flex items-center justify-center"
+                                >
+                                    <Phone size={14} className="text-blue-600 fill-blue-600" />
+                                </a>
+                            )}
+                        </div>
+                      </td>
+                      {user?.role === 'super_setup' && (
+                        <td className="p-4 text-center">
+                          {member.role === 'setup' ? (
+                            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-600 text-[10px] font-black uppercase tracking-widest shadow-sm">
+                              <CheckCircle2 size={14} strokeWidth={2.5} /> Promoted
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => handlePromote(member.userId, member.name)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-[#0b1c3c] hover:bg-[#0b1c3c] hover:text-white hover:border-[#0b1c3c] text-[10px] font-black uppercase tracking-widest shadow-sm transition-all active:scale-95"
+                            >
+                              <ShieldPlus size={14} /> Make Setup
+                            </button>
+                          )}
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

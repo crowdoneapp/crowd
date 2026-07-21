@@ -172,6 +172,8 @@ function Register() {
   };
 
   const countryOptions = [
+        { value: 'Malaysia', label: 'Malaysia (+60)' },
+    { value: 'India', label: 'India (+91)' },
     { value: 'Afghanistan', label: 'Afghanistan (+93)' },
     { value: 'Albania', label: 'Albania (+355)' },
     { value: 'Algeria', label: 'Algeria (+213)' },
@@ -235,7 +237,6 @@ function Register() {
     { value: 'Honduras', label: 'Honduras (+504)' },
     { value: 'Hungary', label: 'Hungary (+36)' },
     { value: 'Iceland', label: 'Iceland (+354)' },
-    { value: 'India', label: 'India (+91)' },
     { value: 'Indonesia', label: 'Indonesia (+62)' },
     { value: 'Iran', label: 'Iran (+98)' },
     { value: 'Iraq', label: 'Iraq (+964)' },
@@ -260,7 +261,6 @@ function Register() {
     { value: 'Luxembourg', label: 'Luxembourg (+352)' },
     { value: 'Madagascar', label: 'Madagascar (+261)' },
     { value: 'Malawi', label: 'Malawi (+265)' },
-    { value: 'Malaysia', label: 'Malaysia (+60)' },
     { value: 'Maldives', label: 'Maldives (+960)' },
     { value: 'Mali', label: 'Mali (+223)' },
     { value: 'Malta', label: 'Malta (+356)' },
