@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import api from '../../api/axios'; // Apna API path check kar lena
+import api from '../../api/axios';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Lock, ArrowRight, ShieldCheck, Globe, Eye, EyeOff } from 'lucide-react'; // Eye and EyeOff added
+import { Lock, ArrowRight, ShieldAlert, Hexagon, Home, Eye, EyeOff } from 'lucide-react';
 
 const ResetPassword = () => {
-  const { token } = useParams(); // URL se token nikalne ke liye
+  const { token } = useParams();
   const navigate = useNavigate();
   
   const [newPassword, setNewPassword] = useState('');
@@ -13,7 +13,6 @@ const ResetPassword = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // States for toggling password visibility
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -30,14 +29,12 @@ const ResetPassword = () => {
     setMessage('');
 
     try {
-      // Backend ko request bhej rahe hain
       const res = await api.post(`/auth/reset-password/${token}`, {
         newPassword,
       });
       
       setMessage(res.data.message || "Password reset successfully!");
       
-      // 2 second baad Login page par bhej denge
       setTimeout(() => {
         navigate('/login');
       }, 2000);
@@ -50,138 +47,133 @@ const ResetPassword = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 pt-24 md:pt-32 relative overflow-hidden font-sans selection:bg-emerald-500/30">
+    <div className="min-h-screen bg-[#0a0e1a] flex flex-col items-center justify-center px-4 py-8 sm:py-10 relative overflow-hidden font-sans selection:bg-cyan-400/30 selection:text-white">
       
-      {/* --- GLOBAL STYLES & ANIMATIONS (Matching other pages) --- */}
-      <style>{`
-        @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-15px); } }
-        @keyframes pulseGlow { 0%, 100% { opacity: 0.4; transform: scale(1); } 50% { opacity: 0.7; transform: scale(1.1); } }
-        .animate-float { animation: float 6s ease-in-out infinite; }
-        .animate-pulse-glow { animation: pulseGlow 5s ease-in-out infinite; }
-        .glass-panel { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.5); }
-      `}</style>
+      {/* ===== AURORA MESH BACKGROUND ===== */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-[-15%] left-[10%] w-[50vw] h-[50vw] max-w-[600px] max-h-[600px] bg-violet-600/25 blur-[120px] rounded-full"></div>
+        <div className="absolute bottom-[-20%] right-[5%] w-[45vw] h-[45vw] max-w-[550px] max-h-[550px] bg-cyan-500/20 blur-[120px] rounded-full"></div>
+        <div className="absolute top-[30%] right-[20%] w-[30vw] h-[30vw] max-w-[350px] max-h-[350px] bg-fuchsia-500/10 blur-[100px] rounded-full"></div>
+      </div>
+      {/* Dot-grid texture */}
+      <div
+        className="absolute inset-0 pointer-events-none opacity-[0.15]"
+        style={{ backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)', backgroundSize: '28px 28px' }}
+      ></div>
 
-      {/* Abstract Glowing Orbs */}
-      <div className="fixed top-[-10%] left-[-5%] w-[40vw] h-[40vw] bg-emerald-400/20 blur-[100px] rounded-full pointer-events-none animate-pulse-glow"></div>
-      <div className="fixed bottom-[-10%] right-[-5%] w-[40vw] h-[40vw] bg-green-500/15 blur-[100px] rounded-full pointer-events-none animate-pulse-glow" style={{ animationDelay: '2s' }}></div>
+      {/* ===== TOP BAR: brand + nav links ===== */}
+      <div className="relative z-10 w-full max-w-md flex items-center justify-between mb-6 sm:mb-8">
+        <Link to="/" className="flex items-center gap-2 no-underline hover:opacity-80 transition-opacity">
+          <div className="bg-gradient-to-br from-cyan-400 to-violet-500 p-1.5 rounded-lg shadow-[0_4px_15px_rgba(34,211,238,0.35)]">
+            <Hexagon size={16} color="#0a0e1a" fill="#0a0e1a" />
+          </div>
+          <span className="text-lg font-black text-white tracking-tight">
+            CROWD<span className="text-cyan-400">ONE</span>
+          </span>
+        </Link>
+        <Link
+          to="/login"
+          className="flex items-center gap-1.5 text-xs font-bold text-slate-300 hover:text-white bg-white/5 border border-white/10 hover:bg-white/10 px-3 py-2 rounded-lg transition-colors"
+        >
+          <Home size={14} /> Back to Login
+        </Link>
+      </div>
 
-      {/* Navbar */}
-      <nav className="fixed top-0 left-0 w-full z-50 glass-panel shadow-sm px-4 md:px-8 py-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-3 no-underline group">
-            <span className="text-xl md:text-2xl font-black text-slate-900 tracking-wider">
-              CRYPTO<span className="text-emerald-500">COMMUNITY</span>
-            </span>
-          </Link>
-          <Link to="/login" className="bg-emerald-50 text-emerald-600 font-bold py-2.5 px-6 rounded-xl hover:bg-emerald-500 hover:text-white transition-all shadow-sm flex items-center gap-2 border border-emerald-100 hover:border-emerald-500">
-            <Lock size={16} /> <span className="hidden sm:inline">Secure Login</span><span className="sm:hidden">Login</span>
-          </Link>
-        </div>
-      </nav>
-
-      {/* --- MAIN CONTAINER --- */}
-      <div className="w-full max-w-md bg-white border border-slate-100 rounded-[2.5rem] shadow-[0_20px_50px_-12px_rgba(0,0,0,0.1)] p-6 md:p-10 relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-700 mt-4">
+      {/* ===== CENTERED GLASS CARD ===== */}
+      <div className="relative z-10 w-full max-w-md animate-in fade-in zoom-in-95 duration-500">
         
-        {/* Header Section */}
-        <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-emerald-50 mb-6 animate-float border border-emerald-100 shadow-[0_10px_25px_rgba(16,185,129,0.15)] text-emerald-500 relative">
-                <div className="absolute inset-0 bg-emerald-400/20 rounded-full animate-ping"></div>
-                <ShieldCheck size={40} strokeWidth={2} className="relative z-10" />
+        {/* Pulsing ring above the card */}
+        <div className="relative flex justify-center mb-[-28px] z-20">
+          <div className="relative">
+            <span className="absolute inset-0 rounded-2xl bg-cyan-400/40 blur-md animate-pulse"></span>
+            <div className="relative bg-gradient-to-br from-cyan-400 to-violet-500 w-14 h-14 rounded-2xl flex items-center justify-center shadow-[0_8px_30px_-6px_rgba(34,211,238,0.5)] border border-white/20">
+              <Hexagon size={26} color="#0a0e1a" fill="#0a0e1a" />
             </div>
-            <h2 className="text-3xl font-black text-slate-900 tracking-tight mb-2">Set New Password</h2>
-            <p className="text-slate-500 font-medium text-sm">Create a strong password for your account</p>
+          </div>
         </div>
 
-        {/* Messages */}
-        {message && (
-          <div className="mb-6 bg-emerald-50 border border-emerald-200 text-emerald-600 px-4 py-3 rounded-xl text-sm text-center font-bold animate-in zoom-in duration-300 shadow-sm">
-            ✅ {message}
+        <div className="bg-white/[0.06] backdrop-blur-2xl border border-white/10 rounded-[28px] pt-12 pb-8 px-6 sm:px-9 shadow-[0_25px_70px_-15px_rgba(0,0,0,0.6)]">
+          
+          <div className="mb-7 text-center">
+            <h2 className="text-2xl sm:text-3xl font-black text-white mb-1.5 tracking-tight">Set New Password</h2>
+            <p className="text-slate-400 text-sm font-medium">Create a strong password for your account.</p>
           </div>
-        )}
-        {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl text-sm text-center font-bold animate-in zoom-in duration-300 shadow-sm">
-            ⚠️ {error}
-          </div>
-        )}
 
-        {/* Form */}
-        <form onSubmit={handleResetPassword} className="space-y-5">
+          {/* Messages */}
+          {message && (
+            <div className="mb-5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs p-3.5 rounded-xl font-bold flex items-center gap-2 animate-in slide-in-from-top-2">
+              ✅ {message}
+            </div>
+          )}
+          {error && (
+            <div className="mb-5 bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs p-3.5 rounded-xl font-bold flex items-center gap-2 animate-in slide-in-from-top-2">
+              <ShieldAlert size={16} className="flex-shrink-0" /> {error}
+            </div>
+          )}
+
+          <form onSubmit={handleResetPassword} className="space-y-4">
             
             {/* New Password Input */}
-            <div className="relative group">
-                <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest ml-1 mb-2">New Password</label>
-                <div className="relative flex items-center">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                        <Lock className="h-5 w-5 text-slate-400 group-focus-within:text-emerald-500 transition-colors" />
-                    </div>
-                    <input
-                        type={showNewPassword ? "text" : "password"}
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 pl-12 pr-12 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-50 outline-none transition-all placeholder-slate-400 font-mono"
-                        placeholder=" "
-                        required
-                    />
-                    <button 
-                        type="button"
-                        onClick={() => setShowNewPassword(!showNewPassword)}
-                        className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-emerald-500 transition-colors focus:outline-none"
-                    >
-                        {showNewPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                    </button>
-                </div>
+            <div className="relative group z-20">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <Lock className="h-5 w-5 text-slate-500 group-focus-within:text-cyan-400 transition-colors" />
+              </div>
+              <input
+                type={showNewPassword ? 'text' : 'password'}
+                placeholder="New Password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 pl-12 pr-12 text-white font-bold placeholder-slate-500 focus:border-cyan-400/60 focus:ring-4 focus:ring-cyan-400/10 outline-none transition-all font-mono"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowNewPassword(!showNewPassword)}
+                className="absolute right-3 top-3.5 text-slate-500 hover:text-cyan-400 transition-colors"
+              >
+                {showNewPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
             </div>
 
             {/* Confirm Password Input */}
-            <div className="relative group">
-                <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest ml-1 mb-2">Confirm Password</label>
-                <div className="relative flex items-center">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                        <Lock className="h-5 w-5 text-slate-400 group-focus-within:text-emerald-500 transition-colors" />
-                    </div>
-                    <input
-                        type={showConfirmPassword ? "text" : "password"}
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 pl-12 pr-12 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-50 outline-none transition-all placeholder-slate-400 font-mono"
-                        placeholder=" "
-                        required
-                    />
-                    <button 
-                        type="button"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-emerald-500 transition-colors focus:outline-none"
-                    >
-                        {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                    </button>
-                </div>
+            <div className="relative group z-10">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <Lock className="h-5 w-5 text-slate-500 group-focus-within:text-cyan-400 transition-colors" />
+              </div>
+              <input
+                type={showConfirmPassword ? 'text' : 'password'}
+                placeholder="Confirm Password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 pl-12 pr-12 text-white font-bold placeholder-slate-500 focus:border-cyan-400/60 focus:ring-4 focus:ring-cyan-400/10 outline-none transition-all font-mono"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-3.5 text-slate-500 hover:text-cyan-400 transition-colors"
+              >
+                {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
             </div>
 
             {/* Submit Button */}
-            <button 
-                type="submit" 
-                disabled={loading}
-                className={`w-full py-4 mt-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-bold text-sm tracking-widest uppercase shadow-[0_10px_20px_-10px_rgba(16,185,129,0.5)] hover:shadow-[0_10px_30px_-10px_rgba(16,185,129,0.7)] transition-all flex items-center justify-center gap-2
-                 ${loading ? 'opacity-70 cursor-wait' : 'hover:-translate-y-1 active:scale-95'}
-                `}
+            <button
+              type="submit"
+              disabled={loading}
+              className={`w-full py-4 mt-2 rounded-xl bg-gradient-to-r from-cyan-400 to-violet-500 text-[#0a0e1a] font-black text-sm tracking-widest uppercase shadow-[0_10px_30px_-8px_rgba(34,211,238,0.5)] hover:shadow-[0_10px_35px_-8px_rgba(34,211,238,0.7)] transition-all flex items-center justify-center gap-2 ${loading ? 'opacity-70 cursor-wait' : 'hover:-translate-y-0.5 active:scale-95'}`}
             >
-                {loading ? (
-                    <span className="flex items-center gap-2">
-                        <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        UPDATING...
-                    </span>
-                ) : (
-                    <>
-                        RESET PASSWORD <ArrowRight size={18} strokeWidth={3} />
-                    </>
-                )}
+              {loading ? (
+                <>
+                  <svg className="animate-spin h-5 w-5 text-[#0a0e1a]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                  UPDATING...
+                </>
+              ) : (
+                <>RESET PASSWORD <ArrowRight size={18} strokeWidth={3} /></>
+              )}
             </button>
-
-        </form>
-
+          </form>
+        </div>
       </div>
     </div>
   );

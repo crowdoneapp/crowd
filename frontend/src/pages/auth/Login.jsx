@@ -253,7 +253,7 @@ const UserLogin = () => {
                 </span>
               </label>
 
-              <Link to="/" className="text-cyan-400 text-sm font-black hover:text-cyan-300 transition-colors">
+              <Link to="/forgot-password" className="text-cyan-400 text-sm font-black hover:text-cyan-300 transition-colors">
                 Forgot Password?
               </Link>
             </div>

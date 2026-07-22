@@ -957,20 +957,25 @@ router.post('/forgot-password', checkFeature(), async (req, res) => {
 
     const resetLink = `https://crowdone.world/reset-password/${resetToken}`;
     
-    // 📧 SEND EMAIL
+    // 📧 SEND EMAIL (UPDATED TO CROWDONE DARK THEME)
     await sendEmail({
       email: user.email,
-      subject: '🔐 Password Reset Request',
+      subject: '🔐 CrowdOne Password Reset Request',
       message: `Reset Link: ${resetLink}`,
       html: `
-        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-          <h2 style="color: #2E86C1;">Password Reset Request</h2>
-          <p>Hello <strong>${user.name}</strong>,</p>
-          <p>We received a request to reset your password. Click below:</p>
-          <p style="text-align:center;">
-            <a href="${resetLink}" style="padding:12px 24px;background:#2E86C1;color:white;text-decoration:none;border-radius:5px;">Reset Password</a>
-          </p>
-          <p>This link expires in 1 hour.</p>
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #f8fafc; background-color: #060a13; padding: 40px 20px; max-width: 600px; margin: 0 auto; border-radius: 12px; border: 1px solid #1e293b;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 24px; letter-spacing: 2px;">CROWD<span style="color: #f59e0b;">ONE</span></h1>
+            <p style="color: #f59e0b; font-size: 12px; letter-spacing: 3px; text-transform: uppercase; margin-top: 5px;">Security Alert</p>
+          </div>
+          <div style="background-color: rgba(255, 255, 255, 0.03); padding: 30px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.05);">
+            <p style="font-size: 16px; margin-top: 0;">Hello <strong style="color: #f59e0b;">${user.name}</strong>,</p>
+            <p style="color: #cbd5e1; font-size: 15px;">We received a request to reset the password for your CrowdOne account. Click the secure button below to proceed:</p>
+            <div style="text-align: center; margin: 35px 0;">
+              <a href="${resetLink}" style="background: linear-gradient(135deg, #f59e0b, #ea580c); color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);">Reset Password</a>
+            </div>
+            <p style="color: #64748b; font-size: 13px; text-align: center; margin-bottom: 0;">For your security, this link will expire in <strong>1 hour</strong>.</p>
+          </div>
         </div>
       `,
     });
@@ -1006,29 +1011,36 @@ router.post('/reset-password/:token', async (req, res) => {
 
     await user.save();
 
-    // ✅ EMAIL SEND (UPDATED)
+    // ✅ EMAIL SEND (UPDATED TO CROWDONE DARK THEME)
     try {
       await sendEmail({
         email: user.email,
-        subject: '🔐 Password Reset Successful',
+        subject: '✅ CrowdOne Security Update Successful',
         html: `
-        <div style="font-family: Arial; padding:20px;">
-          <h2>✅ Password Reset Successful</h2>
-          <p>Hello <b>${user.name}</b>,</p>
-
-          <p>Your password has been updated successfully.</p>
-
-          <div style="background:#f5f5f5; padding:15px; border-radius:8px;">
-            <p><b>User ID:</b> ${user.userId}</p>
-            <p><b>Password:</b> ${newPassword}</p>
-            <p><b>Transaction Password:</b> ${newPassword}</p>
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #f8fafc; background-color: #060a13; padding: 40px 20px; max-width: 600px; margin: 0 auto; border-radius: 12px; border: 1px solid #1e293b;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 24px; letter-spacing: 2px;">CROWD<span style="color: #f59e0b;">ONE</span></h1>
+            <p style="color: #10b981; font-size: 12px; letter-spacing: 3px; text-transform: uppercase; margin-top: 5px;">Update Successful</p>
           </div>
+          
+          <div style="background-color: rgba(255, 255, 255, 0.03); padding: 30px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.05);">
+            <h2 style="color: #10b981; font-size: 20px; margin-top: 0; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px;">✅ Credentials Updated</h2>
+            <p style="font-size: 16px;">Hello <strong style="color: #f59e0b;">${user.name}</strong>,</p>
+            <p style="color: #cbd5e1; font-size: 15px;">Your CrowdOne account security details have been successfully updated. Please keep your new credentials safe.</p>
 
-          <br/>
-          <a href="https://crowdone.world/login"
-          style="background:#1e88e5; color:#fff; padding:12px 25px; text-decoration:none; border-radius:6px;">
-          🔐 Login Now
-          </a>
+            <div style="background-color: rgba(0, 0, 0, 0.4); padding: 20px; border-radius: 8px; border: 1px solid rgba(245, 158, 11, 0.2); margin: 25px 0;">
+              <p style="margin: 8px 0; color: #cbd5e1; font-size: 14px;"><span style="color: #94a3b8; display: inline-block; width: 150px;">User ID:</span> <strong style="color: #fff;">${user.userId}</strong></p>
+              <p style="margin: 8px 0; color: #cbd5e1; font-size: 14px;"><span style="color: #94a3b8; display: inline-block; width: 150px;">Login Password:</span> <strong style="color: #f59e0b;">${newPassword}</strong></p>
+              <p style="margin: 8px 0; color: #cbd5e1; font-size: 14px;"><span style="color: #94a3b8; display: inline-block; width: 150px;">Tx-PIN:</span> <strong style="color: #f59e0b;">${newPassword}</strong></p>
+            </div>
+
+            <div style="text-align: center; margin-top: 35px;">
+              <a href="https://crowdone.world/login"
+                style="background: linear-gradient(135deg, #10b981, #059669); color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);">
+                🔐 Login Now
+              </a>
+            </div>
+          </div>
         </div>
         `,
       });
