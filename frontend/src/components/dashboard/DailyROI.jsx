@@ -63,7 +63,7 @@ const generateLevelsData = (pkgAmount) => {
       totalEarning: totalReturnPerLevel,
       dailyEarning: dailyReturnPerLevel,
       days: ROI_DAYS,
-      reqDirectsActual: i, // 🔥 Logic cumulative cumulative direct check karega (1, 2, 3...)
+      reqDirectsActual: i, // Cumulative direct logic
       reqTeamActual: displayTeamUI,   
       unlockTeamReq: unlockTeamLogic, 
     });
@@ -83,31 +83,12 @@ export default function Plan() {
   const purchasedPackages = user?.purchasedPackages || [];
 
   // 🔥 API Call for User & Global Data
-  // useEffect(() => {
-  //   const fetchUserData = async () => {
-  //       try {
-  //           if (!user?.userId) return;
-  //           const res = await api.get(`/user/${user.userId}`);
-            
-  //           if (res.data) {
-  //               setGlobalData(res.data.globalStats || {}); 
-  //           }
-  //       } catch (err) {
-  //           console.error("Fetch Error:", err);
-  //       }
-  //   };
-  //   fetchUserData();
-  // }, [user?.userId]);
-
-
-  // 🔥 API Call for User & Global Data
   useEffect(() => {
     const fetchUserData = async () => {
         try {
             if (!user?.userId) return;
             const res = await api.get(`/user/${user.userId}`);
             
-            // ✅ Fix: Check karein ki response mein globalStats aa raha hai ya nahi
             if (res.data && res.data.globalStats) {
                 setGlobalData(res.data.globalStats); 
             }
@@ -118,7 +99,7 @@ export default function Plan() {
     fetchUserData();
   }, [user?.userId]);
 
-  // 🔥 LOGIC: Selected Package Check (Active hai ya nahi)
+  // 🔥 LOGIC: Selected Package Check
   const isPackageActive = purchasedPackages.includes(selectedPackage) || userHighestPackage >= selectedPackage;
 
   // ✅ Package Specific Calculations
@@ -145,7 +126,7 @@ export default function Plan() {
     <div className="neo-bg min-h-screen w-full py-6 md:py-10 text-slate-800 relative font-sans">
       <style>{customStyles}</style>
 
-      <div className="relative z-10 w-full px-3 sm:px-6 md:px-8 max-w-7xl mx-auto pb-24">
+      <div className="relative z-10 w-full px-1 sm:px-6 md:px-8 max-w-7xl mx-auto pb-24">
         
         {/* 🛑 INACTIVE USER WARNING */}
         {!isToppedUp && (
@@ -258,7 +239,6 @@ export default function Plan() {
               <table className="w-full text-center whitespace-nowrap">
                 <thead className="flyer-header text-[10px] sm:text-xs font-bold uppercase tracking-wider">
                   <tr>
-                    {/* 🔥 Header reverted to "Team" to match UI image perfectly */}
                     <th className="py-4 px-3 sm:py-5 sm:px-6"><div className="flex flex-col items-center gap-1"><Users size={18} className="text-blue-300" /><span>Team</span></div></th>
                     <th className="py-4 px-3 sm:py-5 sm:px-6"><div className="flex flex-col items-center gap-1"><BadgeDollarSign size={18} className="text-blue-300" /><span>Income (USDT)</span></div></th>
                     <th className="py-4 px-3 sm:py-5 sm:px-6"><div className="flex flex-col items-center gap-1"><UserPlus size={18} className="text-blue-300" /><span>Direct Required</span></div></th>
@@ -269,34 +249,82 @@ export default function Plan() {
                 </thead>
                 <tbody>
                   {currentLevels.map((lvl) => {
-                    // Logic states check
                     const isDirectMet = currentPackageDirects >= lvl.reqDirectsActual;
                     const isTeamMet = currentPackageYourCrowd >= lvl.unlockTeamReq;
                     const isLevelUnlocked = isPackageActive && isDirectMet && isTeamMet;
 
+                    // 🔥 DYNAMIC COLOR LOGIC (UPDATED FOR DIRECT HIGHLIGHT)
+                    let rowBgClass = "neo-row border-b border-slate-100 hover:bg-blue-50/50";
+                    let teamTextClass = "text-slate-800";
+                    let incomeTextClass = "text-[#0b1c3c]";
+                    let directTextClass = "text-slate-600";
+                    let dailyTextClass = "text-blue-600";
+                    let timeTextClass = "text-slate-600";
+
+                    if (isPackageActive) {
+                      if (isDirectMet && isTeamMet) {
+                        // DONO COMPLETE: Dark Green Line (ACHIEVED)
+                        rowBgClass = "bg-emerald-700 hover:bg-emerald-800 border-b border-emerald-800";
+                        teamTextClass = "text-white";
+                        incomeTextClass = "text-white";
+                        directTextClass = "text-white font-extrabold";
+                        dailyTextClass = "text-white";
+                        timeTextClass = "text-white";
+                      } else if (isTeamMet && !isDirectMet) {
+                        // TEAM COMPLETE + DIRECT INCOMPLETE: Highlight missing direct in RED
+                        rowBgClass = "bg-emerald-100 hover:bg-emerald-200 border-b border-emerald-200";
+                        teamTextClass = "text-emerald-900";
+                        incomeTextClass = "text-emerald-900";
+                        // 🔥 Yahan gray ki jagah RED color diya hai taaki user ko saaf dikhe!
+                        directTextClass = "text-red-600 font-black"; 
+                        dailyTextClass = "text-emerald-900";
+                        timeTextClass = "text-emerald-900";
+                      } else if (isDirectMet && !isTeamMet) {
+                        // DIRECT COMPLETE + TEAM INCOMPLETE: Direct Text Green
+                        rowBgClass = "bg-white hover:bg-slate-50 border-b border-slate-100";
+                        teamTextClass = "text-slate-800";
+                        incomeTextClass = "text-[#0b1c3c]";
+                        directTextClass = "text-emerald-600 font-extrabold"; // Completed direct is Green
+                        dailyTextClass = "text-blue-600";
+                        timeTextClass = "text-slate-600";
+                      } else {
+                        // DONO INCOMPLETE: Direct pending clearly dikhe isliye red
+                        directTextClass = "text-red-500 font-bold";
+                      }
+                    }
+
                     return (
-                      <tr key={lvl.level} className="neo-row border-b border-slate-100 hover:bg-blue-50/50">
-                        <td className="py-4 px-3 sm:py-5 sm:px-6 font-black text-slate-800 text-sm sm:text-base">{lvl.reqTeamActual.toLocaleString()}</td>
-                        <td className="py-4 px-3 sm:py-5 sm:px-6 font-bold text-[#0b1c3c] text-sm sm:text-base">${lvl.totalEarning.toFixed(2)} USDT</td>
+                      <tr key={lvl.level} className={`${rowBgClass} transition-all duration-300`}>
+                        <td className={`py-4 px-3 sm:py-5 sm:px-6 font-black text-sm sm:text-base ${teamTextClass}`}>
+                          {lvl.reqTeamActual.toLocaleString()}
+                        </td>
                         
-                        {/* 🔥 Applies Green color if user met the direct requirement for this level */}
-                        <td className={`py-4 px-3 sm:py-5 sm:px-6 font-bold text-xs sm:text-sm transition-colors duration-300 ${isDirectMet ? 'text-emerald-500' : 'text-slate-600'}`}>
+                        <td className={`py-4 px-3 sm:py-5 sm:px-6 font-bold text-sm sm:text-base ${incomeTextClass}`}>
+                          ${lvl.totalEarning.toFixed(2)} USDT
+                        </td>
+                        
+                        <td className={`py-4 px-3 sm:py-5 sm:px-6 font-bold text-xs sm:text-sm transition-colors duration-300 ${directTextClass}`}>
                            1 Direct
                         </td>
 
-                        <td className="py-4 px-3 sm:py-5 sm:px-6 font-black text-blue-600 text-sm sm:text-base">${lvl.dailyEarning.toFixed(2)} USDT</td>
-                        <td className="py-4 px-3 sm:py-5 sm:px-6 font-bold text-slate-600 text-xs sm:text-sm">{lvl.days} Days</td>
+                        <td className={`py-4 px-3 sm:py-5 sm:px-6 font-black text-sm sm:text-base ${dailyTextClass}`}>
+                          ${lvl.dailyEarning.toFixed(2)} USDT
+                        </td>
+                        
+                        <td className={`py-4 px-3 sm:py-5 sm:px-6 font-bold text-xs sm:text-sm ${timeTextClass}`}>
+                          {lvl.days} Days
+                        </td>
+                        
                         <td className="py-4 px-3 sm:py-5 sm:px-6">
                           {!isPackageActive ? (
                              <button className="inline-flex items-center justify-center gap-1.5 text-rose-600 bg-rose-50 px-3 py-1.5 rounded-lg border border-rose-200 font-bold text-[9px] sm:text-[10px] uppercase tracking-wide whitespace-nowrap shadow-sm">
                                 <Lock size={12} /> UPGRADE TIER
                              </button>
                           ) : isLevelUnlocked ? (
-                             <button className="inline-flex items-center justify-center gap-1.5 text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200 font-bold text-[9px] sm:text-[10px] uppercase tracking-wide whitespace-nowrap shadow-sm">
-                                <CheckCircle2 size={12} strokeWidth={2.5} /> Acheive
+                             <button className="inline-flex items-center justify-center gap-1.5 text-emerald-800 bg-white px-3 py-1.5 rounded-lg border border-transparent font-black text-[9px] sm:text-[10px] uppercase tracking-wide whitespace-nowrap shadow-md">
+                                <CheckCircle2 size={12} strokeWidth={2.5} /> ACHIEVED
                              </button>
                           ) : isDirectMet ? (
-                             // 🔥 UPDATE: Direct complete ho gaya hai par Team bachi hai toh "UNLOCKING..." dikhayega
                              <button className="inline-flex items-center justify-center gap-1.5 text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200 font-bold text-[9px] sm:text-[10px] uppercase tracking-wide whitespace-nowrap shadow-sm">
                                 <Users size={12} /> UNLOCKING...
                              </button>

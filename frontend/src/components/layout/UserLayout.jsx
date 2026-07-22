@@ -187,7 +187,7 @@ const UserLayout = ({ children }) => {
         <main className={`flex-1 w-full min-w-0 relative pb-10 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'ml-0'}`}>
           <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(circle_at_50%_-10%,_rgba(13,148,136,0.06),_transparent_50%)] z-0"></div>
 
-          <div className="relative z-10 p-3 sm:p-6 lg:p-8 w-full max-w-7xl mx-auto overflow-x-hidden">
+          <div className="relative z-10 p-0.5 sm:p-6 lg:p-8 w-full max-w-7xl mx-auto overflow-x-hidden">
             {React.Children.map(children, child => {
               if (React.isValidElement(child)) {
                 // Dashboard ko setModalState pass ho raha hai yahan se
