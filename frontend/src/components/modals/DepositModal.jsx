@@ -134,6 +134,11 @@ export default function DepositModal({ onClose, user, userId }) {
           onClose(); 
           window.location.reload(); 
         }}
+        // 🔥 FIX: Yahan saara Data Pass kar diya gaya hai
+        type="deposit" 
+        amount={amount} 
+        userId={userId || user?.userId} 
+        userName={user?.name || "Valued Member"} 
         customTitle="Payment Verified! 🎉"
         customMessage={successMessage}
         zIndex={2050} 
