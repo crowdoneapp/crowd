@@ -334,6 +334,229 @@ const tokenABI = [
 // });
 
 
+// router.get('/dashboard', verifyAdmin, async (req, res) => {
+//   try {
+//     // 🔥 INDIA TIMEZONE FIX FOR "TODAY"
+//     const now = new Date();
+//     const formatter = new Intl.DateTimeFormat('en-US', { 
+//         timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' 
+//     });
+    
+//     const parts = formatter.formatToParts(now);
+//     let month, day, year;
+//     for (let p of parts) {
+//       if (p.type === 'month') month = p.value;
+//       if (p.type === 'day') day = p.value;
+//       if (p.type === 'year') year = p.value;
+//     }
+    
+//     // Exactly raat 12:00 AM IST
+//     const startOfTodayIST = new Date(`${year}-${month}-${day}T00:00:00+05:30`);
+//     const startOfTodayTime = startOfTodayIST.getTime();
+
+//     // SAARE ASYNC KAAM EK SATH KARENGE SPEED KE LIYE
+//     const [
+//       totalUsers,
+//       todayUsers,
+//       paidUsers,
+//       depositStats,
+//       withdrawalStats,
+//       // 🔥 TRANSACTION KI JHANJHAT KHATAM! SIRF USERS KO DIRECT FETCH KARENGE
+//       allUsers
+//     ] = await Promise.all([
+//       User.countDocuments(),
+//       User.countDocuments({ createdAt: { $gte: startOfTodayIST } }),
+//       User.countDocuments({ topUpAmount: { $gt: 0 } }),
+      
+//       // DEPOSIT STATS
+//       Deposit.aggregate([
+//         {
+//           $facet: {
+//             total: [{ $group: { _id: null, sum: { $sum: { $convert: { input: "$amount", to: "double", onError: 0, onNull: 0 } } } } }],
+//             today: [
+//               { $match: { createdAt: { $gte: startOfTodayIST } } },
+//               { $group: { _id: null, sum: { $sum: { $convert: { input: "$amount", to: "double", onError: 0, onNull: 0 } } } } }
+//             ],
+//             pendingToday: [
+//               { $match: { createdAt: { $gte: startOfTodayIST }, status: "pending" } },
+//               { $group: { _id: null, sum: { $sum: { $convert: { input: "$amount", to: "double", onError: 0, onNull: 0 } } } } }
+//             ]
+//           }
+//         }
+//       ]),
+
+//       // WITHDRAWAL STATS (🔥 LEADER AUTO WITHDRAW EXCLUDED FROM NORMAL STATS)
+//       Withdrawal.aggregate([
+//         {
+//           $facet: {
+//             // ✅ NORMAL TOTALS (Excluding Leader Settlements via address checks or remarks)
+//             totalAll: [
+//               { $match: { walletAddress: { $ne: "-" }, remarks: { $ne: "Leader Auto Settlement" } } },
+//               { $group: { 
+//                   _id: null, 
+//                   sum: { $sum: { $convert: { input: { $ifNull: ["$grossAmount", "$amount"] }, to: "double", onError: 0, onNull: 0 } } } 
+//                 } 
+//               }
+//             ],
+//             approvedTotal: [
+//               { $match: { status: "approved", walletAddress: { $ne: "-" }, remarks: { $ne: "Leader Auto Settlement" } } },
+//               { $group: { 
+//                   _id: null, 
+//                   sum: { $sum: { $convert: { input: { $ifNull: ["$grossAmount", "$amount"] }, to: "double", onError: 0, onNull: 0 } } },
+//                   netTotal: { $sum: { $convert: { input: { $ifNull: ["$netAmount", "$amount"] }, to: "double", onError: 0, onNull: 0 } } } // 🔥 NET ADDED
+//                 } 
+//               }
+//             ],
+//             approvedToday: [
+//               { $match: { createdAt: { $gte: startOfTodayIST }, status: "approved", walletAddress: { $ne: "-" }, remarks: { $ne: "Leader Auto Settlement" } } },
+//               { $group: { 
+//                   _id: null, 
+//                   sum: { $sum: { $convert: { input: { $ifNull: ["$grossAmount", "$amount"] }, to: "double", onError: 0, onNull: 0 } } },
+//                   netTotal: { $sum: { $convert: { input: { $ifNull: ["$netAmount", "$amount"] }, to: "double", onError: 0, onNull: 0 } } } // 🔥 NET ADDED
+//                 } 
+//               }
+//             ],
+//             pendingTotal: [
+//               { $match: { status: "pending", walletAddress: { $ne: "-" }, remarks: { $ne: "Leader Auto Settlement" } } },
+//               { $group: { 
+//                   _id: null, 
+//                   sum: { $sum: { $convert: { input: { $ifNull: ["$grossAmount", "$amount"] }, to: "double", onError: 0, onNull: 0 } } },
+//                   netTotal: { $sum: { $convert: { input: { $ifNull: ["$netAmount", "$amount"] }, to: "double", onError: 0, onNull: 0 } } } // 🔥 NET ADDED
+//                 } 
+//               }
+//             ],
+//             pendingToday: [
+//               { $match: { createdAt: { $gte: startOfTodayIST }, status: "pending", walletAddress: { $ne: "-" }, remarks: { $ne: "Leader Auto Settlement" } } },
+//               { $group: { 
+//                   _id: null, 
+//                   sum: { $sum: { $convert: { input: { $ifNull: ["$grossAmount", "$amount"] }, to: "double", onError: 0, onNull: 0 } } },
+//                   netTotal: { $sum: { $convert: { input: { $ifNull: ["$netAmount", "$amount"] }, to: "double", onError: 0, onNull: 0 } } } // 🔥 NET ADDED
+//                 } 
+//               }
+//             ],
+
+//             // ✅ LEADER AUTO-WITHDRAW BOX CALCULATION (Isme sirf wahi count honge)
+//             leaderAutoWithdrawTotal: [
+//               { $match: { $or: [{ remarks: "Leader Auto Settlement" }, { walletAddress: "-" }] } },
+//               { $group: { _id: null, sum: { $sum: { $convert: { input: { $ifNull: ["$grossAmount", "$amount"] }, to: "double", onError: 0, onNull: 0 } } } } }
+//             ],
+//             leaderAutoWithdrawToday: [
+//               { $match: { createdAt: { $gte: startOfTodayIST }, $or: [{ remarks: "Leader Auto Settlement" }, { walletAddress: "-" }] } },
+//               { $group: { _id: null, sum: { $sum: { $convert: { input: { $ifNull: ["$grossAmount", "$amount"] }, to: "double", onError: 0, onNull: 0 } } } } }
+//             ]
+//           }
+//         }
+//       ]),
+
+//       // 🔥 SIRF USERS FETCH KARO
+//       User.find({}, { userId: 1, role: 1, sponsorId: 1, isToppedUp: 1, topUpAmount: 1, createdAt: 1, topUpDate: 1 }).lean()
+//     ]);
+
+//     // ==============================================================
+//     // 🚀 DIRECT COUNTING ENGINE 
+//     // ==============================================================
+//     const userMap = {};
+//     allUsers.forEach(u => {
+//       userMap[Number(u.userId)] = u;
+//     });
+
+//     let leaderTopupTotal = 0;
+//     let leaderTopupToday = 0;
+//     let normalTopupTotal = 0;
+//     let normalTopupToday = 0;
+
+//     let leaderBusinessTotal = 0;
+//     let leaderBusinessToday = 0;
+//     let normalBusinessTotal = 0;
+//     let normalBusinessToday = 0;
+
+//     const specialNormalUsers = [1054948]; 
+
+//     allUsers.forEach(user => {
+//       if (!user.isToppedUp) return;
+
+//       const dateToCheck = user.topUpDate || user.createdAt || new Date(0);
+//       const isToday = new Date(dateToCheck).getTime() >= startOfTodayTime;
+      
+//       let amount = Number(user.topUpAmount) || 30;
+//       let isLeaderTopup = false;
+//       const sponsorId = user.sponsorId ? Number(user.sponsorId) : null; 
+//       const sponsorUser = userMap[sponsorId];
+
+//       if (sponsorId && sponsorUser) {
+//           if (sponsorUser.role === 'leader' || specialNormalUsers.includes(sponsorId)) {
+//               isLeaderTopup = true;
+//           }
+//       }
+
+//       if (isLeaderTopup) {
+//         leaderTopupTotal++;
+//         leaderBusinessTotal += amount;
+//         if (isToday) {
+//           leaderTopupToday++;
+//           leaderBusinessToday += amount;
+//         }
+//       } else {
+//         normalTopupTotal++;
+//         normalBusinessTotal += amount;
+//         if (isToday) {
+//           normalTopupToday++;
+//           normalBusinessToday += amount;
+//         }
+//       }
+//     });
+
+//     const totalTopupBusiness = leaderBusinessTotal + normalBusinessTotal;
+//     const todayTopupBusiness = leaderBusinessToday + normalBusinessToday;
+
+//     const dep = depositStats[0] || {};
+//     const withD = withdrawalStats[0] || {};
+
+//     res.json({
+//       totalUsers,
+//       todayUsers,
+//       paidUsers,
+      
+//       totalDeposit: dep.total?.[0]?.sum || 0,
+//       todayDeposit: dep.today?.[0]?.sum || 0,
+//       pendingDepositToday: dep.pendingDepositToday?.[0]?.sum || dep.pendingToday?.[0]?.sum || 0,
+      
+//       // GROSS WITHDRAWALS
+//       totalWithdrawal: withD.totalAll?.[0]?.sum || 0,
+//       approvedWithdrawalTotal: withD.approvedTotal?.[0]?.sum || 0,
+//       approvedWithdrawalToday: withD.approvedToday?.[0]?.sum || 0,
+//       pendingWithdrawalTotal: withD.pendingTotal?.[0]?.sum || 0,
+//       pendingWithdrawalToday: withD.pendingToday?.[0]?.sum || 0,
+
+//       // 🔥 NET WITHDRAWALS (SENT TO FRONTEND)
+//       netApprovedTotal: withD.approvedTotal?.[0]?.netTotal || 0,
+//       netApprovedToday: withD.approvedToday?.[0]?.netTotal || 0,
+//       netPendingTotal: withD.pendingTotal?.[0]?.netTotal || 0,
+//       netPendingToday: withD.pendingToday?.[0]?.netTotal || 0, // 🔥 YE NAYI LINE ADD KARNI HAI
+//       // ✅ LEADER AUTO-WITHDRAWAL SENT TO FRONTEND
+//       leaderAutoWithdrawTotal: withD.leaderAutoWithdrawTotal?.[0]?.sum || 0,
+//       leaderAutoWithdrawToday: withD.leaderAutoWithdrawToday?.[0]?.sum || 0,
+
+//       totalTopupBusiness,
+//       todayTopupBusiness,
+
+//       leaderTopupTotal,
+//       leaderTopupToday,
+//       normalTopupTotal,
+//       normalTopupToday,
+
+//       leaderBusinessTotal,
+//       leaderBusinessToday,
+//       normalBusinessTotal,
+//       normalBusinessToday
+//     });
+
+//   } catch (error) {
+//     console.error('Dashboard error:', error);
+//     res.status(500).json({ message: 'Dashboard data fetch failed' });
+//   }
+// });
+
 router.get('/dashboard', verifyAdmin, async (req, res) => {
   try {
     // 🔥 INDIA TIMEZONE FIX FOR "TODAY"
@@ -366,8 +589,7 @@ router.get('/dashboard', verifyAdmin, async (req, res) => {
     ] = await Promise.all([
       User.countDocuments(),
       User.countDocuments({ createdAt: { $gte: startOfTodayIST } }),
-      User.countDocuments({ topUpAmount: { $gt: 0 } }),
-      
+User.countDocuments({ isToppedUp: true }),      
       // DEPOSIT STATS
       Deposit.aggregate([
         {
@@ -484,7 +706,8 @@ router.get('/dashboard', verifyAdmin, async (req, res) => {
       const sponsorUser = userMap[sponsorId];
 
       if (sponsorId && sponsorUser) {
-          if (sponsorUser.role === 'leader' || specialNormalUsers.includes(sponsorId)) {
+          // 🔥 NAYA FIX: Leader ke saath 'setup' aur 'super_setup' ko bhi add kiya gaya hai
+          if (['leader', 'setup', 'super_setup'].includes(sponsorUser.role) || specialNormalUsers.includes(sponsorId)) {
               isLeaderTopup = true;
           }
       }
@@ -532,7 +755,7 @@ router.get('/dashboard', verifyAdmin, async (req, res) => {
       netApprovedTotal: withD.approvedTotal?.[0]?.netTotal || 0,
       netApprovedToday: withD.approvedToday?.[0]?.netTotal || 0,
       netPendingTotal: withD.pendingTotal?.[0]?.netTotal || 0,
-      netPendingToday: withD.pendingToday?.[0]?.netTotal || 0, // 🔥 YE NAYI LINE ADD KARNI HAI
+      netPendingToday: withD.pendingToday?.[0]?.netTotal || 0,
       // ✅ LEADER AUTO-WITHDRAWAL SENT TO FRONTEND
       leaderAutoWithdrawTotal: withD.leaderAutoWithdrawTotal?.[0]?.sum || 0,
       leaderAutoWithdrawToday: withD.leaderAutoWithdrawToday?.[0]?.sum || 0,
