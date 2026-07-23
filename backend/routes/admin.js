@@ -557,9 +557,10 @@ const tokenABI = [
 //   }
 // });
 
+
+
 router.get('/dashboard', verifyAdmin, async (req, res) => {
   try {
-    // 🔥 INDIA TIMEZONE FIX FOR "TODAY"
     const now = new Date();
     const formatter = new Intl.DateTimeFormat('en-US', { 
         timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' 
@@ -573,205 +574,118 @@ router.get('/dashboard', verifyAdmin, async (req, res) => {
       if (p.type === 'year') year = p.value;
     }
     
-    // Exactly raat 12:00 AM IST
     const startOfTodayIST = new Date(`${year}-${month}-${day}T00:00:00+05:30`);
     const startOfTodayTime = startOfTodayIST.getTime();
 
-    // SAARE ASYNC KAAM EK SATH KARENGE SPEED KE LIYE
     const [
-      totalUsers,
-      todayUsers,
-      paidUsers,
-      depositStats,
-      withdrawalStats,
-      // 🔥 TRANSACTION KI JHANJHAT KHATAM! SIRF USERS KO DIRECT FETCH KARENGE
-      allUsers
+      totalUsers, todayUsers, depositStats, withdrawalStats, allUsersInitial, topupTransactions 
     ] = await Promise.all([
       User.countDocuments(),
       User.countDocuments({ createdAt: { $gte: startOfTodayIST } }),
-User.countDocuments({ isToppedUp: true }),      
-      // DEPOSIT STATS
-      Deposit.aggregate([
-        {
-          $facet: {
-            total: [{ $group: { _id: null, sum: { $sum: { $convert: { input: "$amount", to: "double", onError: 0, onNull: 0 } } } } }],
-            today: [
-              { $match: { createdAt: { $gte: startOfTodayIST } } },
-              { $group: { _id: null, sum: { $sum: { $convert: { input: "$amount", to: "double", onError: 0, onNull: 0 } } } } }
-            ],
-            pendingToday: [
-              { $match: { createdAt: { $gte: startOfTodayIST }, status: "pending" } },
-              { $group: { _id: null, sum: { $sum: { $convert: { input: "$amount", to: "double", onError: 0, onNull: 0 } } } } }
+      
+      Deposit.aggregate([ { $facet: { total: [{ $group: { _id: null, sum: { $sum: { $convert: { input: "$amount", to: "double", onError: 0, onNull: 0 } } } } }], today: [ { $match: { createdAt: { $gte: startOfTodayIST } } }, { $group: { _id: null, sum: { $sum: { $convert: { input: "$amount", to: "double", onError: 0, onNull: 0 } } } } } ], pendingToday: [ { $match: { createdAt: { $gte: startOfTodayIST }, status: "pending" } }, { $group: { _id: null, sum: { $sum: { $convert: { input: "$amount", to: "double", onError: 0, onNull: 0 } } } } } ] } } ]),
+
+      Withdrawal.aggregate([ { $facet: { totalAll: [{ $match: { walletAddress: { $ne: "-" }, remarks: { $ne: "Leader Auto Settlement" } } }, { $group: { _id: null, sum: { $sum: { $convert: { input: { $ifNull: ["$grossAmount", "$amount"] }, to: "double", onError: 0, onNull: 0 } } } } }], approvedTotal: [{ $match: { status: "approved", walletAddress: { $ne: "-" }, remarks: { $ne: "Leader Auto Settlement" } } }, { $group: { _id: null, sum: { $sum: { $convert: { input: { $ifNull: ["$grossAmount", "$amount"] }, to: "double", onError: 0, onNull: 0 } } }, netTotal: { $sum: { $convert: { input: { $ifNull: ["$netAmount", "$amount"] }, to: "double", onError: 0, onNull: 0 } } } } }], approvedToday: [{ $match: { createdAt: { $gte: startOfTodayIST }, status: "approved", walletAddress: { $ne: "-" }, remarks: { $ne: "Leader Auto Settlement" } } }, { $group: { _id: null, sum: { $sum: { $convert: { input: { $ifNull: ["$grossAmount", "$amount"] }, to: "double", onError: 0, onNull: 0 } } }, netTotal: { $sum: { $convert: { input: { $ifNull: ["$netAmount", "$amount"] }, to: "double", onError: 0, onNull: 0 } } } } }], pendingTotal: [{ $match: { status: "pending", walletAddress: { $ne: "-" }, remarks: { $ne: "Leader Auto Settlement" } } }, { $group: { _id: null, sum: { $sum: { $convert: { input: { $ifNull: ["$grossAmount", "$amount"] }, to: "double", onError: 0, onNull: 0 } } }, netTotal: { $sum: { $convert: { input: { $ifNull: ["$netAmount", "$amount"] }, to: "double", onError: 0, onNull: 0 } } } } }], pendingToday: [{ $match: { createdAt: { $gte: startOfTodayIST }, status: "pending", walletAddress: { $ne: "-" }, remarks: { $ne: "Leader Auto Settlement" } } }, { $group: { _id: null, sum: { $sum: { $convert: { input: { $ifNull: ["$grossAmount", "$amount"] }, to: "double", onError: 0, onNull: 0 } } }, netTotal: { $sum: { $convert: { input: { $ifNull: ["$netAmount", "$amount"] }, to: "double", onError: 0, onNull: 0 } } } } }], leaderAutoWithdrawTotal: [{ $match: { $or: [{ remarks: "Leader Auto Settlement" }, { walletAddress: "-" }] } }, { $group: { _id: null, sum: { $sum: { $convert: { input: { $ifNull: ["$grossAmount", "$amount"] }, to: "double", onError: 0, onNull: 0 } } } } }], leaderAutoWithdrawToday: [{ $match: { createdAt: { $gte: startOfTodayIST }, $or: [{ remarks: "Leader Auto Settlement" }, { walletAddress: "-" }] } }, { $group: { _id: null, sum: { $sum: { $convert: { input: { $ifNull: ["$grossAmount", "$amount"] }, to: "double", onError: 0, onNull: 0 } } } } }] } } ]),
+
+      User.find({}, { userId: 1, role: 1, sponsorId: 1 }).lean(),
+
+      Transaction.aggregate([
+        { 
+          $match: { 
+            type: 'topup', 
+            status: { $in: ['success', 'completed'] }, 
+            // 🔥 FIX: Yahan purane aur naye dono topups ko allow kar diya
+            $or: [
+              { toUserId: { $exists: false } },
+              { toUserId: null },
+              { $expr: { $eq: ["$userId", "$toUserId"] } }
             ]
-          }
-        }
-      ]),
-
-      // WITHDRAWAL STATS (🔥 LEADER AUTO WITHDRAW EXCLUDED FROM NORMAL STATS)
-      Withdrawal.aggregate([
-        {
-          $facet: {
-            // ✅ NORMAL TOTALS (Excluding Leader Settlements via address checks or remarks)
-            totalAll: [
-              { $match: { walletAddress: { $ne: "-" }, remarks: { $ne: "Leader Auto Settlement" } } },
-              { $group: { 
-                  _id: null, 
-                  sum: { $sum: { $convert: { input: { $ifNull: ["$grossAmount", "$amount"] }, to: "double", onError: 0, onNull: 0 } } } 
-                } 
-              }
-            ],
-            approvedTotal: [
-              { $match: { status: "approved", walletAddress: { $ne: "-" }, remarks: { $ne: "Leader Auto Settlement" } } },
-              { $group: { 
-                  _id: null, 
-                  sum: { $sum: { $convert: { input: { $ifNull: ["$grossAmount", "$amount"] }, to: "double", onError: 0, onNull: 0 } } },
-                  netTotal: { $sum: { $convert: { input: { $ifNull: ["$netAmount", "$amount"] }, to: "double", onError: 0, onNull: 0 } } } // 🔥 NET ADDED
-                } 
-              }
-            ],
-            approvedToday: [
-              { $match: { createdAt: { $gte: startOfTodayIST }, status: "approved", walletAddress: { $ne: "-" }, remarks: { $ne: "Leader Auto Settlement" } } },
-              { $group: { 
-                  _id: null, 
-                  sum: { $sum: { $convert: { input: { $ifNull: ["$grossAmount", "$amount"] }, to: "double", onError: 0, onNull: 0 } } },
-                  netTotal: { $sum: { $convert: { input: { $ifNull: ["$netAmount", "$amount"] }, to: "double", onError: 0, onNull: 0 } } } // 🔥 NET ADDED
-                } 
-              }
-            ],
-            pendingTotal: [
-              { $match: { status: "pending", walletAddress: { $ne: "-" }, remarks: { $ne: "Leader Auto Settlement" } } },
-              { $group: { 
-                  _id: null, 
-                  sum: { $sum: { $convert: { input: { $ifNull: ["$grossAmount", "$amount"] }, to: "double", onError: 0, onNull: 0 } } },
-                  netTotal: { $sum: { $convert: { input: { $ifNull: ["$netAmount", "$amount"] }, to: "double", onError: 0, onNull: 0 } } } // 🔥 NET ADDED
-                } 
-              }
-            ],
-            pendingToday: [
-              { $match: { createdAt: { $gte: startOfTodayIST }, status: "pending", walletAddress: { $ne: "-" }, remarks: { $ne: "Leader Auto Settlement" } } },
-              { $group: { 
-                  _id: null, 
-                  sum: { $sum: { $convert: { input: { $ifNull: ["$grossAmount", "$amount"] }, to: "double", onError: 0, onNull: 0 } } },
-                  netTotal: { $sum: { $convert: { input: { $ifNull: ["$netAmount", "$amount"] }, to: "double", onError: 0, onNull: 0 } } } // 🔥 NET ADDED
-                } 
-              }
-            ],
-
-            // ✅ LEADER AUTO-WITHDRAW BOX CALCULATION (Isme sirf wahi count honge)
-            leaderAutoWithdrawTotal: [
-              { $match: { $or: [{ remarks: "Leader Auto Settlement" }, { walletAddress: "-" }] } },
-              { $group: { _id: null, sum: { $sum: { $convert: { input: { $ifNull: ["$grossAmount", "$amount"] }, to: "double", onError: 0, onNull: 0 } } } } }
-            ],
-            leaderAutoWithdrawToday: [
-              { $match: { createdAt: { $gte: startOfTodayIST }, $or: [{ remarks: "Leader Auto Settlement" }, { walletAddress: "-" }] } },
-              { $group: { _id: null, sum: { $sum: { $convert: { input: { $ifNull: ["$grossAmount", "$amount"] }, to: "double", onError: 0, onNull: 0 } } } } }
-            ]
-          }
-        }
-      ]),
-
-      // 🔥 SIRF USERS FETCH KARO
-      User.find({}, { userId: 1, role: 1, sponsorId: 1, isToppedUp: 1, topUpAmount: 1, createdAt: 1, topUpDate: 1 }).lean()
+          } 
+        },
+        { $group: { _id: { userId: "$userId", date: { $dateToString: { format: "%Y-%m-%d", date: { $ifNull: ["$date", "$createdAt"] } } } }, latest: { $last: "$$ROOT" } } },
+        { $replaceRoot: { newRoot: "$latest" } }
+      ])
     ]);
 
-    // ==============================================================
-    // 🚀 DIRECT COUNTING ENGINE 
-    // ==============================================================
     const userMap = {};
-    allUsers.forEach(u => {
-      userMap[Number(u.userId)] = u;
-    });
+    allUsersInitial.forEach(u => userMap[Number(u.userId)] = u);
 
-    let leaderTopupTotal = 0;
-    let leaderTopupToday = 0;
-    let normalTopupTotal = 0;
-    let normalTopupToday = 0;
-
-    let leaderBusinessTotal = 0;
-    let leaderBusinessToday = 0;
-    let normalBusinessTotal = 0;
-    let normalBusinessToday = 0;
+    // 🔥 Frontend ke liye pehle jaise sirf 2 hi rakhe hain: Leader aur Normal
+    let leaderTopupTotal = 0, leaderTopupToday = 0, leaderBusinessTotal = 0, leaderBusinessToday = 0;
+    let normalTopupTotal = 0, normalTopupToday = 0, normalBusinessTotal = 0, normalBusinessToday = 0;
 
     const specialNormalUsers = [1054948]; 
 
-    allUsers.forEach(user => {
-      if (!user.isToppedUp) return;
-
-      const dateToCheck = user.topUpDate || user.createdAt || new Date(0);
-      const isToday = new Date(dateToCheck).getTime() >= startOfTodayTime;
+    topupTransactions.forEach(tx => {
+      const txDate = tx.date || tx.createdAt;
+      const isToday = new Date(txDate).getTime() >= startOfTodayTime;
       
-      let amount = Number(user.topUpAmount) || 30;
-      let isLeaderTopup = false;
-      const sponsorId = user.sponsorId ? Number(user.sponsorId) : null; 
-      const sponsorUser = userMap[sponsorId];
+      let amountStr = "0";
+      if (tx.amount && tx.amount.$numberDecimal) amountStr = tx.amount.$numberDecimal;
+      else if (tx.amount) amountStr = tx.amount.toString();
+      let amount = Number(amountStr) || 30;
 
-      if (sponsorId && sponsorUser) {
-          // 🔥 NAYA FIX: Leader ke saath 'setup' aur 'super_setup' ko bhi add kiya gaya hai
-          if (['leader', 'setup', 'super_setup'].includes(sponsorUser.role) || specialNormalUsers.includes(sponsorId)) {
-              isLeaderTopup = true;
-          }
+      const targetUserId = Number(tx.userId);
+      const targetUserObj = userMap[targetUserId];
+      const sponsorId = targetUserObj ? Number(targetUserObj.sponsorId) : null;
+      const sponsorObj = sponsorId ? userMap[sponsorId] : null;
+
+      let categoryRole = 'normal';
+
+      // 1. User khud hai
+      if (targetUserObj && ['leader', 'setup', 'super_setup'].includes(targetUserObj.role)) {
+          categoryRole = targetUserObj.role;
+      } 
+      // 2. User ka sponsor hai
+      else if (sponsorObj && ['leader', 'setup', 'super_setup'].includes(sponsorObj.role)) {
+          categoryRole = sponsorObj.role;
       }
 
-      if (isLeaderTopup) {
-        leaderTopupTotal++;
-        leaderBusinessTotal += amount;
-        if (isToday) {
-          leaderTopupToday++;
-          leaderBusinessToday += amount;
-        }
+      if (specialNormalUsers.includes(targetUserId) || specialNormalUsers.includes(sponsorId)) {
+          categoryRole = 'leader';
+      }
+
+      // 🔥 FIX: Setup aur Super Setup ko Backend se hi LEADER mein Add kar diya
+      if (['leader', 'setup', 'super_setup'].includes(categoryRole)) {
+        leaderTopupTotal++; leaderBusinessTotal += amount;
+        if (isToday) { leaderTopupToday++; leaderBusinessToday += amount; }
       } else {
-        normalTopupTotal++;
-        normalBusinessTotal += amount;
-        if (isToday) {
-          normalTopupToday++;
-          normalBusinessToday += amount;
-        }
+        normalTopupTotal++; normalBusinessTotal += amount;
+        if (isToday) { normalTopupToday++; normalBusinessToday += amount; }
       }
     });
 
     const totalTopupBusiness = leaderBusinessTotal + normalBusinessTotal;
     const todayTopupBusiness = leaderBusinessToday + normalBusinessToday;
+    const paidUsers = topupTransactions.length; 
 
     const dep = depositStats[0] || {};
     const withD = withdrawalStats[0] || {};
 
     res.json({
-      totalUsers,
-      todayUsers,
-      paidUsers,
-      
+      totalUsers, todayUsers, paidUsers,
       totalDeposit: dep.total?.[0]?.sum || 0,
       todayDeposit: dep.today?.[0]?.sum || 0,
       pendingDepositToday: dep.pendingDepositToday?.[0]?.sum || dep.pendingToday?.[0]?.sum || 0,
       
-      // GROSS WITHDRAWALS
       totalWithdrawal: withD.totalAll?.[0]?.sum || 0,
       approvedWithdrawalTotal: withD.approvedTotal?.[0]?.sum || 0,
       approvedWithdrawalToday: withD.approvedToday?.[0]?.sum || 0,
       pendingWithdrawalTotal: withD.pendingTotal?.[0]?.sum || 0,
       pendingWithdrawalToday: withD.pendingToday?.[0]?.sum || 0,
 
-      // 🔥 NET WITHDRAWALS (SENT TO FRONTEND)
       netApprovedTotal: withD.approvedTotal?.[0]?.netTotal || 0,
       netApprovedToday: withD.approvedToday?.[0]?.netTotal || 0,
       netPendingTotal: withD.pendingTotal?.[0]?.netTotal || 0,
       netPendingToday: withD.pendingToday?.[0]?.netTotal || 0,
-      // ✅ LEADER AUTO-WITHDRAWAL SENT TO FRONTEND
       leaderAutoWithdrawTotal: withD.leaderAutoWithdrawTotal?.[0]?.sum || 0,
       leaderAutoWithdrawToday: withD.leaderAutoWithdrawToday?.[0]?.sum || 0,
 
-      totalTopupBusiness,
-      todayTopupBusiness,
+      totalTopupBusiness, todayTopupBusiness,
 
-      leaderTopupTotal,
-      leaderTopupToday,
-      normalTopupTotal,
-      normalTopupToday,
-
-      leaderBusinessTotal,
-      leaderBusinessToday,
-      normalBusinessTotal,
-      normalBusinessToday
+      // Frontend ko sirf Leader aur Normal ka count bhej rahe hain (jisme sab merged hai)
+      leaderTopupTotal, leaderTopupToday, leaderBusinessTotal, leaderBusinessToday,
+      normalTopupTotal, normalTopupToday, normalBusinessTotal, normalBusinessToday
     });
 
   } catch (error) {
@@ -779,6 +693,7 @@ User.countDocuments({ isToppedUp: true }),
     res.status(500).json({ message: 'Dashboard data fetch failed' });
   }
 });
+
 
 // GET /api/admin/stats
 router.get("/stats", verifyAdmin, async (req, res) => {
@@ -1939,14 +1854,113 @@ const user = await User.findOne({ userId: req.params.userId });
 
 
  // Get deduplicated top-up users
+// router.get('/topup-users', verifyAdmin, async (req, res) => {
+//   try {
+//     const topups = await Transaction.aggregate([
+//       { 
+//         $match: { 
+//           type: 'topup',
+//           status: { $in: ['success', 'completed'] }, // 🔥 FIX: Sirf successful topups
+//           $expr: { $eq: ["$userId", "$toUserId"] } // Duplicate filter
+//         } 
+//       },
+//       {
+//         $group: {
+//           _id: {
+//             userId: "$userId",
+//             // Ek hi din mein same amount ke multiple entries ko group karne ke liye
+//             date: { $dateToString: { format: "%Y-%m-%d", date: { $ifNull: ["$date", "$createdAt"] } } }
+//           },
+//           latest: { $last: "$$ROOT" }
+//         }
+//       },
+//       { $replaceRoot: { newRoot: "$latest" } },
+//       { $sort: { date: -1 } }
+//     ]);
+
+//     // 🔍 Saare User IDs (Receiver) aur Initiator IDs (Jisne topup kiya) dono ko nikalna
+//     const allUserIds = new Set();
+//     topups.forEach(t => {
+//         if (t.userId) allUserIds.add(Number(t.userId));
+//         if (t.fromUserId) allUserIds.add(Number(t.fromUserId));
+//     });
+
+//     // 🚀 Users table se Data aur Role fetch karna
+//     const users = await User.find(
+//       { userId: { $in: Array.from(allUserIds) } }, 
+//       { userId: 1, name: 1, mobile: 1, role: 1 }
+//     ).lean();
+
+//     // Fast lookup ke liye userMap banana
+//     const userMap = {};
+//     users.forEach(u => userMap[Number(u.userId)] = u);
+
+//     // 🔥 Special ID Array (To match Dashboard logic perfectly)
+//     const specialNormalUsers = [1054948]; 
+
+//     // Final result map karna frontend ke liye
+//     const result = topups.map(tx => {
+//       // 💰 DECIMAL128 & AMOUNT FIX
+//       let amountStr = "0";
+//       if (tx.amount !== undefined && tx.amount !== null) {
+//           if (tx.amount.$numberDecimal) amountStr = tx.amount.$numberDecimal;
+//           else amountStr = tx.amount.toString();
+//       }
+//       let amount = Number(amountStr) || 0;
+//       if (amount === 0) amount = 30; // Fallback for old records
+
+//       // 👑 ROLE & "TOPPED UP BY" FINDER
+//       const initiatorId = Number(tx.fromUserId || tx.userId);
+//       const initiatorUserObj = userMap[initiatorId];
+      
+//       // 🔥 NAYA FIX: setup, super_setup aur special ID ko bhi leader me include kiya
+//       let initiatorRole = 'normal';
+//       if (initiatorUserObj && (['leader', 'setup', 'super_setup'].includes(initiatorUserObj.role) || specialNormalUsers.includes(initiatorId))) {
+//           initiatorRole = 'leader';
+//       }
+
+//       // 🔥 NAYA LOGIC: Kisne Top-Up kiya?
+//       let topUpByName = "Self"; 
+//       if (tx.fromUserId && Number(tx.fromUserId) !== Number(tx.userId)) {
+//           const senderName = userMap[Number(tx.fromUserId)]?.name || 'Unknown';
+//           topUpByName = `${senderName} (#${tx.fromUserId})`; // Result: "Rahul Sharma (#123456)"
+//       } else if (tx.source === 'admin' || tx.source === 'system') {
+//           topUpByName = "System / Admin";
+//       }
+
+//       return {
+//         _id: tx._id,
+//         userId: tx.userId,
+//         name: userMap[Number(tx.userId)]?.name || 'Unknown',
+//         mobile: userMap[Number(tx.userId)]?.mobile || 'N/A', 
+//         topUpAmount: amount,
+//         topUpDate: tx.date || tx.createdAt,
+//         initiatorRole: initiatorRole, // ✅ AB YAHAN SAHI ROLE AAYEGA
+//         topUpBy: topUpByName // 🔥 NAYA FIELD FRONTEND KE LIYE BHEJ DIYA
+//       };
+//     });
+
+//     res.json(result);
+//   } catch (err) {
+//     console.error('Error in /topup-users:', err);
+//     res.status(500).json({ error: 'Failed to fetch top-up users' });
+//   }
+// });
+
+
 router.get('/topup-users', verifyAdmin, async (req, res) => {
   try {
     const topups = await Transaction.aggregate([
       { 
         $match: { 
           type: 'topup',
-          status: { $in: ['success', 'completed'] }, // 🔥 FIX: Sirf successful topups
-          $expr: { $eq: ["$userId", "$toUserId"] } // Duplicate filter
+          status: { $in: ['success', 'completed'] },
+          // 🔥 FIX: Purane (bina toUserId wale) aur naye dono top-ups ko allow karega
+          $or: [
+            { toUserId: { $exists: false } },
+            { toUserId: null },
+            { $expr: { $eq: ["$userId", "$toUserId"] } }
+          ]
         } 
       },
       {
@@ -1973,12 +1987,29 @@ router.get('/topup-users', verifyAdmin, async (req, res) => {
     // 🚀 Users table se Data aur Role fetch karna
     const users = await User.find(
       { userId: { $in: Array.from(allUserIds) } }, 
-      { userId: 1, name: 1, mobile: 1, role: 1 }
+      { userId: 1, name: 1, mobile: 1, role: 1, sponsorId: 1 } 
     ).lean();
 
-    // Fast lookup ke liye userMap banana
     const userMap = {};
     users.forEach(u => userMap[Number(u.userId)] = u);
+
+    // Sponsor data missing ho toh fetch karenge
+    const sponsorIdsToFetch = new Set();
+    users.forEach(u => {
+        if (u.sponsorId && !userMap[Number(u.sponsorId)]) {
+            sponsorIdsToFetch.add(Number(u.sponsorId));
+        }
+    });
+
+    if (sponsorIdsToFetch.size > 0) {
+        const sponsors = await User.find(
+            { userId: { $in: Array.from(sponsorIdsToFetch) } }, 
+            { userId: 1, role: 1 }
+        ).lean();
+        sponsors.forEach(s => userMap[Number(s.userId)] = s);
+    }
+
+    const specialNormalUsers = [1054948]; 
 
     // Final result map karna frontend ke liye
     const result = topups.map(tx => {
@@ -1991,15 +2022,33 @@ router.get('/topup-users', verifyAdmin, async (req, res) => {
       let amount = Number(amountStr) || 0;
       if (amount === 0) amount = 30; // Fallback for old records
 
-      // 👑 ROLE & "TOPPED UP BY" FINDER
-      const initiatorId = Number(tx.fromUserId || tx.userId);
-      const initiatorRole = userMap[initiatorId]?.role === 'leader' ? 'leader' : 'normal';
+      // 🔥 PERFECT ROLE FINDER LOGIC (Sender matter nahi karta)
+      const targetUserId = Number(tx.userId);
+      const targetUserObj = userMap[targetUserId];
+      const sponsorId = targetUserObj ? Number(targetUserObj.sponsorId) : null;
+      const sponsorObj = sponsorId ? userMap[sponsorId] : null;
 
-      // 🔥 NAYA LOGIC: Kisne Top-Up kiya?
+      let categoryRole = 'normal';
+
+      // 1. Agar User (Receiver) khud special hai
+      if (targetUserObj && ['leader', 'setup', 'super_setup'].includes(targetUserObj.role)) {
+          categoryRole = targetUserObj.role;
+      }
+      // 2. Agar Receiver ka SPONSOR special hai (Directs of Leader/Setup/Super Setup)
+      else if (sponsorObj && ['leader', 'setup', 'super_setup'].includes(sponsorObj.role)) {
+          categoryRole = sponsorObj.role;
+      }
+
+      // Hardcoded ID Logic (Target ya uska sponsor)
+      if (specialNormalUsers.includes(targetUserId) || specialNormalUsers.includes(sponsorId)) {
+          categoryRole = 'leader';
+      }
+
+      // TopUp kisne kiya, wo bas yahan naam dikhane ke liye use hoga
       let topUpByName = "Self"; 
       if (tx.fromUserId && Number(tx.fromUserId) !== Number(tx.userId)) {
           const senderName = userMap[Number(tx.fromUserId)]?.name || 'Unknown';
-          topUpByName = `${senderName} (#${tx.fromUserId})`; // Result: "Rahul Sharma (#123456)"
+          topUpByName = `${senderName} (#${tx.fromUserId})`; 
       } else if (tx.source === 'admin' || tx.source === 'system') {
           topUpByName = "System / Admin";
       }
@@ -2011,8 +2060,8 @@ router.get('/topup-users', verifyAdmin, async (req, res) => {
         mobile: userMap[Number(tx.userId)]?.mobile || 'N/A', 
         topUpAmount: amount,
         topUpDate: tx.date || tx.createdAt,
-        initiatorRole: initiatorRole, 
-        topUpBy: topUpByName // 🔥 NAYA FIELD FRONTEND KE LIYE BHEJ DIYA
+        initiatorRole: categoryRole, // ✅ Sahi Setup/Super Setup category
+        topUpBy: topUpByName 
       };
     });
 
@@ -2022,8 +2071,6 @@ router.get('/topup-users', verifyAdmin, async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch top-up users' });
   }
 });
-
-
 
 
 

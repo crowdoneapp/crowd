@@ -669,14 +669,30 @@ router.put('/topup/:userId', authMiddleware, async (req, res) => {
         await targetUser.save();
 
         // 🔥 Helper function ka use karke main topup transaction
+        // await createTransaction({ 
+        //     userId: targetUser.userId, type: "topup", amount, 
+        //     description: `Activated $${amount}`, status: 'success', package: amount 
+        // });
+
+        // // ✅ User ko response bhej diya (Fast UI)
+        // res.json({ success: true, message: "Package Activated!" });
+
+        await targetUser.save();
+
+        // 🔥 Helper function ka use karke main topup transaction
         await createTransaction({ 
-            userId: targetUser.userId, type: "topup", amount, 
-            description: `Activated $${amount}`, status: 'success', package: amount 
+            userId: targetUser.userId, 
+            fromUserId: currentUser.userId, // 👉 YEH NAYI LINE DALNI HAI
+            toUserId: targetUser.userId,    // 👉 YEH NAYI LINE DALNI HAI
+            type: "topup", 
+            amount, 
+            description: isFirstTopup ? `Activated $${amount}` : `Upgraded to $${amount}`, 
+            status: 'success', 
+            package: amount 
         });
 
         // ✅ User ko response bhej diya (Fast UI)
-        res.json({ success: true, message: "Package Activated!" });
-
+        res.json({ success: true, message: isFirstTopup ? "Package Activated!" : `Upgraded to $${amount} Successfully!` });
         // =======================================================
         // 🔹 4. BACKGROUND MLM ENGINE (FINAL PERFECT LOGIC)
         // =======================================================

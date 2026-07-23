@@ -3,7 +3,7 @@ import api from "../../api/axios";
 import Papa from 'papaparse';
 import { saveAs } from 'file-saver';
 import Swal from 'sweetalert2';
-import { Crown, User, ArrowRightCircle, ExternalLink } from 'lucide-react';
+import { Crown, User, ArrowRightCircle, ExternalLink, Zap, Flame } from 'lucide-react'; 
 
 // 🔥 HELPER 1: Hamesha Indian Standard Time (IST) Date dega (YYYY-MM-DD format mein) filter aur stats ke liye
 const getISTDateStr = (dateObj = new Date()) => {
@@ -49,62 +49,61 @@ const TotalTopUpPage = () => {
   const [itemsPerPage, setItemsPerPage] = useState(20); 
 
   // ----------------- 🔥 IMPERSONATE (LOGIN) LOGIC -----------------
-  // const handleImpersonate = async (targetId) => {
-  //   // 🔥 FIX: Agar target "Self" ya "System" hai toh function wahi ruk jayega
-  //   const idStr = String(targetId || "").toLowerCase();
-  //   if (!targetId || idStr.includes("system") || idStr === "self") return;
+  const handleImpersonate = async (targetId) => {
+    const idStr = String(targetId || "").toLowerCase();
+    if (!targetId || idStr.includes("system") || idStr === "self") return;
 
-  //   const match = String(targetId).match(/\d+/);
-  //   const cleanUserId = match ? match[0] : targetId;
+    const match = String(targetId).match(/\d+/);
+    const cleanUserId = match ? match[0] : targetId;
 
-  //   const result = await Swal.fire({
-  //     title: 'Login as User?',
-  //     text: `Do you want to log in to the account with User ID: #${cleanUserId}?`,
-  //     icon: 'question',
-  //     showCancelButton: true,
-  //     confirmButtonText: 'Yes, Login'
-  //   });
+    const result = await Swal.fire({
+      title: 'Login as User?',
+      text: `Do you want to log in to the account with User ID: #${cleanUserId}?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Login'
+    });
 
-  //   if (!result.isConfirmed) return;
+    if (!result.isConfirmed) return;
 
-  //   try {
-  //     Swal.fire({ title: 'Logging in...', didOpen: () => { Swal.showLoading(); } });
-  //     const token = localStorage.getItem('adminToken');
+    try {
+      Swal.fire({ title: 'Logging in...', didOpen: () => { Swal.showLoading(); } });
+      const token = localStorage.getItem('adminToken');
       
-  //     const res = await api.post('/admin/impersonate', { userId: cleanUserId }, {
-  //       headers: { Authorization: `Bearer ${token}` }
-  //     });
+      const res = await api.post('/admin/impersonate', { userId: cleanUserId }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
 
-  //     if (res.data.token) {
-  //       Swal.close();
+      if (res.data.token) {
+        Swal.close();
         
-  //       const { token: userToken, user: impersonatedUser } = res.data;
-  //       const userDataStr = encodeURIComponent(JSON.stringify(impersonatedUser));
+        const { token: userToken, user: impersonatedUser } = res.data;
+        const userDataStr = encodeURIComponent(JSON.stringify(impersonatedUser));
 
-  //       let targetBaseUrl = "";
-  //       const currentHost = window.location.hostname;
+        let targetBaseUrl = "";
+        const currentHost = window.location.hostname;
 
-  //       if (currentHost.includes("localhost") || currentHost === "127.0.0.1") {
-  //         targetBaseUrl = "http://localhost:5173"; 
-  //       } else {
-  //         targetBaseUrl = "https://crowdone.world"; 
-  //       }
+        if (currentHost.includes("localhost") || currentHost === "127.0.0.1") {
+          targetBaseUrl = "http://localhost:5173"; 
+        } else {
+          targetBaseUrl = "https://crowdone.world"; 
+        }
 
-  //       const mainWebsiteUrl = `${targetBaseUrl}/login?token=${userToken}&user=${userDataStr}`;
+        const mainWebsiteUrl = `${targetBaseUrl}/login?token=${userToken}&user=${userDataStr}`;
 
-  //       const link = document.createElement('a');
-  //       link.href = mainWebsiteUrl;
-  //       link.target = '_blank';
-  //       link.rel = 'noopener noreferrer'; 
-  //       document.body.appendChild(link);
-  //       link.click();
-  //       document.body.removeChild(link);
-  //     }
-  //   } catch (error) {
-  //     console.error("Impersonation error:", error);
-  //     Swal.fire('Error', error.response?.data?.message || "Failed to impersonate user", 'error');
-  //   }
-  // };
+        const link = document.createElement('a');
+        link.href = mainWebsiteUrl;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer'; 
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    } catch (error) {
+      console.error("Impersonation error:", error);
+      Swal.fire('Error', error.response?.data?.message || "Failed to impersonate user", 'error');
+    }
+  };
   // --------------------------------------------------------------
 
   useEffect(() => {
@@ -154,10 +153,11 @@ const TotalTopUpPage = () => {
   let todayBusiness = 0;
   let todayCount = 0;
   
-  let leaderBusiness = 0;
-  let leaderCount = 0;
-  let normalBusiness = 0;
-  let normalCount = 0;
+  // 🔥 PERFECT COUNTERS
+  let leaderBusiness = 0; let leaderCount = 0;
+  let setupBusiness = 0; let setupCount = 0;
+  let superSetupBusiness = 0; let superSetupCount = 0;
+  let normalBusiness = 0; let normalCount = 0;
 
   filteredUsers.forEach(u => {
       const amt = u.topUpAmount;
@@ -170,12 +170,15 @@ const TotalTopUpPage = () => {
           todayCount++;
       }
 
+      // 🚀 CHARO CATEGORY ALAG ALAG HISAAB RAKHENGE AB
       if (u.initiatorRole === 'leader') {
-          leaderBusiness += amt;
-          leaderCount++;
+          leaderBusiness += amt; leaderCount++;
+      } else if (u.initiatorRole === 'setup') {
+          setupBusiness += amt; setupCount++;
+      } else if (u.initiatorRole === 'super_setup') {
+          superSetupBusiness += amt; superSetupCount++;
       } else {
-          normalBusiness += amt;
-          normalCount++;
+          normalBusiness += amt; normalCount++;
       }
   });
 
@@ -196,6 +199,10 @@ const TotalTopUpPage = () => {
       { Metric: 'Today Business', Value: todayBusiness },
       { Metric: 'Leader TopUps (Count)', Value: leaderCount },
       { Metric: 'Leader Business ($)', Value: leaderBusiness },
+      { Metric: 'Setup TopUps (Count)', Value: setupCount },
+      { Metric: 'Setup Business ($)', Value: setupBusiness },
+      { Metric: 'Super Setup TopUps (Count)', Value: superSetupCount },
+      { Metric: 'Super Setup Business ($)', Value: superSetupBusiness },
       { Metric: 'Normal TopUps (Count)', Value: normalCount },
       { Metric: 'Normal Business ($)', Value: normalBusiness },
     ];
@@ -205,7 +212,7 @@ const TotalTopUpPage = () => {
       UserID: u.userId,
       Name: u.name || '',
       Mobile: u.mobile || 'N/A',
-      Type: u.initiatorRole === 'leader' ? 'Leader' : 'Normal',
+      Type: u.initiatorRole.replace('_', ' ').toUpperCase(),
       ToppedUpBy: u.topUpBy || 'Self / System',
       Amount: u.topUpAmount,
       Date: getISTDateTimeString(u.topUpDate),
@@ -236,6 +243,8 @@ const TotalTopUpPage = () => {
         >
           <option value="">All Types</option>
           <option value="leader">Leader TopUps</option>
+          <option value="setup">Setup TopUps</option>
+          <option value="super_setup">Super Setup TopUps</option>
           <option value="normal">Normal TopUps</option>
         </select>
 
@@ -271,20 +280,26 @@ const TotalTopUpPage = () => {
         </select>
         
         <button 
-           onClick={() => { setFromDate(''); setToDate(''); }} 
+           onClick={() => { setFromDate(''); setToDate(''); setSearchId(''); setSelectedRole(''); }} 
            className="bg-gray-200 text-gray-700 font-bold px-4 py-2 rounded hover:bg-gray-300 transition shadow-sm text-xs w-full md:w-auto"
         >
-          Clear Dates
+          Clear
         </button>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 mb-6">
-        <SummaryCard label="Total Business" value={`$${totalBusiness}`} color="bg-green-100 border-green-200" />
-        <SummaryCard label="Today Business" value={`$${todayBusiness}`} color="bg-teal-100 border-teal-200" />
+      {/* 🔥 10 CARDS GRID (Aapke Charo Role Aur Total Details Yahan Dikhenge) */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+        <SummaryCard label="Total Business" value={`$${totalBusiness}`} color="bg-gray-100 border-gray-300" />
         <SummaryCard label="Leader Business" value={`$${leaderBusiness}`} color="bg-yellow-100 border-yellow-300" />
-        <SummaryCard label="Leader Count" value={leaderCount} color="bg-orange-100 border-orange-300" />
-        <SummaryCard label="Normal Business" value={`$${normalBusiness}`} color="bg-indigo-100 border-indigo-200" />
-        <SummaryCard label="Normal Count" value={normalCount} color="bg-blue-100 border-blue-200" />
+        <SummaryCard label="Setup Business" value={`$${setupBusiness}`} color="bg-purple-100 border-purple-300" />
+        <SummaryCard label="S-Setup Business" value={`$${superSetupBusiness}`} color="bg-emerald-100 border-emerald-300" />
+        <SummaryCard label="Normal Business" value={`$${normalBusiness}`} color="bg-blue-100 border-blue-200" />
+
+        <SummaryCard label="Today Business" value={`$${todayBusiness}`} color="bg-teal-100 border-teal-200" />
+        <SummaryCard label="Leader Count" value={leaderCount} color="bg-yellow-50 border-yellow-200" />
+        <SummaryCard label="Setup Count" value={setupCount} color="bg-purple-50 border-purple-200" />
+        <SummaryCard label="S-Setup Count" value={superSetupCount} color="bg-emerald-50 border-emerald-200" />
+        <SummaryCard label="Normal Count" value={normalCount} color="bg-blue-50 border-blue-100" />
       </div>
 
       <div className="flex justify-between items-center mb-4">
@@ -319,11 +334,16 @@ const TotalTopUpPage = () => {
                   <td colSpan="7" className="text-center py-10 text-gray-400 font-bold uppercase tracking-widest">No records found</td>
                 </tr>
               ) : (
-                paginatedUsers.map((u, i) => (
+                paginatedUsers.map((u, i) => {
+                  
+                  // 🔥 HELPER: Pata karne ke liye ki yeh special role (Leader family) me se hai ya nahi
+                  const isSpecialRole = ['leader', 'setup', 'super_setup'].includes(u.initiatorRole);
+
+                  return (
                   <tr 
                     key={u._id || i} 
-                    // 🔥 YAHAN CONDITIONAL CLASS LAGI HAI LEADER RED LINE KE LIYE
-                    className={`transition-colors border-b ${u.initiatorRole === 'leader' ? 'bg-red-50 hover:bg-red-100 border-red-100' : 'bg-white hover:bg-indigo-50/30 border-slate-100'}`}
+                    // 🔥 FIX: Setup, Super Setup aur Leader teeno ko Laal (Red) background highlight milega
+                    className={`transition-colors border-b ${isSpecialRole ? 'bg-red-50 hover:bg-red-100 border-red-100' : 'bg-white hover:bg-indigo-50/30 border-slate-100'}`}
                   >
                     <td className="px-4 py-3 text-gray-500 font-bold">{startIndex + i + 1}</td>
                     
@@ -333,18 +353,29 @@ const TotalTopUpPage = () => {
                         className="flex items-center gap-1 hover:text-indigo-800 hover:underline transition-all"
                        >
                         #{u.userId}
-                        {/* <ExternalLink size={12} className="opacity-70" /> */}
                       </button>
                     </td>
 
                     <td className="px-4 py-3 text-gray-800 capitalize font-bold">{u.name}</td>
                     
                     <td className="px-4 py-3">
-                      {u.initiatorRole === 'leader' ? (
+                      {/* 🔥 Dynamic Badges Based on True Roles */}
+                      {u.initiatorRole === 'leader' && (
                         <span className="inline-flex items-center gap-1 bg-yellow-100 text-yellow-800 border border-yellow-300 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest">
                           <Crown size={12} /> Leader
                         </span>
-                      ) : (
+                      )}
+                      {u.initiatorRole === 'setup' && (
+                        <span className="inline-flex items-center gap-1 bg-purple-100 text-purple-800 border border-purple-300 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest">
+                          <Zap size={12} /> Setup
+                        </span>
+                      )}
+                      {u.initiatorRole === 'super_setup' && (
+                        <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest">
+                          <Flame size={12} /> Super Setup
+                        </span>
+                      )}
+                      {u.initiatorRole === 'normal' && (
                         <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 border border-blue-200 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest">
                           <User size={12} /> Normal
                         </span>
@@ -353,18 +384,16 @@ const TotalTopUpPage = () => {
 
                     <td className="px-4 py-3 text-gray-600 font-medium">
                        {(!u.topUpBy || String(u.topUpBy).toLowerCase() === 'self' || String(u.topUpBy).toLowerCase() === 'system') ? (
-                         <span className={`text-[10px] border px-2 py-0.5 rounded font-black uppercase tracking-widest ${u.initiatorRole === 'leader' ? 'bg-white border-red-200 text-red-500' : 'bg-slate-100 border-slate-200 text-slate-500'}`}>
+                         <span className={`text-[10px] border px-2 py-0.5 rounded font-black uppercase tracking-widest ${isSpecialRole ? 'bg-white border-red-200 text-red-500' : 'bg-slate-100 border-slate-200 text-slate-500'}`}>
                            {u.topUpBy || 'Self / System'}
                          </span>
                        ) : (
                          <button 
                            onClick={() => handleImpersonate(u.topUpBy)}
-                           className={`flex items-center gap-1.5 px-2 py-1 rounded border w-max transition-all ${u.initiatorRole === 'leader' ? 'bg-white border-red-200 hover:bg-red-100 text-red-600' : 'bg-gray-50 border-gray-200 hover:bg-gray-100 hover:text-indigo-600 text-gray-700'}`}
+                           className={`flex items-center gap-1.5 px-2 py-1 rounded border w-max transition-all ${isSpecialRole ? 'bg-white border-red-200 hover:bg-red-100 text-red-600' : 'bg-gray-50 border-gray-200 hover:bg-gray-100 hover:text-indigo-600 text-gray-700'}`}
                           >
-                          
-                           <ArrowRightCircle size={14} className={u.initiatorRole === 'leader' ? 'text-red-400' : 'text-gray-400'} />
+                           <ArrowRightCircle size={14} className={isSpecialRole ? 'text-red-400' : 'text-gray-400'} />
                            <span className="text-xs font-bold transition-colors">{u.topUpBy}</span>
-                           {/* <ExternalLink size={12} className="opacity-70" /> */}
                          </button>
                        )}
                     </td>
@@ -374,7 +403,8 @@ const TotalTopUpPage = () => {
                         {getISTDateTimeString(u.topUpDate)}
                     </td>
                   </tr>
-                ))
+                );
+              })
               )}
             </tbody>
           </table>
