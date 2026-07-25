@@ -854,10 +854,17 @@ router.put('/topup/:userId', authMiddleware, async (req, res) => {
                     }
 
                     // 🔥 Setup SKIP Logic
-                    if (upline.role === 'setup' && upline.userId !== paidSetupUserId) {
-                        currentUplineId = upline.sponsorId;
-                        continue; 
-                    }
+                    // if (upline.role === 'setup' && upline.userId !== paidSetupUserId) {
+                    //     currentUplineId = upline.sponsorId;
+                    //     continue; 
+                    // }
+
+                    // 🔥 Setup SKIP Logic
+if (upline.role === 'setup' && upline.userId !== paidSetupUserId) {
+    currentUplineId = upline.sponsorId;
+    currentLevel++; // 👈 YEH LINE ADD KARNI HAI! (Taki level count ho)
+    continue; 
+}
 
                     const isCurrentUplineLeader = (upline.role === 'leader');
                     const isCurrentUplineSuperLeader = (upline.role === 'superleader'); 
@@ -1215,11 +1222,18 @@ router.put(
                       continue; 
                   }
 
-                  // 🔥 Setup SKIP Logic
-                  if (upline.role === 'setup' && upline.userId !== paidSetupUserId) {
-                      currentUplineId = upline.sponsorId;
-                      continue; 
-                  }
+                //   // 🔥 Setup SKIP Logic
+                //   if (upline.role === 'setup' && upline.userId !== paidSetupUserId) {
+                //       currentUplineId = upline.sponsorId;
+                //       continue; 
+                //   }
+
+                // 🔥 Setup SKIP Logic
+if (upline.role === 'setup' && upline.userId !== paidSetupUserId) {
+    currentUplineId = upline.sponsorId;
+    currentLevel++; // 👈 YEH LINE ADD KARNI HAI! (Taki level count ho)
+    continue; 
+}
 
                   const isCurrentUplineLeader = (upline.role === 'leader');
                   const isCurrentUplineSuperLeader = (upline.role === 'superleader'); 
@@ -1574,10 +1588,16 @@ router.put(
                   }
 
                   // 🔥 Setup SKIP Logic
-                  if (upline.role === 'setup' && upline.userId !== paidSetupUserId) {
-                      currentUplineId = upline.sponsorId;
-                      continue; 
-                  }
+                //   if (upline.role === 'setup' && upline.userId !== paidSetupUserId) {
+                //       currentUplineId = upline.sponsorId;
+                //       continue; 
+                //   }
+                // 🔥 Setup SKIP Logic
+if (upline.role === 'setup' && upline.userId !== paidSetupUserId) {
+    currentUplineId = upline.sponsorId;
+    currentLevel++; // 👈 YEH LINE ADD KARNI HAI! (Taki level count ho)
+    continue; 
+}
 
                   const isCurrentUplineLeader = (upline.role === 'leader');
                   const isCurrentUplineSuperLeader = (upline.role === 'superleader'); 
