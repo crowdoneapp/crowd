@@ -11,12 +11,12 @@ const ROI_DAYS = 90;
 const GLOBAL_POOLS = [];
 const PACKAGES = [30, 100, 300, 500, 1000];
 
-// 🔥 HAR LEVEL ME EXACT 100 CUMULATIVE TEAM & 1 DIRECT RULE
+// 🔥 HAR LEVEL ME EXACTLY UTNE HI DIRECTS CHAHIYE JITNA LEVEL NUMBER HAI
 for (let i = 1; i <= TOTAL_LEVELS; i++) {
     GLOBAL_POOLS.push({
         level: i,
-        globalTeam: i * 100, // Level 1 = 100, Level 2 = 200...
-        reqDirects: 1,       // Har level me 1 Direct chahiye
+        globalTeam: i * 100, // Level 1 = 100, Level 2 = 200, Level 50 = 5000...
+        reqDirects: i,       // ✅ FIX: Level 1 = 1 Direct, Level 2 = 2 Directs... Level 50 = 50 Directs
         days: ROI_DAYS
     });
 }
@@ -61,20 +61,6 @@ const startGlobalGrowthCron = () => {
                 date: new Date()
             });
 
-            // 🔥 2. ADMIN & GLOBAL TRACKING ("ALL CROWD")
-            // Ye record sabko same dikhega front-end par us package ke tab mein
-            // await SystemStat.findOneAndUpdate(
-            //     {}, 
-            //     { 
-            //         $inc: { 
-            //             globalFakeCount: 1,
-            //             [`packageStats.${randomPkg}.allCrowd`]: 1, // Har package ka global count
-            //             [`countryStats.${randomCountry}.${randomPkg}`]: 1 
-            //         } 
-            //     }, 
-            //     { upsert: true }
-            // );        
-            
             // 🔥 2. ADMIN & GLOBAL TRACKING ("ALL CROWD") - 100% Guaranteed Fix for Map
             let statDoc = await SystemStat.findOne();
             if (!statDoc) {
@@ -174,14 +160,21 @@ const startGlobalGrowthCron = () => {
                 // Har Active package ke liye uski Your Crowd check karo
                 for (let pkg of activePkgs) {
                     const userCrowdForPackage = user.packageStats?.[pkg]?.globalTeamCount || 0;
-                    const userDirectsForPackage = user.packageStats?.[pkg]?.directCount || user.directCount || 0;
+                    
+                    // 🔥 STRICT DIRECT LOGIC APPLIED HERE 🔥
+                    let userDirectsForPackage = 0;
+                    if (pkg === 30) {
+                        userDirectsForPackage = user.packageStats?.[pkg]?.directCount || user.directCount || 0;
+                    } else {
+                        // $100 aur usse upar ke liye purane normal directs count nahi honge
+                        userDirectsForPackage = user.packageStats?.[pkg]?.directCount || 0;
+                    }
 
                     for (let lvl of GLOBAL_POOLS) {
                         // Check if Package Team and Directs match the Level requirements
                         if (userCrowdForPackage >= lvl.globalTeam && userDirectsForPackage >= lvl.reqDirects) {
                             
                             // Check if this specific Pool (Level + Package) is already active
-                            // Note: backend me identify karne ke liye p.packageAmount check karna zaroori hai
                             const existingPool = user.activePools?.find(p => p.level === lvl.level && p.packageAmount === pkg);
                             
                             if (!existingPool) {
@@ -196,7 +189,7 @@ const startGlobalGrowthCron = () => {
                                     dailyAmount: dailyReturn,
                                     totalDays: lvl.days,
                                     daysPaid: 1,               
-                                    lastPaidDate: currentTodayStr,    
+                                    lastPaidDate: currentTodayStr, // ✅ Double Payout prevent karne ke liye Day 1 ka timestamp set kiya    
                                     status: 'ACTIVE'
                                 });
 
@@ -207,7 +200,7 @@ const startGlobalGrowthCron = () => {
                                     type: 'credit',
                                     source: 'pool',
                                     amount: dailyReturn,
-                                    description: `Daily Crowd Donation Earnign Level ${lvl.level} ($${pkg} Tier) (Day 1 of ${lvl.days})`,
+                                    description: `Daily Crowd Donation Earning Level ${lvl.level} ($${pkg} Tier) (Day 1 of ${lvl.days})`,
                                     status: 'success'
                                 });
 
@@ -239,6 +232,7 @@ const startGlobalGrowthCron = () => {
                 await Promise.all(batch.map(async (user) => {
                     let isUpdated = false;
                     for (let pool of user.activePools) {
+                        // ✅ STRICT DOUBLE INCOME BLOCKER: lastPaidDate ko aaj ki date (todayStr) se match karke rokta hai
                         if (pool.status === 'ACTIVE' && pool.daysPaid < pool.totalDays && pool.lastPaidDate !== todayStr) {
                             
                             user.poolIncome = (user.poolIncome || 0) + pool.dailyAmount;

@@ -36,7 +36,12 @@ const TransactionDetails = () => {
               const tTo = String(txn.toUserId);
               const me = uid;
 
+              // 🔥 1. Instant Leader Bonus Hide Kiya
               if (tSource === "instant_leader_bonus" || tDesc.includes("instant leader bonus") || tDesc.includes("instant bonus")) return false;
+              
+              // 🔥 2. Setup/Super Setup Setting Income Hide Kiya (5% aur 10% wala)
+              if (tSource === "setting_income" || tDesc.includes("setting income")) return false;
+
               if (tType === "topup" && txn.description?.toUpperCase().includes("PROMOTION")) return false;
               if (tUserId === me) return true;
               if (tType === "transfer" || tType === "topup") {
@@ -223,7 +228,7 @@ const TransactionDetails = () => {
               <thead className="bg-[#1a233a] border-b border-slate-700/50 text-slate-400 text-[11px] md:text-xs font-black uppercase tracking-widest">
                 <tr>
                   <th className="p-5 text-center rounded-tl-xl">Sr.</th>
-                  <th className="p-5">Date</th>
+                  <th className="p-5">Date & Time</th>
                   <th className="p-5">Event Type</th>
                   <th className="p-5 text-center">Amount</th>
                   <th className="p-5">From UserId</th>
@@ -258,9 +263,9 @@ const TransactionDetails = () => {
                       <tr key={txn._id || idx} className="bg-[#131b2f] hover:bg-[#1a233a] border-b border-slate-800 transition-colors">
                         <td className="p-5 font-bold text-slate-500 text-center">{indexOfFirst + idx + 1}</td>
 
-                        {/* 🔥 SIRF DATE DIKHEGI, TIME REMOVED */}
+                        {/* 🔥 DATE KE SATH TIME BHI ADD KIYA GAYA */}
                         <td className="p-5 text-slate-200 font-mono text-[12px] sm:text-sm font-bold tracking-wide">
-                          {txn.createdAt || txn.date ? format(new Date(txn.createdAt || txn.date), "dd MMM yyyy") : 'N/A'}
+                          {txn.createdAt || txn.date ? format(new Date(txn.createdAt || txn.date), "dd MMM yyyy, hh:mm a") : 'N/A'}
                         </td>
 
                         <td className="p-5">
