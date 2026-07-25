@@ -5,7 +5,7 @@ import {
   Home, Wallet, Banknote, History, Users, UserCircle2, 
   HelpCircle, BadgeDollarSign, BarChart, Globe, Zap, 
   FileQuestion, Coins, Layers, ArrowRightLeft, ShieldCheck, 
-  Network, PieChart, LayoutDashboard, Send, ChevronDown, LogOut
+  Network, PieChart, LayoutDashboard, Send, ChevronDown, LogOut, Target
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 
@@ -72,9 +72,11 @@ const Sidebar = ({ user, isOpen, setIsOpen }) => {
       items: [
         { label: "Direct Income", icon: BadgeDollarSign, path: "/direct-income" },
         { label: "Level Income", icon: Layers, path: "/level-income" },
+        // Naya Route Add Kiya Yaha! 👇
+        { label: "Crowd Earning", icon: Target, path: "/crowd-earning" } 
         ]
     },
-     
+      
     {
       title: "Financials",
       icon: Wallet,

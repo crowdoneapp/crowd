@@ -60,6 +60,16 @@ const WalletHistory = () => {
         .filter((t) => allTypes.includes(t.type))
         .filter((t) => {
           const desc = (t.description || "").toLowerCase();
+          const source = (t.source || "").toLowerCase();
+
+          // 🔥 1. Filter out Setting Income (Setup & Super Setup)
+          if (source === "setting_income" || desc.includes("setting income")) return false;
+
+          // 🔥 2. Filter out Promotion Entries (Promoted to Setup / Super Setup)
+          if (desc.includes("promoted to setup") || desc.includes("promoted to super")) return false;
+
+          // 🔥 3. Filter out Daily Crowd Donation Earning / Pool Income (Kyunki iska alag page hai ab)
+          if (source === "pool" || desc.includes("crowd donation") || desc.includes("community income") || desc.includes("pool level") || desc.includes("pool income")) return false;
 
           if (t.type === "transfer") {
             const isSender = String(t.fromUserId) === String(uid) || String(t.userId) === String(uid);
@@ -72,11 +82,8 @@ const WalletHistory = () => {
 
           return !(
             desc.includes("auto-pool") ||
-            desc.includes("pool level") ||
-            desc.includes("pool income") ||
             desc.includes("singel leg") ||
             desc.includes("single leg") ||
-            desc.includes("community income") ||
             desc.includes("unlocked") ||
             desc.includes("instant leader staking bonus") ||
             desc.includes("instant leader bonus") ||
@@ -292,20 +299,6 @@ const WalletHistory = () => {
         </div>
       </div>
 
-      {/* Balance Card */}
-      {/* <div className="mb-8 relative group max-w-sm">
-        <div className="absolute inset-0 bg-amber-500/10 rounded-3xl blur-[40px] opacity-50 group-hover:opacity-80 transition-opacity duration-500 pointer-events-none"></div>
-        <div className="bg-[#131b2f] shadow-inner rounded-3xl border border-amber-500/20 p-5 md:p-6 relative overflow-hidden flex flex-col justify-center">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-amber-400/10 rounded-full blur-[40px] -mr-10 -mt-10 pointer-events-none"></div>
-          <h3 className="text-amber-400/80 text-[10px] md:text-xs font-black uppercase tracking-widest flex items-center gap-2 mb-2">
-            <Wallet size={14} className="text-amber-400" /> Current Wallet Balance
-          </h3>
-          <p className="text-3xl md:text-4xl font-black text-white font-mono drop-shadow-[0_0_8px_rgba(251,191,36,0.4)]">
-            ${currentWalletBalance}
-          </p>
-        </div>
-      </div> */}
-
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4 mb-8 justify-between items-center bg-[#131b2f] shadow-inner p-4 rounded-2xl border border-slate-800">
         <div className="relative w-full sm:w-80 group">
@@ -344,7 +337,7 @@ const WalletHistory = () => {
             {/* Header row */}
             <div className="bg-[#1a233a] border-b border-slate-700/50 rounded-xl px-6 py-4 grid grid-cols-7 gap-3 mb-4 shadow-md text-slate-400 text-[11px] md:text-xs font-black uppercase tracking-widest">
               <div className="text-center">Sr.</div>
-              <div className="text-right">Date</div>
+              <div className="text-right">Date & Time</div>
               <div>Type</div>
               <div>Amount</div>
               <div>Balance</div>
@@ -395,9 +388,9 @@ const WalletHistory = () => {
                     >
                       <div className="font-bold text-slate-500 text-center">{serialNumber}</div>
 
-                      {/* 🔥 SIRF DATE DIKHEGI, TIME REMOVED */}
-                      <div className="text-slate-200 font-mono text-[12px] sm:text-sm font-bold tracking-wide text-right">
-                        {txn.date ? format(new Date(txn.date), "dd MMM yyyy") : "N/A"}
+                      {/* 🔥 DATE AUR TIME DIKHEGA YAHAN */}
+                      <div className="text-slate-200 font-mono text-[11px] sm:text-xs font-bold tracking-wide text-right">
+                        {txn.date ? format(new Date(txn.date), "dd MMM yyyy, hh:mm a") : "N/A"}
                       </div>
 
                       <div>
@@ -418,11 +411,12 @@ const WalletHistory = () => {
                         {partyInfo !== "-" ? <span className="bg-[#0b0f19] px-2.5 py-1.5 border border-slate-700 rounded-lg">{partyInfo}</span> : "-"}
                       </div>
 
+                      {/* 🔥 NODE KO PACKAGE ME REPLACE KIYA GAYA HAI */}
                       <div className="text-slate-400 text-[11px] md:text-xs font-medium tracking-wide capitalize truncate" title={txn.description || "-"}>
                         {txn.description
                           ? txn.description
                               .replace(/leader settlement:?\s*/gi, "")
-                              .replace(/pool/gi, "Community Income")
+                              .replace(/node/gi, "Package") 
                           : "-"}
                       </div>
                     </div>

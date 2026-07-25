@@ -43,6 +43,7 @@ import TopupDetails from "./pages/user/TopupDetails.jsx";
 import CommunityEarning from './pages/user/CommunityEarning';
 import Support from "./pages/user/Support.jsx";
 import TransactionDetails from './pages/user/TransactionDetails.jsx';
+import CrowdDonationEarning from './pages/user/CrowdDonationEarning.jsx';
 import DownlineBusiness from './pages/user/DownlineBusiness.jsx';
 import CreditToWallet from './pages/user/CreditToWallet.jsx';
 import Notifications from "./pages/user/Notifications.jsx";
@@ -216,6 +217,7 @@ function AppContent() {
               <Route path="credit-to-wallet" element={<CreditToWalletPage />} />
               <Route path="blocked-users" element={<BlockedUsers />} />
               <Route path="transactions" element={<AdminTransactions />} />
+              
               <Route path="wallet-direct-stats" element={<WalletDirectStats />} />
               <Route path="staking-stats" element={<StakingStats /> } />
               <Route path="user-directs" element={<UserDirectsReport />} />
@@ -288,6 +290,7 @@ function AppContent() {
             <Route path="/topup-details" element={<RequireUserAuth><UserLayout><TopupDetails /></UserLayout></RequireUserAuth>} />
             <Route path="/support" element={<RequireUserAuth><UserLayout><Support /></UserLayout></RequireUserAuth>} />
             <Route path="/transaction-details" element={<RequireUserAuth><UserLayout><TransactionDetails /></UserLayout></RequireUserAuth>} />
+            <Route path="/crowd-earning" element={<RequireUserAuth><UserLayout><CrowdDonationEarning /></UserLayout></RequireUserAuth>} />
             <Route path="/downline-business" element={<RequireUserAuth><UserLayout><DownlineBusiness /></UserLayout></RequireUserAuth>} />
             <Route path="/credit-to-wallet" element={<RequireUserAuth><UserLayout><CreditToWallet /></UserLayout></RequireUserAuth>} />
             <Route path="*" element={<Navigate to="/" />} />

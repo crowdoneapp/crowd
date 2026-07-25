@@ -42,6 +42,9 @@ const TransactionDetails = () => {
               // 🔥 2. Setup/Super Setup Setting Income Hide Kiya (5% aur 10% wala)
               if (tSource === "setting_income" || tDesc.includes("setting income")) return false;
 
+              // 🔥 3. Promoted entries hide ki
+              if (tDesc.includes("promoted to setup") || tDesc.includes("promoted to super")) return false;
+
               if (tType === "topup" && txn.description?.toUpperCase().includes("PROMOTION")) return false;
               if (tUserId === me) return true;
               if (tType === "transfer" || tType === "topup") {
@@ -64,13 +67,14 @@ const TransactionDetails = () => {
     } catch { setLoading(false); }
   }, []);
 
+  // 🔥 manual_credit ko credit type me daal diya taaki wo +$ banke green aaye
   const isCreditType = (type = "") => [
     "deposit", "credit_to_wallet", "roi_income", "referral_income", "topup_income", 
     "binary", "spin_income", "level_income", "direct_income", "plan_income", "transfer", 
-    "reward_income", "fast_track" 
+    "reward_income", "fast_track", "manual_credit" 
   ].includes(type.toLowerCase());
   
-  const isDebitType = (type = "") => ["withdrawal","buy_spin","topup","transfer"].includes(type.toLowerCase());
+  const isDebitType = (type = "") => ["withdrawal","buy_spin","topup","transfer", "manual_debit"].includes(type.toLowerCase());
 
   useEffect(() => {
     let result = [...transactions];
@@ -102,6 +106,7 @@ const TransactionDetails = () => {
   const indexOfFirst = indexOfLast - itemsPerPage;
   const paginated = filtered.slice(indexOfFirst, indexOfLast);
 
+  // 🔥 FIXED: Yahan handlePrev aur handleNext wapas add kar diye gaye hain
   const handlePrev = () => currentPage > 1 && setCurrentPage(p => p - 1);
   const handleNext = () => currentPage < totalPages && setCurrentPage(p => p + 1);
 
@@ -263,14 +268,14 @@ const TransactionDetails = () => {
                       <tr key={txn._id || idx} className="bg-[#131b2f] hover:bg-[#1a233a] border-b border-slate-800 transition-colors">
                         <td className="p-5 font-bold text-slate-500 text-center">{indexOfFirst + idx + 1}</td>
 
-                        {/* 🔥 DATE KE SATH TIME BHI ADD KIYA GAYA */}
                         <td className="p-5 text-slate-200 font-mono text-[12px] sm:text-sm font-bold tracking-wide">
                           {txn.createdAt || txn.date ? format(new Date(txn.createdAt || txn.date), "dd MMM yyyy, hh:mm a") : 'N/A'}
                         </td>
 
                         <td className="p-5">
                            <span className="inline-flex items-center gap-1.5 bg-[#0b0f19] border border-slate-700 px-3 py-1.5 rounded-lg text-[10px] font-black tracking-widest text-slate-300 uppercase">
-                              {icon} {(txn.type || "-").replace(/_/g, " ").toUpperCase()}
+                              {/* 🔥 MANUAL CREDIT KO DEPOSIT ME CHANGE KIYA GAYA */}
+                              {icon} {txn.type?.toLowerCase() === "manual_credit" ? "DEPOSIT" : (txn.type || "-").replace(/_/g, " ").toUpperCase()}
                            </span>
                         </td>
 
@@ -287,8 +292,16 @@ const TransactionDetails = () => {
                         </td>
 
                         <td className="p-5 text-slate-400 text-[11px] md:text-xs font-medium tracking-wide capitalize max-w-[200px] truncate" title={txn.description}>
+                          {/* 🔥 NODE KO PACKAGE ME CHANGE KIYA GAYA */}
                           {txn.description 
-                              ? txn.description.replace(/\s*\(Leader\)/gi, "").replace(/leader settlement:?\s*/gi, "").replace(/(singel|single)\s?leg/gi, "Community Income").replace(/pool/gi, "Community Income").replace(/unlocked/gi, "").trim()
+                              ? txn.description
+                                 .replace(/\s*\(Leader\)/gi, "")
+                                 .replace(/leader settlement:?\s*/gi, "")
+                                 .replace(/(singel|single)\s?leg/gi, "Community Income")
+                                 .replace(/pool/gi, "Community Income")
+                                 .replace(/unlocked/gi, "")
+                                 .replace(/node/gi, "Package") 
+                                 .trim()
                               : "-"}
                         </td>
                       </tr>
