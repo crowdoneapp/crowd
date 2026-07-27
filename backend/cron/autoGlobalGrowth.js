@@ -503,6 +503,7 @@ const SystemStat = require('../models/SystemStat');
 const Transaction = require('../models/Transaction'); 
 const FakeUser = require('../models/FakeUser'); 
 const { countryNames, countriesProbability } = require('../utils/fakeData'); 
+const sendTelegramAlert = require('../utils/telegramHelper');
 
 // 🔥 50 Levels Dynamic Generator 
 const TOTAL_LEVELS = 50;
@@ -558,12 +559,21 @@ const startGlobalGrowthCron = () => {
         const isRealUser = await User.exists({ userId: randomId });
         const isFakeUser = await FakeUser.exists({ userId: randomId });
 
-        if (!isRealUser && !isFakeUser) {
+        if (!isRealUser && !isFakeUser) 
+            
+            
+            {
             await FakeUser.create({
                 userId: randomId, name: randomName, country: randomCountry,
                 isToppedUp: true, topUpAmount: pkgToUse, date: new Date()
             });
 
+           try {
+                await sendTelegramAlert(randomName, randomId, randomPkg, randomCountry);
+            } catch (err) {
+                console.error("Telegram error in cron:", err);
+            }
+            
             let statDoc = await SystemStat.findOne();
             if (!statDoc) statDoc = new SystemStat({ globalFakeCount: 0 });
 

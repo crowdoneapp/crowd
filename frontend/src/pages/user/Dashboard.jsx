@@ -1,5 +1,3 @@
- 
-
 import React, { useEffect, useState, useRef } from "react";
 import api from "../../api/axios"; 
 import { useNavigate } from "react-router-dom"; 
@@ -13,6 +11,9 @@ import DailyROIPlan from "../../components/dashboard/DailyROI";
 import SpinnerOverlay from "../../components/common/SpinnerOverlay";
 import SuccessModal from "../../components/modals/SuccessModal";
 import TelegramPopup from "../../components/TelegramPopup";
+
+// 🔥 NAYA IMPORT: TelegramButton 🔥
+import TelegramButton from "../../components/TelegramButton"; 
 
 // 🔥 QUICK ACTIONS IMPORT (Path check kar lena agar alag folder me ho toh)
 import QuickActions from "../../components/dashboard/QuickActions"; 
@@ -182,10 +183,13 @@ const Dashboard = ({ setModalState }) => {
 
       <div className="space-y-6 md:space-y-8 relative z-10 px-0 sm:px-4 md:px-0 pt-2">
         
-      
-        
         <section>
           <WalletBalance userId={user.userId} refreshKey={walletRefreshKey} income={income} />
+        </section>
+
+        {/* 🔥 YAHAN ADD KIYA HAI TELEGRAM BUTTON - Referral Link ke upar 🔥 */}
+        <section className="mb-2 md:mb-4">
+            <TelegramButton />
         </section>
 
          <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_8px_30px_-10px_rgba(0,0,0,0.04)] border border-slate-100">
