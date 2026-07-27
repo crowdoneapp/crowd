@@ -86,8 +86,8 @@ import StakingStats from './pages/admin/StakingStats';
 import UserLifetimeTxReport from './pages/admin/UserLifetimeTxReport';
 import LeaderAutoWithdraw from './pages/admin/LeaderAutoWithdraw';
 import DepositAddressMonitor from './pages/admin/DepositAddressMonitor';
-import IndiaBoostControl from './pages/admin/IndiaBoostControl';
-import FastTrackProgress from './pages/admin/FastTrackProgress.jsx';
+import PackageBoostControl from './pages/admin/PackageBoostControl';
+ import FastTrackProgress from './pages/admin/FastTrackProgress.jsx';
 import ChangeSponsor from './pages/admin/ChangeSponsor';
 import WalletUpdateHistory from './pages/admin/WalletUpdateHistory'; // Path apne hisaab se adjust kar lena
 // 📜 Scroll Restoration
@@ -200,8 +200,8 @@ function AppContent() {
               <Route path="topups" element={<TotalTopUpPage />} />
               <Route path="deposits" element={<DepositTable />} />
               <Route path="address-monitor" element={<DepositAddressMonitor />} />
-              <Route path="india-boost" element={<IndiaBoostControl />} />
-              <Route path="booster-offer" element={<BoosterOfferPage />} />
+            <Route path="package-boost" element={<PackageBoostControl />} />
+               <Route path="booster-offer" element={<BoosterOfferPage />} />
               <Route path="change-sponsor" element={<ChangeSponsor />} />
               <Route path="wallet-history" element={<WalletUpdateHistory />} />
               <Route path="security" element={<AdminSecurity />} />

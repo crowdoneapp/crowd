@@ -5,11 +5,11 @@ const TelegramButton = () => {
     <>
       <style>
         {`
-          /* Pehle wala pulse animation */
+          /* Pehle wala pulse animation (Ab darker shadow ke sath) */
           @keyframes attention-pulse {
-            0% { transform: scale(1); box-shadow: 0 4px 15px rgba(34, 158, 217, 0.4); }
-            50% { transform: scale(1.02); box-shadow: 0 0 25px rgba(34, 158, 217, 0.8); }
-            100% { transform: scale(1); box-shadow: 0 4px 15px rgba(34, 158, 217, 0.4); }
+            0% { transform: scale(1); box-shadow: 0 4px 15px rgba(22, 112, 158, 0.4); }
+            50% { transform: scale(1.02); box-shadow: 0 0 20px rgba(22, 112, 158, 0.7); }
+            100% { transform: scale(1); box-shadow: 0 4px 15px rgba(22, 112, 158, 0.4); }
           }
 
           /* Shine (Chamkili line) Animation */
@@ -23,7 +23,9 @@ const TelegramButton = () => {
             position: relative; 
             overflow: hidden; 
             animation: attention-pulse 2s infinite;
-            box-sizing: border-box; /* Padding ki wajah se width bahar na jaye */
+            box-sizing: border-box; 
+            /* 🔥 Naya Dark Premium Gradient Background */
+            background: linear-gradient(90deg, #1C84B8 0%, #115E85 100%);
           }
 
           /* Ye wo safed chamakti hui line hai jo cross karegi */
@@ -37,7 +39,7 @@ const TelegramButton = () => {
             background: linear-gradient(
               to right, 
               rgba(255, 255, 255, 0) 0%, 
-              rgba(255, 255, 255, 0.7) 50%, 
+              rgba(255, 255, 255, 0.5) 50%, 
               rgba(255, 255, 255, 0) 100%
             );
             transform: skewX(-25deg);
@@ -47,8 +49,9 @@ const TelegramButton = () => {
           .telegram-animated-btn:hover {
             animation: none;
             transform: translateY(-2px);
-            background-color: #1C88BA !important;
-            box-shadow: 0 6px 20px rgba(34, 158, 217, 0.6) !important;
+            /* 🔥 Hover par thoda aur dark ho jayega */
+            background: linear-gradient(90deg, #16709E 0%, #0C4E6E 100%) !important;
+            box-shadow: 0 6px 20px rgba(22, 112, 158, 0.6) !important;
           }
 
           .telegram-animated-btn:hover::after {
@@ -58,7 +61,7 @@ const TelegramButton = () => {
           /* Mobile screens ke liye padding aur size */
           @media (max-width: 768px) {
             .telegram-animated-btn {
-              padding: 12px 16px !important;
+              padding: 14px 16px !important;
               font-size: 15px !important;
               gap: 8px !important;
             }
@@ -72,23 +75,22 @@ const TelegramButton = () => {
       </style>
 
       <a
-        href="https://t.me/usdt_boomers"
+        href="https://t.me/crowdonegroup"
         target="_blank"
         rel="noopener noreferrer"
         className="telegram-animated-btn"
         style={{
-          display: 'flex',       /* CHANGED: inline-flex se flex kar diya */
-          width: '100%',         /* ADDED: Taki button poori width le (100%) */
+          display: 'flex',
+          width: '100%',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: '10px',
-          backgroundColor: '#229ED9',
+          gap: '12px',
           color: '#ffffff',
-          padding: '14px 24px',  /* Thoda padding badhaya taki upar wale button jaisa mota lage */
-          borderRadius: '8px',
+          padding: '16px 24px', /* 🔥 Thoda aur broad kiya UI image jaisa */
+          borderRadius: '12px', /* 🔥 Corners ko thoda aur smooth (round) kiya */
           textDecoration: 'none',
           fontSize: '16px',
-          fontWeight: '600',
+          fontWeight: '700', /* 🔥 Text ko thoda bold kiya */
           fontFamily: 'system-ui, -apple-system, sans-serif',
           transition: 'all 0.3s ease',
           cursor: 'pointer',
@@ -100,8 +102,8 @@ const TelegramButton = () => {
       >
         <svg 
           xmlns="http://www.w3.org/2000/svg" 
-          width="22" 
-          height="22" 
+          width="24" 
+          height="24" 
           fill="currentColor" 
           viewBox="0 0 16 16"
         >

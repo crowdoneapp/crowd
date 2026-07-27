@@ -1454,8 +1454,60 @@ router.put("/transactions/reverse", verifyAdmin, reverseTransactions);
 // Get all users
 // ✅ Protected Route: Get all users (admin only)
 // Backend Code (Node.js/Express)
+// router.get('/users', verifyAdmin, async (req, res) => {
+//   try {
+//     // 🔥 Frontend ki demand ke hisaab se sab fields add kar diye hain
+//     // Aur Sponsor Name nikalne ke liye Aggregation ($lookup) use kiya hai
+//     const users = await User.aggregate([
+//       {
+//         $lookup: {
+//           from: "users", // MongoDB me collection ka naam hamesha lowercase aur plural hota hai
+//           localField: "sponsorId",
+//           foreignField: "userId",
+//           as: "sponsorInfo"
+//         }
+//       },
+//       {
+//         // Sponsor details array me aati hai, usko object me badalne ke liye
+//         $unwind: {
+//           path: "$sponsorInfo",
+//           preserveNullAndEmptyArrays: true // Agar kisi ka sponsor nahi hai toh bhi wo ID hide nahi hogi
+//         }
+//       },
+//       {
+//         // 🎯 Sirf wahi data select karo jo frontend par chahiye (Performance ke liye)
+//         $project: {
+//           userId: 1,
+//           name: 1,
+//           sponsorId: 1,
+//           sponsorName: "$sponsorInfo.name", // 👈 Sponsor ka asli naam yahan se niklega
+//           mobile: 1,
+//           email: 1, 
+//           depositAddress: 1,
+//           walletAddress: 1,          // ✅ Withdrawal wallet address
+//           walletBalance: 1,
+//           topUpAmount: 1,
+//           globalTeamCount: 1,        // ✅ My Community
+//           todayGlobalTeamAdded: 1,   // ✅ Today Community
+//           createdAt: 1
+//         }
+//       },
+//       {
+//         $sort: { createdAt: -1 } // Sabse naye users sabse upar dikhenge
+//       }
+//     ]);
+
+//     res.json(users);
+//   } catch (error) {
+//     console.error('Error fetching users:', error);
+//     res.status(500).json({ message: 'Failed to fetch users' });
+//   }
+// });
+
 router.get('/users', verifyAdmin, async (req, res) => {
   try {
+    const User = require('../models/User'); // Apna path check kar lena
+    
     // 🔥 Frontend ki demand ke hisaab se sab fields add kar diye hain
     // Aur Sponsor Name nikalne ke liye Aggregation ($lookup) use kiya hai
     const users = await User.aggregate([
@@ -3023,67 +3075,70 @@ router.get('/check-live-balance/:userId', verifyAdmin, async (req, res) => {
 
 
 
-
 const SystemStat = require('../models/SystemStat');
-// Aapka jo bhi verifyAdmin middleware hai, use yahan check kar lena
-// const { verifyAdmin } = require('../middleware/auth'); 
+const PACKAGES = [30, 100, 300, 500, 1000];
 
 // ==========================================
-// 1. GET CURRENT INDIA BOOST TARGET
+// 1. GET ALL PACKAGE BOOST TARGETS
 // ==========================================
 // ==========================================
-// 1. GET SYSTEM SETTINGS (All Countries)
+// 1. GET ALL PACKAGE BOOST TARGETS
 // ==========================================
-router.get('/system-settings', verifyAdmin, async (req, res) => {
+router.get('/package-boost-settings', verifyAdmin, async (req, res) => {
     try {
-        const stat = await SystemStat.findOne({});
-        res.json({ 
-            success: true, 
-            extraIndiaDailyTarget: stat?.extraIndiaDailyTarget || 0,
-            extraNigeriaDailyTarget: stat?.extraNigeriaDailyTarget || 0,
-            extraSouthAfricaDailyTarget: stat?.extraSouthAfricaDailyTarget || 0
+        const SystemStat = require('../models/SystemStat'); // path check kar lena
+        let stat = await SystemStat.findOne({});
+        if (!stat) stat = await SystemStat.create({});
+
+        // Agar database me map empty hai, toh default 0 bhejenge
+        let settings = {};
+        const PACKAGES = [30, 100, 300, 500, 1000];
+        
+        PACKAGES.forEach(pkg => {
+            const data = stat.packageBoosts?.get(String(pkg)) || { indiaTarget: 0, otherTarget: 0, indiaToday: 0, otherToday: 0 };
+            settings[pkg] = data;
         });
+
+        res.json({ success: true, data: settings });
     } catch (error) {
-        console.error("Error fetching system settings:", error);
+        console.error("Error fetching boost settings:", error);
         res.status(500).json({ success: false, message: "Server error fetching settings." });
     }
 });
 
 // ==========================================
-// 2. UPDATE COUNTRY BOOST TARGETS
+// 2. UPDATE PACKAGE BOOST TARGETS
 // ==========================================
-router.post('/update-boost-targets', verifyAdmin, async (req, res) => {
+router.post('/update-package-boost', verifyAdmin, async (req, res) => {
     try {
-        const { indiaTarget, nigeriaTarget, southAfricaTarget } = req.body;
+        const SystemStat = require('../models/SystemStat'); // path check kar lena
+        const { packageAmount, indiaTarget, otherTarget } = req.body;
+        const PACKAGES = [30, 100, 300, 500, 1000];
 
-        // Validation
-        if (
-            Number(indiaTarget) < 0 || isNaN(indiaTarget) ||
-            Number(nigeriaTarget) < 0 || isNaN(nigeriaTarget) ||
-            Number(southAfricaTarget) < 0 || isNaN(southAfricaTarget)
-        ) {
-            return res.status(400).json({ success: false, message: "Invalid target numbers." });
+        if (!PACKAGES.includes(Number(packageAmount))) {
+            return res.status(400).json({ success: false, message: "Invalid Package Amount." });
         }
 
-        // Database mein single document ko update karega
-        await SystemStat.findOneAndUpdate(
-            {},
-            { 
-                $set: { 
-                    extraIndiaDailyTarget: Number(indiaTarget),
-                    extraNigeriaDailyTarget: Number(nigeriaTarget),
-                    extraSouthAfricaDailyTarget: Number(southAfricaTarget)
-                } 
-            },
-            { upsert: true }
-        );
+        let stat = await SystemStat.findOne({});
+        if (!stat) stat = new SystemStat();
+        if (!stat.packageBoosts) stat.packageBoosts = new Map();
 
-        res.json({ 
-            success: true, 
-            message: `Daily Extra Boost targets successfully updated for all countries.` 
+        // Pehle se jo aaj ka count ho chuka hai usko preserve karenge
+        const currentData = stat.packageBoosts.get(String(packageAmount)) || { indiaToday: 0, otherToday: 0 };
+
+        stat.packageBoosts.set(String(packageAmount), {
+            indiaTarget: Number(indiaTarget) || 0,
+            otherTarget: Number(otherTarget) || 0,
+            indiaToday: currentData.indiaToday,
+            otherToday: currentData.otherToday
         });
+
+        stat.markModified('packageBoosts');
+        await stat.save();
+
+        res.json({ success: true, message: `$${packageAmount} targets successfully updated!` });
     } catch (error) {
-        console.error("Error updating boost targets:", error);
+        console.error("Error updating boost:", error);
         res.status(500).json({ success: false, message: "Server error updating settings." });
     }
 });

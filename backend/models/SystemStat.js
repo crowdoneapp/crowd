@@ -1,23 +1,22 @@
 const mongoose = require('mongoose');
 
 const systemStatSchema = new mongoose.Schema({
-    globalTeamCount: { type: Number, default: 0 },
     globalFakeCount: { type: Number, default: 0 },
+    packageStats: { type: Map, of: Object, default: {} }, 
     
-    // 🔥 Package-wise All Crowd & stats tracking schema
-    packageStats: {
-        type: Map,
+    // 🔥 NAYA: Har package ka target aur aaj ka count save karne ke liye
+    packageBoosts: {
+        type: Map, 
         of: {
-            allCrowd: { type: Number, default: 0 },
-            globalTeamCount: { type: Number, default: 0 }
+            indiaTarget: { type: Number, default: 0 },
+            otherTarget: { type: Number, default: 0 },
+            indiaToday: { type: Number, default: 0 },
+            otherToday: { type: Number, default: 0 }
         },
         default: {}
     },
-
-    // Admin Boost Controls
-    extraIndiaDailyTarget: { type: Number, default: 0 },
-    extraNigeriaDailyTarget: { type: Number, default: 0 },
-    extraSouthAfricaDailyTarget: { type: Number, default: 0 }
+    
+    boostResetDate: { type: String, default: "" } // Raat 12 baje zero karne ke liye
 
 }, { timestamps: true });
 

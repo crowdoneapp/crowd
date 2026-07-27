@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Timer, Users, Activity } from 'lucide-react'; // Naye Lucide icons import kiye
+import { Timer, Users, Activity } from 'lucide-react'; 
 import {
   FaHome, FaUsers, FaMoneyBill, FaWallet, FaListAlt, FaCog, FaSignOutAlt,
   FaSitemap, FaProjectDiagram, FaExchangeAlt, FaFileAlt, FaUserPlus, FaGift,
   FaArrowCircleUp, FaArrowCircleDown, FaBell, FaClipboardList, FaCoins,
   FaUserSlash, FaBars, FaTimes, FaHistory, FaShieldAlt, FaBan,
-  FaUserCog, FaYoutube, FaRocket, FaSearchDollar, FaPiggyBank, FaTrophy, FaChartPie, FaBolt 
+  FaUserCog, FaYoutube, FaRocket, FaSearchDollar, FaPiggyBank, FaTrophy, FaChartPie, FaBolt, FaLayerGroup 
 } from 'react-icons/fa';
 
 const Sidebar = () => {
@@ -96,7 +96,6 @@ const Sidebar = () => {
               <FaUsers className="inline-block mr-2" /> All Users
             </NavLink>
 
-            {/* 🔥 NAYA LINK: User Address History (Bich me add kiya) */}
             <NavLink to={`${BASE_PATH}/wallet-history`} className={linkClass} onClick={(e) => handleNavClick(e, `${BASE_PATH}/wallet-history`)}>
               <FaHistory className="inline-block mr-2 text-purple-500" /> User Address History
             </NavLink>
@@ -105,8 +104,8 @@ const Sidebar = () => {
               <FaUserCog className="inline-block mr-2 text-blue-500" /> Manage Roles & Leaders
             </NavLink>
             <NavLink to={`${BASE_PATH}/change-sponsor`} className={linkClass} onClick={(e) => handleNavClick(e, `${BASE_PATH}/change-sponsor`)}>
-  <FaExchangeAlt className="inline-block mr-2 text-indigo-500" /> Change Sponsor
-</NavLink>
+              <FaExchangeAlt className="inline-block mr-2 text-indigo-500" /> Change Sponsor
+            </NavLink>
 
             <NavLink to={`${BASE_PATH}/blocked-users`} className={linkClass} onClick={(e) => handleNavClick(e, `${BASE_PATH}/blocked-users`)}>
               <FaUserSlash className="inline-block mr-2" /> Blocked Users
@@ -137,7 +136,6 @@ const Sidebar = () => {
               <FaBell className="inline-block mr-2" /> Notifications
             </NavLink>
             
-            {/* 🔥 NAYE PAGES YAHAN HAIN 🔥 */}
             <NavLink to={`${BASE_PATH}/user-directs`} className={linkClass} onClick={(e) => handleNavClick(e, `${BASE_PATH}/user-directs`)}>
               <Users className="inline-block mr-2 text-blue-500" size={16} /> User Directs (0-18+)
             </NavLink>
@@ -161,8 +159,9 @@ const Sidebar = () => {
               <FaSearchDollar className="inline-block mr-2 text-orange-500" /> Address Monitor
             </NavLink>
 
-            <NavLink to={`${BASE_PATH}/india-boost`} className={linkClass} onClick={(e) => handleNavClick(e, `${BASE_PATH}/india-boost`)}>
-              <FaBolt className="inline-block mr-2 text-orange-500 animate-pulse" /> India Boost 🇮🇳
+            {/* 🔥 UPDATED LINK: India Boost se badal kar Package Growth kiya 🔥 */}
+            <NavLink to={`${BASE_PATH}/package-boost`} className={linkClass} onClick={(e) => handleNavClick(e, `${BASE_PATH}/package-boost`)}>
+              <FaLayerGroup className="inline-block mr-2 text-orange-500" /> Package Growth
             </NavLink>
 
             <NavLink to={`${BASE_PATH}/fast-track-report`} className={linkClass} onClick={(e) => handleNavClick(e, `${BASE_PATH}/fast-track-report`)}>
@@ -177,11 +176,10 @@ const Sidebar = () => {
               <FaChartPie className="inline-block mr-2 text-purple-500" /> Wallet & Directs
             </NavLink>
 
-<NavLink to={`${BASE_PATH}/staking-stats`} className={linkClass} onClick={(e) => handleNavClick(e, `${BASE_PATH}/staking-stats`)}>
-    <FaCoins className="inline-block mr-2 text-amber-500" /> Staking Analytics
-</NavLink>
+            <NavLink to={`${BASE_PATH}/staking-stats`} className={linkClass} onClick={(e) => handleNavClick(e, `${BASE_PATH}/staking-stats`)}>
+              <FaCoins className="inline-block mr-2 text-amber-500" /> Staking Analytics
+            </NavLink>
             
-
             <NavLink to={`${BASE_PATH}/user-fund-overview`} className={linkClass} onClick={(e) => handleNavClick(e, `${BASE_PATH}/user-fund-overview`)}>
               <FaPiggyBank className="inline-block mr-2 text-pink-500" /> Fund Overview
             </NavLink>

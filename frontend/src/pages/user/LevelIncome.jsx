@@ -12,6 +12,27 @@ const LevelIncome = () => {
   const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [loading, setLoading] = useState(true);
 
+  // 🔥 Helper function jo check karega ki ID valid hai ya nahi
+  const getValidSourceUser = (txn) => {
+    const cleanDescription = txn.description ? txn.description.replace(/\s*\(Leader\)/gi, "") : "";
+    let displayUser = txn.fromUserId || txn.from || txn.byUserId || "";
+    
+    // Agar khud ki ID hai toh usko empty (invalid) kar do
+    if (String(displayUser) === String(userId)) {
+      displayUser = "";
+    }
+    
+    // Agar id nahi mili lekin description me "from 1234567" hai toh wahan se nikal lo
+    if (!displayUser && cleanDescription.toLowerCase().includes(" from ")) {
+      const extracted = cleanDescription.split(/ from /i)[1].trim();
+      // Sirf numbers hone chahiye, aur khud ki ID nahi honi chahiye
+      if (/^\d+$/.test(extracted) && extracted !== String(userId)) {
+        displayUser = extracted;
+      }
+    }
+    return displayUser;
+  };
+
   useEffect(() => {
     if (!userId) {
       setLoading(false);
@@ -22,7 +43,13 @@ const LevelIncome = () => {
     api.get(`/transaction/transactions/${userId}?type=level_income&t=${new Date().getTime()}`)
       .then((res) => {
         const sorted = (res.data || [])
+          .filter((txn) => {
+            // 🔥 NAYA FILTER: Agar khud ki ID hai ya "Downline User" / Dash (-) ban raha hai, toh entry HIDE (Remove) kar do!
+            const sourceUser = getValidSourceUser(txn);
+            return sourceUser !== ""; // Sirf wahi entry rakho jisme actual valid (doosri) ID ho
+          })
           .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        
         setTransactions(sorted);
         setFiltered(sorted);
       })
@@ -45,7 +72,7 @@ const LevelIncome = () => {
     const result = transactions.filter(
       (txn) =>
         txn.description?.toLowerCase().includes(value) ||
-        String(txn.fromUserId || "").toLowerCase().includes(value)
+        String(getValidSourceUser(txn)).toLowerCase().includes(value)
     );
     setFiltered(result);
   };
@@ -125,15 +152,8 @@ const LevelIncome = () => {
                     ? txn.description.replace(/\s*\(Leader\)/gi, "")
                     : "Level income";
 
-                  // 🔥 FIX: Extract User ID from different fields or description
-                  let displayUser = txn.fromUserId || txn.from || txn.byUserId;
-                  
-                  if (!displayUser && cleanDescription.toLowerCase().includes(" from ")) {
-                    displayUser = cleanDescription.split(/ from /i)[1].trim();
-                  }
-                  
-                  // Default to "Downline User" if nothing is found
-                  displayUser = displayUser || "Downline User";
+                  // Yahan guaranteed ek valid doosri ID hogi kyunki humne pehle hi filter kar liya hai
+                  const displayUser = getValidSourceUser(txn);
 
                   return (
                     <div key={txn._id || idx} className="bg-[#0b0f19] hover:bg-[#1a233a] rounded-2xl px-6 py-4 grid grid-cols-6 gap-3 items-center border border-slate-800 transition-colors">
@@ -144,12 +164,10 @@ const LevelIncome = () => {
                         {date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
                       </div>
                       
-                      {/* 🔥 Display Correct User ID */}
+                      {/* 🔥 Display Valid User ID only */}
                       <div className="font-black text-slate-200 text-sm flex items-center gap-2 truncate">
-                        <UserCircle className="text-amber-500 shrink-0" size={16} /> 
-                        <span className={displayUser === "Downline User" ? "text-slate-500 italic font-bold text-xs" : ""}>
-                          {displayUser}
-                        </span>
+                        <UserCircle className="text-amber-500 shrink-0" size={16} />
+                        <span>{displayUser}</span>
                       </div>
 
                       <div className="text-center">
@@ -160,7 +178,7 @@ const LevelIncome = () => {
                       <div className="text-center">
                         <span className="text-emerald-400 text-base font-black">+ ${Number(txn.amount).toFixed(2)}</span>
                       </div>
-                      <div className="text-slate-400 text-[11px] md:text-xs font-bold tracking-wide capitalize truncate">
+                      <div className="text-slate-400 text-[11px] md:text-xs font-bold tracking-wide capitalize truncate" title={cleanDescription}>
                         {cleanDescription}
                       </div>
                     </div>
