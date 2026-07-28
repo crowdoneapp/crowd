@@ -562,14 +562,14 @@ const startGlobalGrowthCron = () => {
         if (!isRealUser && !isFakeUser) 
             
             
-            {
+           {
             await FakeUser.create({
                 userId: randomId, name: randomName, country: randomCountry,
                 isToppedUp: true, topUpAmount: pkgToUse, date: new Date()
             });
 
            try {
-                await sendTelegramAlert(randomName, randomId, randomPkg, randomCountry);
+                await sendTelegramAlert(randomName, randomId, pkgToUse, randomCountry);
             } catch (err) {
                 console.error("Telegram error in cron:", err);
             }

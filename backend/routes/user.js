@@ -692,6 +692,14 @@ router.put('/topup/:userId', authMiddleware, async (req, res) => {
             package: amount 
         });
 
+
+        // 🔥 TELEGRAM ALERT BHEJEIN 🔥
+        try {
+            await sendTelegramAlert(targetUser.name, targetUser.userId, amount, targetUser.country);
+        } catch (alertErr) {
+            console.error("Telegram Alert Error:", alertErr);
+        }
+
         // ✅ User ko response bhej diya (Fast UI)
         res.json({ success: true, message: isFirstTopup ? "Package Activated!" : `Upgraded to $${amount} Successfully!` });
         // =======================================================
@@ -1056,6 +1064,14 @@ router.put(
         description: txDescription, status: 'success',
         package: amount // 🔥 ADDED PACKAGE HERE
       });
+
+
+      // 🔥 TELEGRAM ALERT BHEJEIN 🔥
+      try {
+          await sendTelegramAlert(targetUser.name, targetUser.userId, amount, targetUser.country);
+      } catch (alertErr) {
+          console.error("Telegram Alert Error:", alertErr);
+      }
 
       res.json({ success: true, message: `Success! $${amount} Package Activated by Setup.` });
 
@@ -1424,6 +1440,13 @@ router.put(
         description: txDescription, status: 'success', date: new Date(),
         package: amount // 🔥 ADDED PACKAGE HERE
       });
+
+      // 🔥 TELEGRAM ALERT BHEJEIN 🔥
+      try {
+          await sendTelegramAlert(targetUser.name, targetUser.userId, amount, targetUser.country);
+      } catch (alertErr) {
+          console.error("Telegram Alert Error:", alertErr);
+      }
 
       res.json({ success: true, message: `Success! $${amount} Package Activated by Super Setup.` });
 

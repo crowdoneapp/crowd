@@ -10,15 +10,18 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "axios": "^1.18.1",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "ethers": "^6.16.0",
     "express": "^5.2.1",
+    "form-data": "^4.0.6",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.6.2",
     "node-cron": "^4.2.1",
+    "node-html-to-image": "^6.2.0",
     "nodemailer": "^8.0.7"
   }
 }
