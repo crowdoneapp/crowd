@@ -15,7 +15,7 @@ const StakingPopup = ({ onClose }) => {
 
         {/* Staking Rules Image */}
         <img
-          src="/staking-rules.jpg"
+          src="/sta.jpg"
           alt="Staking Rules"
           className="w-full max-h-[70vh] object-contain"
         />
