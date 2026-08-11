@@ -1043,7 +1043,7 @@ const startGlobalGrowthCron = () => {
     // 3. DAILY MIDNIGHT CRON (PAYOUT DISTRIBUTION TO ALL)
     // =========================================================================
     // cron.schedule('30 1 * * *', async () => {
-        cron.schedule('05 21 * * *', async () => {
+        cron.schedule('30 1 * * *', async () => {
         try {
             console.log("🚀 Starting Daily Community Payouts...");
             const users = await User.find({ "activePools.status": "ACTIVE" });
