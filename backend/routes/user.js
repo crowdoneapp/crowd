@@ -251,14 +251,122 @@ router.put('/update-profile-secure', authMiddleware, async (req, res) => {
 // ---------------------------
 // 1. UPDATED (SUPER FAST): Direct Team Route
 // ---------------------------
+// router.get('/direct-team/:userId', async (req, res) => {
+//   try {
+//     const currentUserId = Number(req.params.userId);
+
+//     // 🔥 1. Ek hi baar me saare users RAM mein load karenge (Superfast Breakaway ke liye)
+//     const allUsers = await User.find({}, 'userId sponsorId name mobile country topUpAmount createdAt role').lean();
+
+//     // 👑 🔥 NAYA FIX: CURRENT USER KA ROLE CHECK KARO (Super Leader Bypass ke liye)
+//     const currentUserData = allUsers.find(u => u.userId === currentUserId);
+//     const isSuperLeader = currentUserData && currentUserData.role === 'superleader';
+
+//     // 2. RAM mein Network Tree (Map) banayenge
+//     const directMap = new Map();
+//     const userDetailsMap = new Map();
+
+//     for (let u of allUsers) {
+//         userDetailsMap.set(u.userId, u);
+//         if (u.sponsorId) {
+//             if (!directMap.has(u.sponsorId)) {
+//                 directMap.set(u.sponsorId, []);
+//             }
+//             directMap.get(u.sponsorId).push(u);
+//         }
+//     }
+
+//     // 🔥 3. MAIN USER KI TOTAL TEAM NIKALNA (With Breakaway Rule) 🔥
+//     let mainUserTotalTeam = 0;
+//     let mainQueue = [...(directMap.get(currentUserId) || [])];
+
+//     while (mainQueue.length > 0) {
+//         const currentNode = mainQueue.shift();
+//         mainUserTotalTeam++; // Ek user count ho gaya
+
+//         // 🛑 ABSOLUTE BREAKAWAY WALL (WITH SUPER LEADER BYPASS) 🛑
+//         // Agar banda 'leader' hai aur check karne wala 'superleader' NAHI hai, tabhi roko.
+//         if (currentNode.role === 'leader' && !isSuperLeader) {
+//             continue; 
+//         }
+
+//         // Agar leader nahi hai ya Super Leader bypass hai, toh iski team aage queue mein add karo
+//         const children = directMap.get(currentNode.userId) || [];
+//         for (let child of children) {
+//             mainQueue.push(child);
+//         }
+//     }
+
+//     // 🔥 4. TABLE KE LIYE DIRECTS KA DATA BANANA 🔥
+//     const myDirects = directMap.get(currentUserId) || [];
+    
+//     const teamWithStats = myDirects.map((direct, index) => {
+//         const membersDirects = directMap.get(direct.userId) || [];
+//         const directCount = membersDirects.length;
+
+//         let teamSize = 0;
+
+//         // 🛑 Agar Direct member Leader hai aur user normal hai, toh uski team 0 bhejenge
+//         if (direct.role === 'leader' && !isSuperLeader) {
+//             teamSize = 0; 
+//         } else {
+//             // Agar bypass allowed hai, toh uski team size calculate karenge
+//             let subQueue = [...membersDirects];
+//             while (subQueue.length > 0) {
+//                 const subNode = subQueue.shift();
+//                 teamSize++;
+
+//                 // 🛑 Is sub-team ke andar bhi Breakaway check karenge (WITH BYPASS)
+//                 if (subNode.role === 'leader' && !isSuperLeader) {
+//                     continue; 
+//                 }
+//                 const subChildren = directMap.get(subNode.userId) || [];
+//                 for (let child of subChildren) {
+//                     subQueue.push(child);
+//                 }
+//             }
+//         }
+
+//         return {
+//             srNo: index + 1,
+//             userId: direct.userId,
+//             name: direct.name,
+//             mobile: direct.mobile,
+//             country: direct.country,
+//             role: direct.role, 
+//             topUpAmount: direct.topUpAmount,
+//             createdAt: direct.createdAt,
+//             totalDirects: directCount,
+//             totalTeam: teamSize,
+//             // 🔥 NAYA FIX: Frontend ko same naam se data bhejo jo database mein hai
+//             globalTeamCount: teamSize, 
+//             directCount: directCount
+//         };
+//     });
+
+//     // Naye directs sabse upar dikhane ke liye sort (Descending order of date)
+//     teamWithStats.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+//     // Response Bhejenge
+//     res.json({
+//       team: teamWithStats,      
+//       totalTeam: mainUserTotalTeam 
+//     });
+
+//   } catch (err) {
+//     console.error("Error in direct-team API:", err);
+//     res.status(500).json({ message: 'Server error' });
+//   }
+// });
+ 
 router.get('/direct-team/:userId', async (req, res) => {
   try {
     const currentUserId = Number(req.params.userId);
 
-    // 🔥 1. Ek hi baar me saare users RAM mein load karenge (Superfast Breakaway ke liye)
-    const allUsers = await User.find({}, 'userId sponsorId name mobile country topUpAmount createdAt role').lean();
+    // 🔥 FIX: 'packages' ko select list mein add kiya gaya hai taaki Free-100-Promo ka data frontend tak jaye
+    const allUsers = await User.find({}, 'userId sponsorId name mobile country topUpAmount createdAt role packages').lean();
 
-    // 👑 🔥 NAYA FIX: CURRENT USER KA ROLE CHECK KARO (Super Leader Bypass ke liye)
+    // 👑 CURRENT USER KA ROLE CHECK KARO (Super Leader Bypass ke liye)
     const currentUserData = allUsers.find(u => u.userId === currentUserId);
     const isSuperLeader = currentUserData && currentUserData.role === 'superleader';
 
@@ -335,10 +443,10 @@ router.get('/direct-team/:userId', async (req, res) => {
             country: direct.country,
             role: direct.role, 
             topUpAmount: direct.topUpAmount,
+            packages: direct.packages || [], // 🔥 NAYA FIX: Frontend promo check ke liye packages bheje gaye hain
             createdAt: direct.createdAt,
             totalDirects: directCount,
             totalTeam: teamSize,
-            // 🔥 NAYA FIX: Frontend ko same naam se data bhejo jo database mein hai
             globalTeamCount: teamSize, 
             directCount: directCount
         };
@@ -358,7 +466,6 @@ router.get('/direct-team/:userId', async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
- 
 
 router.get('/all-team/:userId', async (req, res) => {
   try {
@@ -582,6 +689,124 @@ router.get('/pool-status/:userId', async (req, res) => {
 // ========================================================
 // ========================================================
 // 🚀 1. STANDARD TOPUP ROUTE (FULLY UPDATED)
+
+
+
+
+// =========================================================================
+// 🎁 SPECIAL ROUTE: FREE $100 PACKAGE (100% DIRECT INCOME)
+// =========================================================================
+// =========================================================================
+// 🎁 SPECIAL ROUTE: FREE $100 PACKAGE (100% DIRECT INCOME) WITH PASSWORD
+// =========================================================================
+// =========================================================================
+// 🎁 SPECIAL ROUTE: FREE $100 PACKAGE (INSTANT DIRECT + INSTANT ROI)
+// =========================================================================
+router.put('/topup-free-100/:userId', authMiddleware, async (req, res) => {
+    try {
+        const targetUserId = Number(req.params.userId);
+        const { transactionPassword } = req.body;
+        const amount = 100; // Fix $100 Package
+        const dailyRoi = 5; // 5% ROI ($5)
+
+        const currentUser = await User.findOne({ userId: req.user.userId }).lean();
+        if (!currentUser) return res.status(404).json({ message: "Current user not found" });
+
+        // 🔥 TRANSACTION PASSWORD CHECK
+        if (!transactionPassword || transactionPassword.toLowerCase() !== currentUser.transactionPassword.toLowerCase()) {
+            return res.status(403).json({ message: "Invalid transaction password!" });
+        }
+
+        let targetUser = await User.findOne({ userId: targetUserId });
+        if (!targetUser) return res.status(404).json({ message: 'Target user not found' });
+
+        // 🚫 DOUBLE TOP-UP RESTRICTION
+        const isAlreadyBought = targetUser.packages?.some(p => p.plan === "Free-100-Promo");
+        if (isAlreadyBought) {
+            return res.status(400).json({ message: `Aap already ye free $100 package le chuke hain!` });
+        }
+
+        const createTransaction = async (data) => {
+            const Transaction = require('../models/Transaction'); 
+            return Transaction.create({ ...data, date: new Date() });
+        };
+
+        // 🔹 1. ACTIVATE PACKAGE & GIVE INSTANT 5% ROI ($5) TO USER
+        targetUser.packages = targetUser.packages || [];
+        targetUser.packages.push({ 
+            plan: "Free-100-Promo", 
+            amount: amount, 
+            startDate: new Date(), 
+            withdrawn: 0, 
+            isDummy: false 
+        });
+        
+        targetUser.isToppedUp = true;
+        if (!targetUser.topUpDate) targetUser.topUpDate = new Date();
+        targetUser.highestPackage = Math.max(targetUser.highestPackage || 0, amount);
+        
+        // INSTANT ROI ADDED HERE
+        targetUser.roiIncome = (targetUser.roiIncome || 0) + dailyRoi;
+        targetUser.totalRoiIncome = (targetUser.totalRoiIncome || 0) + dailyRoi;
+        
+        await targetUser.save();
+
+        // Transaction log for Topup
+        await createTransaction({ 
+            userId: targetUser.userId, type: "topup", amount: amount, 
+            description: `Claimed Free $100 Promo Package`, status: 'success', package: amount 
+        });
+
+        // Transaction log for Instant ROI
+        await createTransaction({
+            userId: targetUser.userId, type: 'credit', source: 'roi_income', amount: dailyRoi,
+            description: `Instant 5% Daily ROI for Free $100 Package`, status: 'success'
+        });
+
+        // ==========================================================
+        // 💰 2. 100% DIRECT INCOME ($100) + 100% MATCHING ROI ($5) TO SPONSOR
+        // ==========================================================
+        if (targetUser.sponsorId) {
+            const directSponsor = await User.findOne({ userId: targetUser.sponsorId });
+
+            if (directSponsor) {
+                await User.updateOne(
+                    { _id: directSponsor._id }, 
+                    { 
+                        $inc: { 
+                            directIncome: amount, totalDirectIncome: amount, // $100 Direct
+                            roiIncome: dailyRoi, totalRoiIncome: dailyRoi,   // $5 Matching ROI
+                            matchingRoiIncome: dailyRoi, totalMatchingRoiIncome: dailyRoi // Tracking
+                        } 
+                    }
+                );
+                
+                // Tx for Direct Income
+                await createTransaction({ 
+                    userId: directSponsor.userId, type: "direct_income", source: "direct",
+                    amount: amount, fromUserId: targetUser.userId,
+                    description: `100% Direct Bonus from ${targetUser.name}'s Free $100 Package`,
+                    status: 'success', package: amount 
+                }); 
+
+                // Tx for Instant Matching ROI
+                await createTransaction({
+                    userId: directSponsor.userId, type: 'credit', source: 'matching_roi',
+                    amount: dailyRoi,
+                    description: `Instant 100% Matching ROI from Direct ${targetUser.name}'s $100 Package`,
+                    status: 'success'
+                });
+            }
+        }
+
+        res.json({ success: true, message: "🎉 Free $100 Package Activated & Instant ROI Credited!" });
+
+    } catch (err) {
+        console.error("Free 100 Topup Error:", err);
+        res.status(500).json({ message: "Server error" });
+    }
+});
+
 // ========================================================
 router.put('/topup/:userId', authMiddleware, async (req, res) => {
     try {
