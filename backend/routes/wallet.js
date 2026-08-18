@@ -770,7 +770,7 @@ router.post(
       // =======================================================
       // 🔹 3. REAL BALANCE CHECK (Locked $30)
       // =======================================================
-      const usableBalance = sender.walletBalance - 30;
+      const usableBalance = sender.walletBalance - 0;
 
       if (transferAmount > usableBalance) {
         return res.status(400).json({ 
