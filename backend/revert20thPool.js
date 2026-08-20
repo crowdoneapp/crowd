@@ -53,8 +53,7 @@ const revert20thPool = async () => {
                 { 
                     $inc: { 
                         poolIncome: -txn.amount,      // Pool income history se minus
-                        walletBalance: -txn.amount    // Main wallet se minus
-                    } 
+                     } 
                 }
             );
 
