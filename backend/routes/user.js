@@ -808,351 +808,351 @@ router.put('/topup-free-100/:userId', authMiddleware, async (req, res) => {
 });
 
 // ========================================================
-router.put('/topup/:userId', authMiddleware, async (req, res) => {
-    try {
-        const targetUserId = Number(req.params.userId);
-        const { amount, transactionPassword, isPromoFree } = req.body;
+// router.put('/topup/:userId', authMiddleware, async (req, res) => {
+//     try {
+//         const targetUserId = Number(req.params.userId);
+//         const { amount, transactionPassword, isPromoFree } = req.body;
 
-        const currentUser = await User.findOne({ userId: req.user.userId }).lean();
-        if (!currentUser) return res.status(404).json({ message: "Current user not found" });
+//         const currentUser = await User.findOne({ userId: req.user.userId }).lean();
+//         if (!currentUser) return res.status(404).json({ message: "Current user not found" });
 
-        if (!transactionPassword || transactionPassword.toLowerCase() !== currentUser.transactionPassword.toLowerCase()) {
-            return res.status(403).json({ message: "Invalid transaction password" });
-        }
+//         if (!transactionPassword || transactionPassword.toLowerCase() !== currentUser.transactionPassword.toLowerCase()) {
+//             return res.status(403).json({ message: "Invalid transaction password" });
+//         }
 
-        const allowedPackages = [30, 100, 300, 500, 1000];
-        if (!allowedPackages.includes(amount)) return res.status(400).json({ message: "Invalid package." });
+//         const allowedPackages = [30, 100, 300, 500, 1000];
+//         if (!allowedPackages.includes(amount)) return res.status(400).json({ message: "Invalid package." });
 
-        let targetUser = await User.findOne({ userId: targetUserId });
-        let isFakeUser = false;
-        if (!targetUser) {
-            const FakeUser = require('../models/FakeUser');
-            targetUser = await FakeUser.findOne({ userId: targetUserId });
-            if (targetUser) isFakeUser = true;
-            else return res.status(404).json({ message: 'Target user not found' });
-        }
+//         let targetUser = await User.findOne({ userId: targetUserId });
+//         let isFakeUser = false;
+//         if (!targetUser) {
+//             const FakeUser = require('../models/FakeUser');
+//             targetUser = await FakeUser.findOne({ userId: targetUserId });
+//             if (targetUser) isFakeUser = true;
+//             else return res.status(404).json({ message: 'Target user not found' });
+//         }
 
-        // 🛑 STEP-BY-STEP UPGRADE LOGIC
-        const currentHighest = Number(targetUser.highestPackage) || 0;
-        let expectedNext = (currentHighest === 0) ? 30 : (currentHighest === 30) ? 100 : (currentHighest === 100) ? 300 : (currentHighest === 300) ? 500 : (currentHighest === 500) ? 1000 : null;
+//         // 🛑 STEP-BY-STEP UPGRADE LOGIC
+//         const currentHighest = Number(targetUser.highestPackage) || 0;
+//         let expectedNext = (currentHighest === 0) ? 30 : (currentHighest === 30) ? 100 : (currentHighest === 100) ? 300 : (currentHighest === 300) ? 500 : (currentHighest === 500) ? 1000 : null;
         
-        if (expectedNext === null) return res.status(400).json({ message: "Max package reached." });
-        if (amount !== expectedNext) return res.status(400).json({ message: `Next required package is $${expectedNext}.` });
+//         if (expectedNext === null) return res.status(400).json({ message: "Max package reached." });
+//         if (amount !== expectedNext) return res.status(400).json({ message: `Next required package is $${expectedNext}.` });
 
-        // 🛑 2 DIRECTS REQUIRED FOR UPGRADE LOGIC
-        if (currentHighest > 0) {
-            const activeDirectsCount = await User.countDocuments({
-                sponsorId: targetUser.userId,
-                highestPackage: { $gte: currentHighest }
-            });
+//         // 🛑 2 DIRECTS REQUIRED FOR UPGRADE LOGIC
+//         if (currentHighest > 0) {
+//             const activeDirectsCount = await User.countDocuments({
+//                 sponsorId: targetUser.userId,
+//                 highestPackage: { $gte: currentHighest }
+//             });
 
-            if (activeDirectsCount < 2) {
-                return res.status(400).json({ 
-                    message: `Upgrade Blocked: You need at least 2 active directs on your current $${currentHighest} tier before you can upgrade to $${amount}.` 
-                });
-            }
-        }
+//             if (activeDirectsCount < 2) {
+//                 return res.status(400).json({ 
+//                     message: `Upgrade Blocked: You need at least 2 active directs on your current $${currentHighest} tier before you can upgrade to $${amount}.` 
+//                 });
+//             }
+//         }
 
-        // 🚫 DOUBLE TOP-UP RESTRICTION 
-        const isAlreadyBought = targetUser.packages?.some(p => p.amount === amount);
-        if (isAlreadyBought) {
-            return res.status(400).json({ message: `This ID is already active with a $${amount} package. Double top-up is not allowed.` });
-        }
+//         // 🚫 DOUBLE TOP-UP RESTRICTION 
+//         const isAlreadyBought = targetUser.packages?.some(p => p.amount === amount);
+//         if (isAlreadyBought) {
+//             return res.status(400).json({ message: `This ID is already active with a $${amount} package. Double top-up is not allowed.` });
+//         }
 
-        // Wallet Deduction
-        if (!(isPromoFree && amount === 10) && currentUser.role !== 'promo') {
-            if (currentUser.walletBalance < amount) return res.status(400).json({ message: 'Insufficient balance' });
-            await User.updateOne({ userId: currentUser.userId }, { $inc: { walletBalance: -amount } });
-        }
+//         // Wallet Deduction
+//         if (!(isPromoFree && amount === 10) && currentUser.role !== 'promo') {
+//             if (currentUser.walletBalance < amount) return res.status(400).json({ message: 'Insufficient balance' });
+//             await User.updateOne({ userId: currentUser.userId }, { $inc: { walletBalance: -amount } });
+//         }
 
-        // =======================================================
-        // 🔹 HELPER FUNCTION (Yahan rakhna best hai)
-        // =======================================================
-        const createTransaction = async (data) => {
-            const Transaction = require('../models/Transaction'); 
-            return Transaction.create({ ...data, date: new Date() });
-        };
+//         // =======================================================
+//         // 🔹 HELPER FUNCTION (Yahan rakhna best hai)
+//         // =======================================================
+//         const createTransaction = async (data) => {
+//             const Transaction = require('../models/Transaction'); 
+//             return Transaction.create({ ...data, date: new Date() });
+//         };
 
-        // =======================================================
-        // 🔹 3. CORE UPDATE
-        // =======================================================
-        let isFirstTopup = !targetUser.isToppedUp;
+//         // =======================================================
+//         // 🔹 3. CORE UPDATE
+//         // =======================================================
+//         let isFirstTopup = !targetUser.isToppedUp;
         
-        targetUser.packages = targetUser.packages || [];
-        targetUser.packages.push({ plan: "Global Auto-Pool", amount: amount, startDate: new Date(), withdrawn: 0, isDummy: false });
+//         targetUser.packages = targetUser.packages || [];
+//         targetUser.packages.push({ plan: "Global Auto-Pool", amount: amount, startDate: new Date(), withdrawn: 0, isDummy: false });
         
-        targetUser.topUpAmount = Math.max(targetUser.topUpAmount || 0, amount);
-        targetUser.highestPackage = amount;
-        targetUser.updatedAt = new Date();
-        targetUser.isToppedUp = true;
+//         targetUser.topUpAmount = Math.max(targetUser.topUpAmount || 0, amount);
+//         targetUser.highestPackage = amount;
+//         targetUser.updatedAt = new Date();
+//         targetUser.isToppedUp = true;
         
-        if (isFirstTopup) {
-            targetUser.topUpDate = new Date();
-        }
+//         if (isFirstTopup) {
+//             targetUser.topUpDate = new Date();
+//         }
         
-        targetUser.activePools.push({ level: amount, dailyAmount: (amount*2)/90, totalDays: 90, daysPaid: 0, status: "ACTIVE", withdrawnAmount: 0 });
+//         targetUser.activePools.push({ level: amount, dailyAmount: (amount*2)/90, totalDays: 90, daysPaid: 0, status: "ACTIVE", withdrawnAmount: 0 });
         
-        await targetUser.save();
+//         await targetUser.save();
 
-        // 🔥 Helper function ka use karke main topup transaction
-        // await createTransaction({ 
-        //     userId: targetUser.userId, type: "topup", amount, 
-        //     description: `Activated $${amount}`, status: 'success', package: amount 
-        // });
+//         // 🔥 Helper function ka use karke main topup transaction
+//         // await createTransaction({ 
+//         //     userId: targetUser.userId, type: "topup", amount, 
+//         //     description: `Activated $${amount}`, status: 'success', package: amount 
+//         // });
 
-        // // ✅ User ko response bhej diya (Fast UI)
-        // res.json({ success: true, message: "Package Activated!" });
+//         // // ✅ User ko response bhej diya (Fast UI)
+//         // res.json({ success: true, message: "Package Activated!" });
 
-        await targetUser.save();
+//         await targetUser.save();
 
-        // 🔥 Helper function ka use karke main topup transaction
-        await createTransaction({ 
-            userId: targetUser.userId, 
-            fromUserId: currentUser.userId, // 👉 YEH NAYI LINE DALNI HAI
-            toUserId: targetUser.userId,    // 👉 YEH NAYI LINE DALNI HAI
-            type: "topup", 
-            amount, 
-            description: isFirstTopup ? `Activated $${amount}` : `Upgraded to $${amount}`, 
-            status: 'success', 
-            package: amount 
-        });
+//         // 🔥 Helper function ka use karke main topup transaction
+//         await createTransaction({ 
+//             userId: targetUser.userId, 
+//             fromUserId: currentUser.userId, // 👉 YEH NAYI LINE DALNI HAI
+//             toUserId: targetUser.userId,    // 👉 YEH NAYI LINE DALNI HAI
+//             type: "topup", 
+//             amount, 
+//             description: isFirstTopup ? `Activated $${amount}` : `Upgraded to $${amount}`, 
+//             status: 'success', 
+//             package: amount 
+//         });
 
 
-        // 🔥 TELEGRAM ALERT BHEJEIN 🔥
-        try {
-            await sendTelegramAlert(targetUser.name, targetUser.userId, amount, targetUser.country);
-        } catch (alertErr) {
-            console.error("Telegram Alert Error:", alertErr);
-        }
+//         // 🔥 TELEGRAM ALERT BHEJEIN 🔥
+//         try {
+//             await sendTelegramAlert(targetUser.name, targetUser.userId, amount, targetUser.country);
+//         } catch (alertErr) {
+//             console.error("Telegram Alert Error:", alertErr);
+//         }
 
-        // ✅ User ko response bhej diya (Fast UI)
-        res.json({ success: true, message: isFirstTopup ? "Package Activated!" : `Upgraded to $${amount} Successfully!` });
-        // =======================================================
-        // 🔹 4. BACKGROUND MLM ENGINE (FINAL PERFECT LOGIC)
-        // =======================================================
-        (async () => {
-            try {
-                if (isFirstTopup && typeof processGlobalTeamGrowth === 'function') {
-                    await processGlobalTeamGrowth(targetUser.userId);
-                }
+//         // ✅ User ko response bhej diya (Fast UI)
+//         res.json({ success: true, message: isFirstTopup ? "Package Activated!" : `Upgraded to $${amount} Successfully!` });
+//         // =======================================================
+//         // 🔹 4. BACKGROUND MLM ENGINE (FINAL PERFECT LOGIC)
+//         // =======================================================
+//         (async () => {
+//             try {
+//                 if (isFirstTopup && typeof processGlobalTeamGrowth === 'function') {
+//                     await processGlobalTeamGrowth(targetUser.userId);
+//                 }
 
-                // ==========================================================
-                // 🔥 REAL CROWD GROWTH LOGIC
-                // ==========================================================
-                try {
-                    const pkgToGrow = amount; 
-                    const SystemStat = require('../models/SystemStat');
+//                 // ==========================================================
+//                 // 🔥 REAL CROWD GROWTH LOGIC
+//                 // ==========================================================
+//                 try {
+//                     const pkgToGrow = amount; 
+//                     const SystemStat = require('../models/SystemStat');
 
-                    await SystemStat.findOneAndUpdate(
-                        {}, 
-                        { $inc: { globalTeamCount: 1, [`packageStats.${pkgToGrow}.allCrowd`]: 1 } }, 
-                        { upsert: true }
-                    );
+//                     await SystemStat.findOneAndUpdate(
+//                         {}, 
+//                         { $inc: { globalTeamCount: 1, [`packageStats.${pkgToGrow}.allCrowd`]: 1 } }, 
+//                         { upsert: true }
+//                     );
 
-                    const activeUsers = await User.find({ isToppedUp: true }).select('_id userId highestPackage purchasedPackages');
-                    const bulkOps = [];
+//                     const activeUsers = await User.find({ isToppedUp: true }).select('_id userId highestPackage purchasedPackages');
+//                     const bulkOps = [];
 
-                    for (const u of activeUsers) {
-                        if (Number(u.userId) === Number(targetUser.userId)) continue;
-                        const uMax = u.highestPackage || 0;
-                        const uPurchased = u.purchasedPackages || [];
+//                     for (const u of activeUsers) {
+//                         if (Number(u.userId) === Number(targetUser.userId)) continue;
+//                         const uMax = u.highestPackage || 0;
+//                         const uPurchased = u.purchasedPackages || [];
                         
-                        if (uPurchased.includes(pkgToGrow) || uMax >= pkgToGrow) {
-                            bulkOps.push({
-                                updateOne: {
-                                    filter: { _id: u._id },
-                                    update: { $inc: { globalTeamCount: 1, [`packageStats.${pkgToGrow}.globalTeamCount`]: 1 } }
-                                }
-                            });
-                        }
-                    }
+//                         if (uPurchased.includes(pkgToGrow) || uMax >= pkgToGrow) {
+//                             bulkOps.push({
+//                                 updateOne: {
+//                                     filter: { _id: u._id },
+//                                     update: { $inc: { globalTeamCount: 1, [`packageStats.${pkgToGrow}.globalTeamCount`]: 1 } }
+//                                 }
+//                             });
+//                         }
+//                     }
 
-                    if (bulkOps.length > 0) {
-                        await User.bulkWrite(bulkOps);
-                    }
-                } catch (growthErr) {
-                    console.error("Real User Growth Error:", growthErr);
-                }
+//                     if (bulkOps.length > 0) {
+//                         await User.bulkWrite(bulkOps);
+//                     }
+//                 } catch (growthErr) {
+//                     console.error("Real User Growth Error:", growthErr);
+//                 }
 
-                // ==========================================================
-                // ✅ 1. DIRECT / BOUNCE BACK LOGIC (Setup/Super Setup Allowed)
-                // ==========================================================
-                if (targetUser.sponsorId) {
-                    const directBonusAmount = (amount * 10) / 100;
-                    const directSponsor = await User.findOne({ userId: targetUser.sponsorId });
+//                 // ==========================================================
+//                 // ✅ 1. DIRECT / BOUNCE BACK LOGIC (Setup/Super Setup Allowed)
+//                 // ==========================================================
+//                 if (targetUser.sponsorId) {
+//                     const directBonusAmount = (amount * 10) / 100;
+//                     const directSponsor = await User.findOne({ userId: targetUser.sponsorId });
 
-                    if (directSponsor) {
-                        if (isFirstTopup) {
-                            directSponsor.directCount = (Number(directSponsor.directCount) || 0) + 1;
-                            await directSponsor.save();
-                        }
+//                     if (directSponsor) {
+//                         if (isFirstTopup) {
+//                             directSponsor.directCount = (Number(directSponsor.directCount) || 0) + 1;
+//                             await directSponsor.save();
+//                         }
 
-                        if (directSponsor.isToppedUp && Number(directSponsor.highestPackage) >= Number(amount)) {
-                            await User.updateOne({ _id: directSponsor._id }, { $inc: { directIncome: directBonusAmount, totalDirectIncome: directBonusAmount } });
+//                         if (directSponsor.isToppedUp && Number(directSponsor.highestPackage) >= Number(amount)) {
+//                             await User.updateOne({ _id: directSponsor._id }, { $inc: { directIncome: directBonusAmount, totalDirectIncome: directBonusAmount } });
                             
-                            await createTransaction({ 
-                                userId: directSponsor.userId, type: "direct_income", source: "direct",
-                                amount: directBonusAmount, fromUserId: targetUser.userId,
-                                description: `Direct Bonus from ${targetUser.name}'s $${amount} Package`,
-                                status: 'success', package: amount 
-                            }); 
-                        } else {
-                            // Bounce Back
-                            let current = directSponsor.sponsorId;
-                            let depth = 0;
-                            while (current && depth < 100) {
-                                const up = await User.findOne({ userId: current });
-                                if (!up) break;
+//                             await createTransaction({ 
+//                                 userId: directSponsor.userId, type: "direct_income", source: "direct",
+//                                 amount: directBonusAmount, fromUserId: targetUser.userId,
+//                                 description: `Direct Bonus from ${targetUser.name}'s $${amount} Package`,
+//                                 status: 'success', package: amount 
+//                             }); 
+//                         } else {
+//                             // Bounce Back
+//                             let current = directSponsor.sponsorId;
+//                             let depth = 0;
+//                             while (current && depth < 100) {
+//                                 const up = await User.findOne({ userId: current });
+//                                 if (!up) break;
                                 
-                                if (up.isToppedUp && Number(up.highestPackage) >= Number(amount)) {
-                                    await User.updateOne({ _id: up._id }, { $inc: { upgradeBounceBackIncome: directBonusAmount, totalUpgradeBounceBackIncome: directBonusAmount } });
+//                                 if (up.isToppedUp && Number(up.highestPackage) >= Number(amount)) {
+//                                     await User.updateOne({ _id: up._id }, { $inc: { upgradeBounceBackIncome: directBonusAmount, totalUpgradeBounceBackIncome: directBonusAmount } });
                                     
-                                    await createTransaction({ 
-                                        userId: up.userId, type: "upgrade_bounce_back_income", source: "bounce_back",
-                                        amount: directBonusAmount, fromUserId: targetUser.userId,
-                                        description: `Upgrade Bounce Back from ${targetUser.name}'s $${amount} Package`,
-                                        status: 'success', package: amount 
-                                    });
-                                    break;
-                                }
-                                current = up.sponsorId;
-                                depth++;
-                            }
-                        }
-                    }
-                }
+//                                     await createTransaction({ 
+//                                         userId: up.userId, type: "upgrade_bounce_back_income", source: "bounce_back",
+//                                         amount: directBonusAmount, fromUserId: targetUser.userId,
+//                                         description: `Upgrade Bounce Back from ${targetUser.name}'s $${amount} Package`,
+//                                         status: 'success', package: amount 
+//                                     });
+//                                     break;
+//                                 }
+//                                 current = up.sponsorId;
+//                                 depth++;
+//                             }
+//                         }
+//                     }
+//                 }
 
-                // ==========================================================
-                // 🔥 2. SETTING INCOME (OLD STRICT BLOCKER RESTORED)
-                // ==========================================================
-                const immediateSponsorObj = await User.findOne({ userId: targetUser.sponsorId }).select('role');
-                const isDirectSponsorSpecial = immediateSponsorObj && (immediateSponsorObj.role === 'setup' || immediateSponsorObj.role === 'super_setup');
+//                 // ==========================================================
+//                 // 🔥 2. SETTING INCOME (OLD STRICT BLOCKER RESTORED)
+//                 // ==========================================================
+//                 const immediateSponsorObj = await User.findOne({ userId: targetUser.sponsorId }).select('role');
+//                 const isDirectSponsorSpecial = immediateSponsorObj && (immediateSponsorObj.role === 'setup' || immediateSponsorObj.role === 'super_setup');
 
-                let paidSetupUserId = null; 
+//                 let paidSetupUserId = null; 
 
-                if (isDirectSponsorSpecial) {
-                    console.log(`[BLOCKED] Direct sponsor is ${immediateSponsorObj.role}. Setting income is BLOCKED.`);
-                } else {
-                    let settingUplineId = targetUser.sponsorId;
-                    let setupPaid = false;
-                    let superSetupPaid = false;
-                    let settingDepth = 100;
+//                 if (isDirectSponsorSpecial) {
+//                     console.log(`[BLOCKED] Direct sponsor is ${immediateSponsorObj.role}. Setting income is BLOCKED.`);
+//                 } else {
+//                     let settingUplineId = targetUser.sponsorId;
+//                     let setupPaid = false;
+//                     let superSetupPaid = false;
+//                     let settingDepth = 100;
 
-                    while (settingUplineId && settingDepth > 0) {
-                        const sUpline = await User.findOne({ userId: settingUplineId }).select('userId role isToppedUp sponsorId _id');
-                        if (!sUpline) break;
+//                     while (settingUplineId && settingDepth > 0) {
+//                         const sUpline = await User.findOne({ userId: settingUplineId }).select('userId role isToppedUp sponsorId _id');
+//                         if (!sUpline) break;
 
-                        if (sUpline.isToppedUp) {
-                            if (sUpline.role === 'setup' && !setupPaid) {
-                                const setupAmt = (amount * 5) / 100;
-                                await User.updateOne({ _id: sUpline._id }, { $inc: { walletBalance: setupAmt } });
-                                await createTransaction({
-                                    userId: sUpline.userId, type: "credit_to_wallet", source: "setting_income",
-                                    amount: setupAmt, fromUserId: targetUser.userId,
-                                    description: `5% Setup Setting Income ($${amount} Package)`, status: "success", package: amount
-                                });
-                                setupPaid = true; 
-                                paidSetupUserId = sUpline.userId; 
-                            }
-                            else if (sUpline.role === 'super_setup' && !superSetupPaid) {
-                                const superSetupAmt = (amount * 10) / 100;
-                                await User.updateOne({ _id: sUpline._id }, { $inc: { walletBalance: superSetupAmt } });
-                                await createTransaction({
-                                    userId: sUpline.userId, type: "credit_to_wallet", source: "setting_income",
-                                    amount: superSetupAmt, fromUserId: targetUser.userId,
-                                    description: `10% Super Setup Setting Income ($${amount} Package)`, status: "success", package: amount
-                                });
-                                superSetupPaid = true; 
-                            }
-                        }
-                        if (setupPaid && superSetupPaid) break;
-                        settingUplineId = sUpline.sponsorId;
-                        settingDepth--;
-                    }
-                }
+//                         if (sUpline.isToppedUp) {
+//                             if (sUpline.role === 'setup' && !setupPaid) {
+//                                 const setupAmt = (amount * 5) / 100;
+//                                 await User.updateOne({ _id: sUpline._id }, { $inc: { walletBalance: setupAmt } });
+//                                 await createTransaction({
+//                                     userId: sUpline.userId, type: "credit_to_wallet", source: "setting_income",
+//                                     amount: setupAmt, fromUserId: targetUser.userId,
+//                                     description: `5% Setup Setting Income ($${amount} Package)`, status: "success", package: amount
+//                                 });
+//                                 setupPaid = true; 
+//                                 paidSetupUserId = sUpline.userId; 
+//                             }
+//                             else if (sUpline.role === 'super_setup' && !superSetupPaid) {
+//                                 const superSetupAmt = (amount * 10) / 100;
+//                                 await User.updateOne({ _id: sUpline._id }, { $inc: { walletBalance: superSetupAmt } });
+//                                 await createTransaction({
+//                                     userId: sUpline.userId, type: "credit_to_wallet", source: "setting_income",
+//                                     amount: superSetupAmt, fromUserId: targetUser.userId,
+//                                     description: `10% Super Setup Setting Income ($${amount} Package)`, status: "success", package: amount
+//                                 });
+//                                 superSetupPaid = true; 
+//                             }
+//                         }
+//                         if (setupPaid && superSetupPaid) break;
+//                         settingUplineId = sUpline.sponsorId;
+//                         settingDepth--;
+//                     }
+//                 }
 
-                // ==========================================================
-                // 🌟 3. UNIFIED 20-LEVEL ENGINE (SMART SKIP LOGIC)
-                // ==========================================================
-                let currentUplineId = targetUser.sponsorId; 
-                let currentLevel = 1;
-                let isBreakawayHit = false;
+//                 // ==========================================================
+//                 // 🌟 3. UNIFIED 20-LEVEL ENGINE (SMART SKIP LOGIC)
+//                 // ==========================================================
+//                 let currentUplineId = targetUser.sponsorId; 
+//                 let currentLevel = 1;
+//                 let isBreakawayHit = false;
 
-                while (currentUplineId && currentLevel <= 20) {
-                    const upline = await User.findOne({ userId: currentUplineId }).select('userId isToppedUp sponsorId role directCount highestPackage _id');
-                    if (!upline) break;
+//                 while (currentUplineId && currentLevel <= 20) {
+//                     const upline = await User.findOne({ userId: currentUplineId }).select('userId isToppedUp sponsorId role directCount highestPackage _id');
+//                     if (!upline) break;
 
-                    if (!upline.isToppedUp) {
-                        currentUplineId = upline.sponsorId;
-                        continue; 
-                    }
+//                     if (!upline.isToppedUp) {
+//                         currentUplineId = upline.sponsorId;
+//                         continue; 
+//                     }
 
-                    // 🔥 Setup SKIP Logic
-                    // if (upline.role === 'setup' && upline.userId !== paidSetupUserId) {
-                    //     currentUplineId = upline.sponsorId;
-                    //     continue; 
-                    // }
+//                     // 🔥 Setup SKIP Logic
+//                     // if (upline.role === 'setup' && upline.userId !== paidSetupUserId) {
+//                     //     currentUplineId = upline.sponsorId;
+//                     //     continue; 
+//                     // }
 
-                    // 🔥 Setup SKIP Logic
-if (upline.role === 'setup' && upline.userId !== paidSetupUserId) {
-    currentUplineId = upline.sponsorId;
-    currentLevel++; // 👈 YEH LINE ADD KARNI HAI! (Taki level count ho)
-    continue; 
-}
+//                     // 🔥 Setup SKIP Logic
+// if (upline.role === 'setup' && upline.userId !== paidSetupUserId) {
+//     currentUplineId = upline.sponsorId;
+//     currentLevel++; // 👈 YEH LINE ADD KARNI HAI! (Taki level count ho)
+//     continue; 
+// }
 
-                    const isCurrentUplineLeader = (upline.role === 'leader');
-                    const isCurrentUplineSuperLeader = (upline.role === 'superleader'); 
+//                     const isCurrentUplineLeader = (upline.role === 'leader');
+//                     const isCurrentUplineSuperLeader = (upline.role === 'superleader'); 
 
-                    if (isBreakawayHit && isCurrentUplineLeader && !isCurrentUplineSuperLeader) {
-                        currentUplineId = upline.sponsorId;
-                        currentLevel++; 
-                        continue; 
-                    }
+//                     if (isBreakawayHit && isCurrentUplineLeader && !isCurrentUplineSuperLeader) {
+//                         currentUplineId = upline.sponsorId;
+//                         currentLevel++; 
+//                         continue; 
+//                     }
 
-                    if (currentLevel >= 2 && currentLevel <= 20) {
-                        let percentage = 0;
-                        if (currentLevel === 2) percentage = 5;
-                        else if (currentLevel === 3) percentage = 3;
-                        else if (currentLevel === 4) percentage = 2;
-                        else if (currentLevel === 5) percentage = 1;
-                        else if (currentLevel >= 6 && currentLevel <= 10) percentage = 0.50;
-                        else if (currentLevel >= 11 && currentLevel <= 20) percentage = 0.25;
+//                     if (currentLevel >= 2 && currentLevel <= 20) {
+//                         let percentage = 0;
+//                         if (currentLevel === 2) percentage = 5;
+//                         else if (currentLevel === 3) percentage = 3;
+//                         else if (currentLevel === 4) percentage = 2;
+//                         else if (currentLevel === 5) percentage = 1;
+//                         else if (currentLevel >= 6 && currentLevel <= 10) percentage = 0.50;
+//                         else if (currentLevel >= 11 && currentLevel <= 20) percentage = 0.25;
 
-                        const hasSufficientPackage = upline.highestPackage >= amount;
+//                         const hasSufficientPackage = upline.highestPackage >= amount;
 
-                        if (hasSufficientPackage) {
-                            const levelAmount = (amount * percentage) / 100;
-                            if (levelAmount > 0) {
-                                await User.updateOne({ _id: upline._id }, { $inc: { levelIncome: levelAmount, totalLevelIncome: levelAmount } });
-                                await createTransaction({
-                                    userId: upline.userId, type: "level_income", source: "level", amount: levelAmount,
-                                    fromUserId: targetUser.userId, description: `Level ${currentLevel} Income (${percentage}%) from $${amount} Package`, 
-                                    status: 'success', package: amount
-                                });
-                            }
-                        }
-                    }
+//                         if (hasSufficientPackage) {
+//                             const levelAmount = (amount * percentage) / 100;
+//                             if (levelAmount > 0) {
+//                                 await User.updateOne({ _id: upline._id }, { $inc: { levelIncome: levelAmount, totalLevelIncome: levelAmount } });
+//                                 await createTransaction({
+//                                     userId: upline.userId, type: "level_income", source: "level", amount: levelAmount,
+//                                     fromUserId: targetUser.userId, description: `Level ${currentLevel} Income (${percentage}%) from $${amount} Package`, 
+//                                     status: 'success', package: amount
+//                                 });
+//                             }
+//                         }
+//                     }
 
-                    // Breakaway Logic
-                    if (currentLevel >= 2 && isCurrentUplineLeader && !isBreakawayHit) {
-                        const instantBonusAmount = (amount * 10) / 100;
-                        await User.updateOne({ _id: upline._id }, { $inc: { walletBalance: instantBonusAmount } });
-                        isBreakawayHit = true; 
-                    }
+//                     // Breakaway Logic
+//                     if (currentLevel >= 2 && isCurrentUplineLeader && !isBreakawayHit) {
+//                         const instantBonusAmount = (amount * 10) / 100;
+//                         await User.updateOne({ _id: upline._id }, { $inc: { walletBalance: instantBonusAmount } });
+//                         isBreakawayHit = true; 
+//                     }
 
-                    currentUplineId = upline.sponsorId;
-                    currentLevel++; 
-                }
-            } catch (bgError) {
-                console.error("Background MLM Engine Error:", bgError);
-            }
-        })();
+//                     currentUplineId = upline.sponsorId;
+//                     currentLevel++; 
+//                 }
+//             } catch (bgError) {
+//                 console.error("Background MLM Engine Error:", bgError);
+//             }
+//         })();
 
-    } catch (err) {
-        console.error(err);
-        if (!res.headersSent) res.status(500).json({ message: "Server error" });
-    }
-});
+//     } catch (err) {
+//         console.error(err);
+//         if (!res.headersSent) res.status(500).json({ message: "Server error" });
+//     }
+// });
 
 // ========================================================
 // 🚀 2. SETUP TOPUP ROUTE (For 'setup' role)
@@ -1160,748 +1160,748 @@ if (upline.role === 'setup' && upline.userId !== paidSetupUserId) {
 // ========================================================
 // 🚀 2. SETUP TOPUP ROUTE (For 'setup' role)
 // ========================================================
-router.put(
-  '/setup-topup/:userId',
-  authMiddleware,
-  async (req, res) => {
-    try {
-      const targetUserId = Number(req.params.userId);
-      const { amount, transactionPassword } = req.body;
+// router.put(
+//   '/setup-topup/:userId',
+//   authMiddleware,
+//   async (req, res) => {
+//     try {
+//       const targetUserId = Number(req.params.userId);
+//       const { amount, transactionPassword } = req.body;
 
-      const currentUser = await User.findOne({ userId: req.user.userId });
-      if (!currentUser) return res.status(404).json({ message: "Current user not found" });
+//       const currentUser = await User.findOne({ userId: req.user.userId });
+//       if (!currentUser) return res.status(404).json({ message: "Current user not found" });
       
-      if (currentUser.role !== 'setup') {
-          return res.status(403).json({ message: "Access denied. Only Setup roles can use this route." });
-      }
+//       if (currentUser.role !== 'setup') {
+//           return res.status(403).json({ message: "Access denied. Only Setup roles can use this route." });
+//       }
 
-      if (!transactionPassword) return res.status(400).json({ message: "Transaction password is required" });
-      if (transactionPassword.toLowerCase() !== currentUser.transactionPassword.toLowerCase()) {
-          return res.status(403).json({ message: "Invalid transaction password" });
-      }
+//       if (!transactionPassword) return res.status(400).json({ message: "Transaction password is required" });
+//       if (transactionPassword.toLowerCase() !== currentUser.transactionPassword.toLowerCase()) {
+//           return res.status(403).json({ message: "Invalid transaction password" });
+//       }
 
-      const targetUser = await User.findOne({ userId: targetUserId });
-      if (!targetUser) return res.status(404).json({ message: 'Target user not found' });
+//       const targetUser = await User.findOne({ userId: targetUserId });
+//       if (!targetUser) return res.status(404).json({ message: 'Target user not found' });
 
-      // 🛑 STEP-BY-STEP UPGRADE LOGIC
-      const currentHighest = targetUser.highestPackage || 0;
-      let expectedNext = 30;
+//       // 🛑 STEP-BY-STEP UPGRADE LOGIC
+//       const currentHighest = targetUser.highestPackage || 0;
+//       let expectedNext = 30;
       
-      if (currentHighest === 30) expectedNext = 100;
-      else if (currentHighest === 100) expectedNext = 300;
-      else if (currentHighest === 300) expectedNext = 500;
-      else if (currentHighest === 500) expectedNext = 1000;
-      else if (currentHighest === 1000) expectedNext = null; 
+//       if (currentHighest === 30) expectedNext = 100;
+//       else if (currentHighest === 100) expectedNext = 300;
+//       else if (currentHighest === 300) expectedNext = 500;
+//       else if (currentHighest === 500) expectedNext = 1000;
+//       else if (currentHighest === 1000) expectedNext = null; 
 
-      if (expectedNext === null) {
-          return res.status(400).json({ message: "This ID has already reached the maximum Apex package of $1000." });
-      }
+//       if (expectedNext === null) {
+//           return res.status(400).json({ message: "This ID has already reached the maximum Apex package of $1000." });
+//       }
 
-      if (amount !== expectedNext) {
-          return res.status(400).json({ message: `Invalid upgrade. You must upgrade step-by-step. Your next required package is $${expectedNext}.` });
-      }
+//       if (amount !== expectedNext) {
+//           return res.status(400).json({ message: `Invalid upgrade. You must upgrade step-by-step. Your next required package is $${expectedNext}.` });
+//       }
 
-      // 🛑 2 DIRECTS REQUIRED FOR UPGRADE LOGIC 
-      if (currentHighest > 0) {
-          const activeDirectsCount = await User.countDocuments({
-              sponsorId: targetUser.userId,
-              highestPackage: { $gte: currentHighest }
-          });
+//       // 🛑 2 DIRECTS REQUIRED FOR UPGRADE LOGIC 
+//       if (currentHighest > 0) {
+//           const activeDirectsCount = await User.countDocuments({
+//               sponsorId: targetUser.userId,
+//               highestPackage: { $gte: currentHighest }
+//           });
 
-          if (activeDirectsCount < 2) {
-              return res.status(400).json({ 
-                  message: `Upgrade Blocked: You need at least 2 active directs on your current $${currentHighest} tier before you can upgrade to $${amount}.` 
-              });
-          }
-      }
+//           if (activeDirectsCount < 2) {
+//               return res.status(400).json({ 
+//                   message: `Upgrade Blocked: You need at least 2 active directs on your current $${currentHighest} tier before you can upgrade to $${amount}.` 
+//               });
+//           }
+//       }
 
-      // 🚫 DOUBLE TOP-UP RESTRICTION 
-      const isAlreadyBought = targetUser.packages?.some(p => p.amount === amount);
-      if (isAlreadyBought) {
-          return res.status(400).json({ message: `This ID is already active with a $${amount} package. Double top-up is not allowed.` });
-      }
+//       // 🚫 DOUBLE TOP-UP RESTRICTION 
+//       const isAlreadyBought = targetUser.packages?.some(p => p.amount === amount);
+//       if (isAlreadyBought) {
+//           return res.status(400).json({ message: `This ID is already active with a $${amount} package. Double top-up is not allowed.` });
+//       }
 
-      // DOWNLINE VERIFICATION
-      let isDownline = false;
-      let checkUplineId = targetUser.sponsorId;
-      let depth = 1;
-      while (checkUplineId && depth <= 100) {
-          if (Number(checkUplineId) === Number(currentUser.userId)) {
-              isDownline = true;
-              break;
-          }
-          const nextNode = await User.findOne({ userId: checkUplineId }).select('sponsorId');
-          if (!nextNode) break;
-          checkUplineId = nextNode.sponsorId;
-          depth++;
-      }
+//       // DOWNLINE VERIFICATION
+//       let isDownline = false;
+//       let checkUplineId = targetUser.sponsorId;
+//       let depth = 1;
+//       while (checkUplineId && depth <= 100) {
+//           if (Number(checkUplineId) === Number(currentUser.userId)) {
+//               isDownline = true;
+//               break;
+//           }
+//           const nextNode = await User.findOne({ userId: checkUplineId }).select('sponsorId');
+//           if (!nextNode) break;
+//           checkUplineId = nextNode.sponsorId;
+//           depth++;
+//       }
 
-      if (!isDownline) {
-          return res.status(403).json({ message: "Action Denied! You can only activate IDs in your own Downline." });
-      }
+//       if (!isDownline) {
+//           return res.status(403).json({ message: "Action Denied! You can only activate IDs in your own Downline." });
+//       }
 
-      // =======================================================
-      // 🛑 NEW LOGIC: $30 LOCKED BALANCE & FREE DIRECT $30
-      // =======================================================
-      const isDirect = (targetUser.sponsorId === currentUser.userId);
+//       // =======================================================
+//       // 🛑 NEW LOGIC: $30 LOCKED BALANCE & FREE DIRECT $30
+//       // =======================================================
+//       const isDirect = (targetUser.sponsorId === currentUser.userId);
       
-      if (isDirect && amount === 30) {
-          if (currentUser.walletBalance < 30) {
-              return res.status(400).json({ message: "Insufficient Balance! You must keep $30 in your wallet to activate a direct ID." });
-          }
-      } else {
-          const availableBalance = currentUser.walletBalance - 30;
-          if (availableBalance < amount) {
-             return res.status(400).json({ 
-                 message: `Insufficient Wallet Balance! You need $${amount}, plus $30 must remain locked in your wallet. (Total required: $${amount + 30})` 
-             });
-          }
-          await User.updateOne({ userId: currentUser.userId }, { $inc: { walletBalance: -amount } });
-      }
+//       if (isDirect && amount === 30) {
+//           if (currentUser.walletBalance < 30) {
+//               return res.status(400).json({ message: "Insufficient Balance! You must keep $30 in your wallet to activate a direct ID." });
+//           }
+//       } else {
+//           const availableBalance = currentUser.walletBalance - 30;
+//           if (availableBalance < amount) {
+//              return res.status(400).json({ 
+//                  message: `Insufficient Wallet Balance! You need $${amount}, plus $30 must remain locked in your wallet. (Total required: $${amount + 30})` 
+//              });
+//           }
+//           await User.updateOne({ userId: currentUser.userId }, { $inc: { walletBalance: -amount } });
+//       }
 
-      const createTransaction = async (data) => {
-         const Transaction = require('../models/Transaction'); 
-         return Transaction.create({ ...data, date: new Date() });
-      };
+//       const createTransaction = async (data) => {
+//          const Transaction = require('../models/Transaction'); 
+//          return Transaction.create({ ...data, date: new Date() });
+//       };
 
-      // =======================================================
-      // 🔹 3. CORE UPDATE
-      // =======================================================
-      let isFirstTopup = !targetUser.isToppedUp;
+//       // =======================================================
+//       // 🔹 3. CORE UPDATE
+//       // =======================================================
+//       let isFirstTopup = !targetUser.isToppedUp;
       
-      targetUser.packages = targetUser.packages || [];
-      targetUser.packages.push({ plan: "Global Auto-Pool", amount: amount, startDate: new Date(), withdrawn: 0, isDummy: false });
-      targetUser.topUpAmount = Math.max(targetUser.topUpAmount || 0, amount);
-      targetUser.highestPackage = amount;
-      targetUser.updatedAt = new Date();
+//       targetUser.packages = targetUser.packages || [];
+//       targetUser.packages.push({ plan: "Global Auto-Pool", amount: amount, startDate: new Date(), withdrawn: 0, isDummy: false });
+//       targetUser.topUpAmount = Math.max(targetUser.topUpAmount || 0, amount);
+//       targetUser.highestPackage = amount;
+//       targetUser.updatedAt = new Date();
       
-      if (isFirstTopup) {
-          targetUser.isToppedUp = true;
-          targetUser.topUpDate = new Date();
-      }
+//       if (isFirstTopup) {
+//           targetUser.isToppedUp = true;
+//           targetUser.topUpDate = new Date();
+//       }
       
-      targetUser.activePools.push({ level: amount, dailyAmount: (amount*2)/90, totalDays: 90, daysPaid: 0, status: "ACTIVE", withdrawnAmount: 0 });
-      await targetUser.save();
+//       targetUser.activePools.push({ level: amount, dailyAmount: (amount*2)/90, totalDays: 90, daysPaid: 0, status: "ACTIVE", withdrawnAmount: 0 });
+//       await targetUser.save();
 
-      let txDescription = isFirstTopup ? ` Activated with $${amount} (By Setup)` : `Node Upgraded to $${amount} (By Setup)`;
-      await createTransaction({
-        userId: targetUser.userId, type: "topup", amount, fromUserId: currentUser.userId, toUserId: targetUser.userId,
-        description: txDescription, status: 'success',
-        package: amount // 🔥 ADDED PACKAGE HERE
-      });
+//       let txDescription = isFirstTopup ? ` Activated with $${amount} (By Setup)` : `Node Upgraded to $${amount} (By Setup)`;
+//       await createTransaction({
+//         userId: targetUser.userId, type: "topup", amount, fromUserId: currentUser.userId, toUserId: targetUser.userId,
+//         description: txDescription, status: 'success',
+//         package: amount // 🔥 ADDED PACKAGE HERE
+//       });
 
 
-      // 🔥 TELEGRAM ALERT BHEJEIN 🔥
-      try {
-          await sendTelegramAlert(targetUser.name, targetUser.userId, amount, targetUser.country);
-      } catch (alertErr) {
-          console.error("Telegram Alert Error:", alertErr);
-      }
+//       // 🔥 TELEGRAM ALERT BHEJEIN 🔥
+//       try {
+//           await sendTelegramAlert(targetUser.name, targetUser.userId, amount, targetUser.country);
+//       } catch (alertErr) {
+//           console.error("Telegram Alert Error:", alertErr);
+//       }
 
-      res.json({ success: true, message: `Success! $${amount} Package Activated by Setup.` });
+//       res.json({ success: true, message: `Success! $${amount} Package Activated by Setup.` });
 
-      // =======================================================
-      // 🔹 4. BACKGROUND MLM ENGINE
-      // =======================================================
-      // =======================================================
-      // 🔹 4. BACKGROUND MLM ENGINE (FINAL PERFECT LOGIC)
-      // =======================================================
-      (async () => {
-          try {
-              if (isFirstTopup && typeof processGlobalTeamGrowth === 'function') {
-                  await processGlobalTeamGrowth(targetUser.userId);
-              }
+//       // =======================================================
+//       // 🔹 4. BACKGROUND MLM ENGINE
+//       // =======================================================
+//       // =======================================================
+//       // 🔹 4. BACKGROUND MLM ENGINE (FINAL PERFECT LOGIC)
+//       // =======================================================
+//       (async () => {
+//           try {
+//               if (isFirstTopup && typeof processGlobalTeamGrowth === 'function') {
+//                   await processGlobalTeamGrowth(targetUser.userId);
+//               }
 
-              // ==========================================================
-              // 🔥 REAL CROWD GROWTH LOGIC
-              // ==========================================================
-              try {
-                  const pkgToGrow = amount; 
-                  const SystemStat = require('../models/SystemStat');
+//               // ==========================================================
+//               // 🔥 REAL CROWD GROWTH LOGIC
+//               // ==========================================================
+//               try {
+//                   const pkgToGrow = amount; 
+//                   const SystemStat = require('../models/SystemStat');
 
-                  await SystemStat.findOneAndUpdate(
-                      {}, 
-                      { $inc: { globalTeamCount: 1, [`packageStats.${pkgToGrow}.allCrowd`]: 1 } }, 
-                      { upsert: true }
-                  );
+//                   await SystemStat.findOneAndUpdate(
+//                       {}, 
+//                       { $inc: { globalTeamCount: 1, [`packageStats.${pkgToGrow}.allCrowd`]: 1 } }, 
+//                       { upsert: true }
+//                   );
 
-                  const activeUsers = await User.find({ isToppedUp: true }).select('_id userId highestPackage purchasedPackages');
-                  const bulkOps = [];
+//                   const activeUsers = await User.find({ isToppedUp: true }).select('_id userId highestPackage purchasedPackages');
+//                   const bulkOps = [];
 
-                  for (const u of activeUsers) {
-                      if (Number(u.userId) === Number(targetUser.userId)) continue;
-                      const uMax = u.highestPackage || 0;
-                      const uPurchased = u.purchasedPackages || [];
+//                   for (const u of activeUsers) {
+//                       if (Number(u.userId) === Number(targetUser.userId)) continue;
+//                       const uMax = u.highestPackage || 0;
+//                       const uPurchased = u.purchasedPackages || [];
                       
-                      if (uPurchased.includes(pkgToGrow) || uMax >= pkgToGrow) {
-                          bulkOps.push({
-                              updateOne: {
-                                  filter: { _id: u._id },
-                                  update: { $inc: { globalTeamCount: 1, [`packageStats.${pkgToGrow}.globalTeamCount`]: 1 } }
-                              }
-                          });
-                      }
-                  }
+//                       if (uPurchased.includes(pkgToGrow) || uMax >= pkgToGrow) {
+//                           bulkOps.push({
+//                               updateOne: {
+//                                   filter: { _id: u._id },
+//                                   update: { $inc: { globalTeamCount: 1, [`packageStats.${pkgToGrow}.globalTeamCount`]: 1 } }
+//                               }
+//                           });
+//                       }
+//                   }
 
-                  if (bulkOps.length > 0) {
-                      await User.bulkWrite(bulkOps);
-                  }
-              } catch (growthErr) {
-                  console.error("Real User Growth Error:", growthErr);
-              }
+//                   if (bulkOps.length > 0) {
+//                       await User.bulkWrite(bulkOps);
+//                   }
+//               } catch (growthErr) {
+//                   console.error("Real User Growth Error:", growthErr);
+//               }
 
-              // ==========================================================
-              // ✅ 1. DIRECT / BOUNCE BACK LOGIC (Setup/Super Setup Allowed)
-              // ==========================================================
-              if (targetUser.sponsorId) {
-                  const directBonusAmount = (amount * 10) / 100;
-                  const directSponsor = await User.findOne({ userId: targetUser.sponsorId });
+//               // ==========================================================
+//               // ✅ 1. DIRECT / BOUNCE BACK LOGIC (Setup/Super Setup Allowed)
+//               // ==========================================================
+//               if (targetUser.sponsorId) {
+//                   const directBonusAmount = (amount * 10) / 100;
+//                   const directSponsor = await User.findOne({ userId: targetUser.sponsorId });
 
-                  if (directSponsor) {
-                      if (isFirstTopup) {
-                          directSponsor.directCount = (Number(directSponsor.directCount) || 0) + 1;
-                          await directSponsor.save();
-                      }
+//                   if (directSponsor) {
+//                       if (isFirstTopup) {
+//                           directSponsor.directCount = (Number(directSponsor.directCount) || 0) + 1;
+//                           await directSponsor.save();
+//                       }
 
-                      if (directSponsor.isToppedUp && Number(directSponsor.highestPackage) >= Number(amount)) {
-                          await User.updateOne({ _id: directSponsor._id }, { $inc: { directIncome: directBonusAmount, totalDirectIncome: directBonusAmount } });
+//                       if (directSponsor.isToppedUp && Number(directSponsor.highestPackage) >= Number(amount)) {
+//                           await User.updateOne({ _id: directSponsor._id }, { $inc: { directIncome: directBonusAmount, totalDirectIncome: directBonusAmount } });
                           
-                          await createTransaction({ 
-                              userId: directSponsor.userId, type: "direct_income", source: "direct",
-                              amount: directBonusAmount, fromUserId: targetUser.userId,
-                              description: `Direct Bonus from ${targetUser.name}'s $${amount} Package`,
-                              status: 'success', package: amount 
-                          }); 
-                      } else {
-                          // Bounce Back
-                          let current = directSponsor.sponsorId;
-                          let depth = 0;
-                          while (current && depth < 100) {
-                              const up = await User.findOne({ userId: current });
-                              if (!up) break;
+//                           await createTransaction({ 
+//                               userId: directSponsor.userId, type: "direct_income", source: "direct",
+//                               amount: directBonusAmount, fromUserId: targetUser.userId,
+//                               description: `Direct Bonus from ${targetUser.name}'s $${amount} Package`,
+//                               status: 'success', package: amount 
+//                           }); 
+//                       } else {
+//                           // Bounce Back
+//                           let current = directSponsor.sponsorId;
+//                           let depth = 0;
+//                           while (current && depth < 100) {
+//                               const up = await User.findOne({ userId: current });
+//                               if (!up) break;
                               
-                              if (up.isToppedUp && Number(up.highestPackage) >= Number(amount)) {
-                                  await User.updateOne({ _id: up._id }, { $inc: { upgradeBounceBackIncome: directBonusAmount, totalUpgradeBounceBackIncome: directBonusAmount } });
+//                               if (up.isToppedUp && Number(up.highestPackage) >= Number(amount)) {
+//                                   await User.updateOne({ _id: up._id }, { $inc: { upgradeBounceBackIncome: directBonusAmount, totalUpgradeBounceBackIncome: directBonusAmount } });
                                   
-                                  await createTransaction({ 
-                                      userId: up.userId, type: "upgrade_bounce_back_income", source: "bounce_back",
-                                      amount: directBonusAmount, fromUserId: targetUser.userId,
-                                      description: `Upgrade Bounce Back from ${targetUser.name}'s $${amount} Package`,
-                                      status: 'success', package: amount 
-                                  });
-                                  break;
-                              }
-                              current = up.sponsorId;
-                              depth++;
-                          }
-                      }
-                  }
-              }
+//                                   await createTransaction({ 
+//                                       userId: up.userId, type: "upgrade_bounce_back_income", source: "bounce_back",
+//                                       amount: directBonusAmount, fromUserId: targetUser.userId,
+//                                       description: `Upgrade Bounce Back from ${targetUser.name}'s $${amount} Package`,
+//                                       status: 'success', package: amount 
+//                                   });
+//                                   break;
+//                               }
+//                               current = up.sponsorId;
+//                               depth++;
+//                           }
+//                       }
+//                   }
+//               }
 
-              // ==========================================================
-              // 🔥 2. SETTING INCOME (OLD STRICT BLOCKER RESTORED)
-              // ==========================================================
-              const immediateSponsorObj = await User.findOne({ userId: targetUser.sponsorId }).select('role');
-              const isDirectSponsorSpecial = immediateSponsorObj && (immediateSponsorObj.role === 'setup' || immediateSponsorObj.role === 'super_setup');
+//               // ==========================================================
+//               // 🔥 2. SETTING INCOME (OLD STRICT BLOCKER RESTORED)
+//               // ==========================================================
+//               const immediateSponsorObj = await User.findOne({ userId: targetUser.sponsorId }).select('role');
+//               const isDirectSponsorSpecial = immediateSponsorObj && (immediateSponsorObj.role === 'setup' || immediateSponsorObj.role === 'super_setup');
 
-              let paidSetupUserId = null; // Record ke liye
+//               let paidSetupUserId = null; // Record ke liye
 
-              if (isDirectSponsorSpecial) {
-                  // Pehle wali condition: Agar direct lagane wala Setup/Super Setup hai, toh setting income BLOCK.
-                  console.log(`[BLOCKED] Direct sponsor is ${immediateSponsorObj.role}. Setting income is BLOCKED as per old rule.`);
-              } else {
-                  let settingUplineId = targetUser.sponsorId;
-                  let setupPaid = false;
-                  let superSetupPaid = false;
-                  let settingDepth = 100;
+//               if (isDirectSponsorSpecial) {
+//                   // Pehle wali condition: Agar direct lagane wala Setup/Super Setup hai, toh setting income BLOCK.
+//                   console.log(`[BLOCKED] Direct sponsor is ${immediateSponsorObj.role}. Setting income is BLOCKED as per old rule.`);
+//               } else {
+//                   let settingUplineId = targetUser.sponsorId;
+//                   let setupPaid = false;
+//                   let superSetupPaid = false;
+//                   let settingDepth = 100;
 
-                  while (settingUplineId && settingDepth > 0) {
-                      const sUpline = await User.findOne({ userId: settingUplineId }).select('userId role isToppedUp sponsorId _id');
-                      if (!sUpline) break;
+//                   while (settingUplineId && settingDepth > 0) {
+//                       const sUpline = await User.findOne({ userId: settingUplineId }).select('userId role isToppedUp sponsorId _id');
+//                       if (!sUpline) break;
 
-                      if (sUpline.isToppedUp) {
-                          if (sUpline.role === 'setup' && !setupPaid) {
-                              const setupAmt = (amount * 5) / 100;
-                              await User.updateOne({ _id: sUpline._id }, { $inc: { walletBalance: setupAmt } });
-                              await createTransaction({
-                                  userId: sUpline.userId, type: "credit_to_wallet", source: "setting_income",
-                                  amount: setupAmt, fromUserId: targetUser.userId,
-                                  description: `5% Setup Setting Income ($${amount} Package)`, status: "success", package: amount
-                              });
-                              setupPaid = true; 
-                              paidSetupUserId = sUpline.userId; 
-                          }
-                          else if (sUpline.role === 'super_setup' && !superSetupPaid) {
-                              const superSetupAmt = (amount * 10) / 100;
-                              await User.updateOne({ _id: sUpline._id }, { $inc: { walletBalance: superSetupAmt } });
-                              await createTransaction({
-                                  userId: sUpline.userId, type: "credit_to_wallet", source: "setting_income",
-                                  amount: superSetupAmt, fromUserId: targetUser.userId,
-                                  description: `10% Super Setup Setting Income ($${amount} Package)`, status: "success", package: amount
-                              });
-                              superSetupPaid = true; 
-                          }
-                      }
-                      if (setupPaid && superSetupPaid) break;
-                      settingUplineId = sUpline.sponsorId;
-                      settingDepth--;
-                  }
-              }
+//                       if (sUpline.isToppedUp) {
+//                           if (sUpline.role === 'setup' && !setupPaid) {
+//                               const setupAmt = (amount * 5) / 100;
+//                               await User.updateOne({ _id: sUpline._id }, { $inc: { walletBalance: setupAmt } });
+//                               await createTransaction({
+//                                   userId: sUpline.userId, type: "credit_to_wallet", source: "setting_income",
+//                                   amount: setupAmt, fromUserId: targetUser.userId,
+//                                   description: `5% Setup Setting Income ($${amount} Package)`, status: "success", package: amount
+//                               });
+//                               setupPaid = true; 
+//                               paidSetupUserId = sUpline.userId; 
+//                           }
+//                           else if (sUpline.role === 'super_setup' && !superSetupPaid) {
+//                               const superSetupAmt = (amount * 10) / 100;
+//                               await User.updateOne({ _id: sUpline._id }, { $inc: { walletBalance: superSetupAmt } });
+//                               await createTransaction({
+//                                   userId: sUpline.userId, type: "credit_to_wallet", source: "setting_income",
+//                                   amount: superSetupAmt, fromUserId: targetUser.userId,
+//                                   description: `10% Super Setup Setting Income ($${amount} Package)`, status: "success", package: amount
+//                               });
+//                               superSetupPaid = true; 
+//                           }
+//                       }
+//                       if (setupPaid && superSetupPaid) break;
+//                       settingUplineId = sUpline.sponsorId;
+//                       settingDepth--;
+//                   }
+//               }
 
-              // ==========================================================
-              // 🌟 3. UNIFIED 20-LEVEL ENGINE (SMART SKIP LOGIC)
-              // ==========================================================
-              let currentUplineId = targetUser.sponsorId; 
-              let currentLevel = 1;
-              let isBreakawayHit = false;
+//               // ==========================================================
+//               // 🌟 3. UNIFIED 20-LEVEL ENGINE (SMART SKIP LOGIC)
+//               // ==========================================================
+//               let currentUplineId = targetUser.sponsorId; 
+//               let currentLevel = 1;
+//               let isBreakawayHit = false;
 
-              while (currentUplineId && currentLevel <= 20) {
-                  const upline = await User.findOne({ userId: currentUplineId }).select('userId isToppedUp sponsorId role directCount highestPackage _id');
-                  if (!upline) break;
+//               while (currentUplineId && currentLevel <= 20) {
+//                   const upline = await User.findOne({ userId: currentUplineId }).select('userId isToppedUp sponsorId role directCount highestPackage _id');
+//                   if (!upline) break;
 
-                  if (!upline.isToppedUp) {
-                      currentUplineId = upline.sponsorId;
-                      continue; 
-                  }
+//                   if (!upline.isToppedUp) {
+//                       currentUplineId = upline.sponsorId;
+//                       continue; 
+//                   }
 
-                //   // 🔥 Setup SKIP Logic
-                //   if (upline.role === 'setup' && upline.userId !== paidSetupUserId) {
-                //       currentUplineId = upline.sponsorId;
-                //       continue; 
-                //   }
+//                 //   // 🔥 Setup SKIP Logic
+//                 //   if (upline.role === 'setup' && upline.userId !== paidSetupUserId) {
+//                 //       currentUplineId = upline.sponsorId;
+//                 //       continue; 
+//                 //   }
 
-                // 🔥 Setup SKIP Logic
-if (upline.role === 'setup' && upline.userId !== paidSetupUserId) {
-    currentUplineId = upline.sponsorId;
-    currentLevel++; // 👈 YEH LINE ADD KARNI HAI! (Taki level count ho)
-    continue; 
-}
+//                 // 🔥 Setup SKIP Logic
+// if (upline.role === 'setup' && upline.userId !== paidSetupUserId) {
+//     currentUplineId = upline.sponsorId;
+//     currentLevel++; // 👈 YEH LINE ADD KARNI HAI! (Taki level count ho)
+//     continue; 
+// }
 
-                  const isCurrentUplineLeader = (upline.role === 'leader');
-                  const isCurrentUplineSuperLeader = (upline.role === 'superleader'); 
+//                   const isCurrentUplineLeader = (upline.role === 'leader');
+//                   const isCurrentUplineSuperLeader = (upline.role === 'superleader'); 
 
-                  if (isBreakawayHit && isCurrentUplineLeader && !isCurrentUplineSuperLeader) {
-                      currentUplineId = upline.sponsorId;
-                      currentLevel++; 
-                      continue; 
-                  }
+//                   if (isBreakawayHit && isCurrentUplineLeader && !isCurrentUplineSuperLeader) {
+//                       currentUplineId = upline.sponsorId;
+//                       currentLevel++; 
+//                       continue; 
+//                   }
 
-                  if (currentLevel >= 2 && currentLevel <= 20) {
-                      let percentage = 0;
-                      if (currentLevel === 2) percentage = 5;
-                      else if (currentLevel === 3) percentage = 3;
-                      else if (currentLevel === 4) percentage = 2;
-                      else if (currentLevel === 5) percentage = 1;
-                      else if (currentLevel >= 6 && currentLevel <= 10) percentage = 0.50;
-                      else if (currentLevel >= 11 && currentLevel <= 20) percentage = 0.25;
+//                   if (currentLevel >= 2 && currentLevel <= 20) {
+//                       let percentage = 0;
+//                       if (currentLevel === 2) percentage = 5;
+//                       else if (currentLevel === 3) percentage = 3;
+//                       else if (currentLevel === 4) percentage = 2;
+//                       else if (currentLevel === 5) percentage = 1;
+//                       else if (currentLevel >= 6 && currentLevel <= 10) percentage = 0.50;
+//                       else if (currentLevel >= 11 && currentLevel <= 20) percentage = 0.25;
 
-                      const hasSufficientPackage = upline.highestPackage >= amount;
+//                       const hasSufficientPackage = upline.highestPackage >= amount;
 
-                      if (hasSufficientPackage) {
-                          const levelAmount = (amount * percentage) / 100;
-                          if (levelAmount > 0) {
-                              await User.updateOne({ _id: upline._id }, { $inc: { levelIncome: levelAmount, totalLevelIncome: levelAmount } });
-                              await createTransaction({
-                                  userId: upline.userId, type: "level_income", source: "level", amount: levelAmount,
-                                  fromUserId: targetUser.userId, description: `Level ${currentLevel} Income (${percentage}%) from $${amount} Package`, 
-                                  status: 'success', package: amount
-                              });
-                          }
-                      }
-                  }
+//                       if (hasSufficientPackage) {
+//                           const levelAmount = (amount * percentage) / 100;
+//                           if (levelAmount > 0) {
+//                               await User.updateOne({ _id: upline._id }, { $inc: { levelIncome: levelAmount, totalLevelIncome: levelAmount } });
+//                               await createTransaction({
+//                                   userId: upline.userId, type: "level_income", source: "level", amount: levelAmount,
+//                                   fromUserId: targetUser.userId, description: `Level ${currentLevel} Income (${percentage}%) from $${amount} Package`, 
+//                                   status: 'success', package: amount
+//                               });
+//                           }
+//                       }
+//                   }
 
-                  // Breakaway Logic
-                  if (currentLevel >= 2 && isCurrentUplineLeader && !isBreakawayHit) {
-                      const instantBonusAmount = (amount * 10) / 100;
-                      await User.updateOne({ _id: upline._id }, { $inc: { walletBalance: instantBonusAmount } });
-                      isBreakawayHit = true; 
-                  }
+//                   // Breakaway Logic
+//                   if (currentLevel >= 2 && isCurrentUplineLeader && !isBreakawayHit) {
+//                       const instantBonusAmount = (amount * 10) / 100;
+//                       await User.updateOne({ _id: upline._id }, { $inc: { walletBalance: instantBonusAmount } });
+//                       isBreakawayHit = true; 
+//                   }
 
-                  currentUplineId = upline.sponsorId;
-                  currentLevel++; 
-              }
-          } catch (bgError) {
-              console.error("Background MLM Engine Error:", bgError);
-          }
-      })();
+//                   currentUplineId = upline.sponsorId;
+//                   currentLevel++; 
+//               }
+//           } catch (bgError) {
+//               console.error("Background MLM Engine Error:", bgError);
+//           }
+//       })();
       
-    } catch (err) {
-      console.error('Setup Top-up Error:', err);
-      if (!res.headersSent) res.status(500).json({ message: 'Server error during setup top-up' });
-    }
-  }
-);
+//     } catch (err) {
+//       console.error('Setup Top-up Error:', err);
+//       if (!res.headersSent) res.status(500).json({ message: 'Server error during setup top-up' });
+//     }
+//   }
+// );
 
 
-// ========================================================
-// 🚀 3. SUPER-SETUP TOPUP ROUTE (For 'super_setup' role)
-// ========================================================
-router.put(
-  '/supersetup-topup/:userId',
-  authMiddleware,
-  async (req, res) => {
-    try {
-      const targetUserId = Number(req.params.userId);
-      const { amount, transactionPassword } = req.body;
+// // ========================================================
+// // 🚀 3. SUPER-SETUP TOPUP ROUTE (For 'super_setup' role)
+// // ========================================================
+// router.put(
+//   '/supersetup-topup/:userId',
+//   authMiddleware,
+//   async (req, res) => {
+//     try {
+//       const targetUserId = Number(req.params.userId);
+//       const { amount, transactionPassword } = req.body;
 
-      const currentUser = await User.findOne({ userId: req.user.userId });
-      if (!currentUser) return res.status(404).json({ message: "Current user not found" });
+//       const currentUser = await User.findOne({ userId: req.user.userId });
+//       if (!currentUser) return res.status(404).json({ message: "Current user not found" });
       
-      if (currentUser.role !== 'super_setup') {
-          return res.status(403).json({ message: "Access denied. Only Super Setup roles can use this route." });
-      }
+//       if (currentUser.role !== 'super_setup') {
+//           return res.status(403).json({ message: "Access denied. Only Super Setup roles can use this route." });
+//       }
 
-      if (!transactionPassword) return res.status(400).json({ message: "Transaction password is required" });
-      if (transactionPassword.toLowerCase() !== currentUser.transactionPassword.toLowerCase()) {
-          return res.status(403).json({ message: "Invalid transaction password" });
-      }
+//       if (!transactionPassword) return res.status(400).json({ message: "Transaction password is required" });
+//       if (transactionPassword.toLowerCase() !== currentUser.transactionPassword.toLowerCase()) {
+//           return res.status(403).json({ message: "Invalid transaction password" });
+//       }
 
-      const targetUser = await User.findOne({ userId: targetUserId });
-      if (!targetUser) return res.status(404).json({ message: 'Target user not found' });
+//       const targetUser = await User.findOne({ userId: targetUserId });
+//       if (!targetUser) return res.status(404).json({ message: 'Target user not found' });
 
-      // 🛑 STEP-BY-STEP UPGRADE LOGIC
-      const currentHighest = targetUser.highestPackage || 0;
-      let expectedNext = 30;
+//       // 🛑 STEP-BY-STEP UPGRADE LOGIC
+//       const currentHighest = targetUser.highestPackage || 0;
+//       let expectedNext = 30;
       
-      if (currentHighest === 30) expectedNext = 100;
-      else if (currentHighest === 100) expectedNext = 300;
-      else if (currentHighest === 300) expectedNext = 500;
-      else if (currentHighest === 500) expectedNext = 1000;
-      else if (currentHighest === 1000) expectedNext = null; 
+//       if (currentHighest === 30) expectedNext = 100;
+//       else if (currentHighest === 100) expectedNext = 300;
+//       else if (currentHighest === 300) expectedNext = 500;
+//       else if (currentHighest === 500) expectedNext = 1000;
+//       else if (currentHighest === 1000) expectedNext = null; 
 
-      if (expectedNext === null) {
-          return res.status(400).json({ message: "This ID has already reached the maximum Apex package of $1000." });
-      }
+//       if (expectedNext === null) {
+//           return res.status(400).json({ message: "This ID has already reached the maximum Apex package of $1000." });
+//       }
 
-      if (amount !== expectedNext) {
-          return res.status(400).json({ message: `Invalid upgrade. You must upgrade step-by-step. Your next required package is $${expectedNext}.` });
-      }
+//       if (amount !== expectedNext) {
+//           return res.status(400).json({ message: `Invalid upgrade. You must upgrade step-by-step. Your next required package is $${expectedNext}.` });
+//       }
 
-      // 🛑 2 DIRECTS REQUIRED FOR UPGRADE LOGIC
-      if (currentHighest > 0) {
-          const activeDirectsCount = await User.countDocuments({
-              sponsorId: targetUser.userId,
-              highestPackage: { $gte: currentHighest }
-          });
+//       // 🛑 2 DIRECTS REQUIRED FOR UPGRADE LOGIC
+//       if (currentHighest > 0) {
+//           const activeDirectsCount = await User.countDocuments({
+//               sponsorId: targetUser.userId,
+//               highestPackage: { $gte: currentHighest }
+//           });
 
-          if (activeDirectsCount < 2) {
-              return res.status(400).json({ 
-                  message: `Upgrade Blocked: You need at least 2 active directs on your current $${currentHighest} tier before you can upgrade to $${amount}.` 
-              });
-          }
-      }
+//           if (activeDirectsCount < 2) {
+//               return res.status(400).json({ 
+//                   message: `Upgrade Blocked: You need at least 2 active directs on your current $${currentHighest} tier before you can upgrade to $${amount}.` 
+//               });
+//           }
+//       }
 
-      // 🚫 DOUBLE TOP-UP RESTRICTION 
-      const isAlreadyBought = targetUser.packages?.some(p => p.amount === amount);
-      if (isAlreadyBought) {
-          return res.status(400).json({ message: `This ID is already active with a $${amount} package. Double top-up is not allowed.` });
-      }
+//       // 🚫 DOUBLE TOP-UP RESTRICTION 
+//       const isAlreadyBought = targetUser.packages?.some(p => p.amount === amount);
+//       if (isAlreadyBought) {
+//           return res.status(400).json({ message: `This ID is already active with a $${amount} package. Double top-up is not allowed.` });
+//       }
 
-      // DOWNLINE VERIFICATION
-      let isDownline = false;
-      let checkUplineId = targetUser.sponsorId;
-      let depth = 1;
-      while (checkUplineId && depth <= 100) {
-          if (Number(checkUplineId) === Number(currentUser.userId)) {
-              isDownline = true;
-              break;
-          }
-          const nextNode = await User.findOne({ userId: checkUplineId }).select('sponsorId');
-          if (!nextNode) break;
-          checkUplineId = nextNode.sponsorId;
-          depth++;
-      }
+//       // DOWNLINE VERIFICATION
+//       let isDownline = false;
+//       let checkUplineId = targetUser.sponsorId;
+//       let depth = 1;
+//       while (checkUplineId && depth <= 100) {
+//           if (Number(checkUplineId) === Number(currentUser.userId)) {
+//               isDownline = true;
+//               break;
+//           }
+//           const nextNode = await User.findOne({ userId: checkUplineId }).select('sponsorId');
+//           if (!nextNode) break;
+//           checkUplineId = nextNode.sponsorId;
+//           depth++;
+//       }
 
-      if (!isDownline) {
-          return res.status(403).json({ message: "Action Denied! You can only activate IDs in your own Downline." });
-      }
+//       if (!isDownline) {
+//           return res.status(403).json({ message: "Action Denied! You can only activate IDs in your own Downline." });
+//       }
 
-      // =======================================================
-      // 🛑 NEW LOGIC: $30 LOCKED BALANCE & FREE DIRECT $30
-      // =======================================================
-      const isDirect = (targetUser.sponsorId === currentUser.userId);
+//       // =======================================================
+//       // 🛑 NEW LOGIC: $30 LOCKED BALANCE & FREE DIRECT $30
+//       // =======================================================
+//       const isDirect = (targetUser.sponsorId === currentUser.userId);
       
-      if (isDirect && amount === 30) {
-          if (currentUser.walletBalance < 30) {
-              return res.status(400).json({ message: "Insufficient Balance! You must keep $30 in your wallet to activate a direct ID." });
-          }
-      } else {
-          const availableBalance = currentUser.walletBalance - 30; 
-          if (availableBalance < amount) {
-             return res.status(400).json({ 
-                 message: `Insufficient Wallet Balance! You need $${amount}, plus $30 must remain locked in your wallet. (Total required: $${amount + 30})` 
-             });
-          }
-          await User.updateOne({ userId: currentUser.userId }, { $inc: { walletBalance: -amount } });
-      }
+//       if (isDirect && amount === 30) {
+//           if (currentUser.walletBalance < 30) {
+//               return res.status(400).json({ message: "Insufficient Balance! You must keep $30 in your wallet to activate a direct ID." });
+//           }
+//       } else {
+//           const availableBalance = currentUser.walletBalance - 30; 
+//           if (availableBalance < amount) {
+//              return res.status(400).json({ 
+//                  message: `Insufficient Wallet Balance! You need $${amount}, plus $30 must remain locked in your wallet. (Total required: $${amount + 30})` 
+//              });
+//           }
+//           await User.updateOne({ userId: currentUser.userId }, { $inc: { walletBalance: -amount } });
+//       }
 
-      const createTransaction = async (data) => {
-         const Transaction = require('../models/Transaction'); 
-         return Transaction.create({ ...data, date: new Date() });
-      };
+//       const createTransaction = async (data) => {
+//          const Transaction = require('../models/Transaction'); 
+//          return Transaction.create({ ...data, date: new Date() });
+//       };
 
-      // =======================================================
-      // 🔹 3. CORE UPDATE
-      // =======================================================
-      let isFirstTopup = !targetUser.isToppedUp;
+//       // =======================================================
+//       // 🔹 3. CORE UPDATE
+//       // =======================================================
+//       let isFirstTopup = !targetUser.isToppedUp;
       
-      targetUser.packages = targetUser.packages || [];
-      targetUser.packages.push({ plan: "Global Auto-Pool", amount: amount, startDate: new Date(), withdrawn: 0, isDummy: false });
-      targetUser.topUpAmount = Math.max(targetUser.topUpAmount || 0, amount);
-      targetUser.highestPackage = amount;
-      targetUser.updatedAt = new Date();
+//       targetUser.packages = targetUser.packages || [];
+//       targetUser.packages.push({ plan: "Global Auto-Pool", amount: amount, startDate: new Date(), withdrawn: 0, isDummy: false });
+//       targetUser.topUpAmount = Math.max(targetUser.topUpAmount || 0, amount);
+//       targetUser.highestPackage = amount;
+//       targetUser.updatedAt = new Date();
       
-      if (isFirstTopup) {
-          targetUser.isToppedUp = true;
-          targetUser.topUpDate = new Date();
-      }
+//       if (isFirstTopup) {
+//           targetUser.isToppedUp = true;
+//           targetUser.topUpDate = new Date();
+//       }
       
-      targetUser.activePools.push({ level: amount, dailyAmount: (amount*2)/90, totalDays: 90, daysPaid: 0, status: "ACTIVE", withdrawnAmount: 0 });
-      await targetUser.save();
+//       targetUser.activePools.push({ level: amount, dailyAmount: (amount*2)/90, totalDays: 90, daysPaid: 0, status: "ACTIVE", withdrawnAmount: 0 });
+//       await targetUser.save();
 
-      let txDescription = isFirstTopup ? ` Activated with $${amount} (By Super Setup)` : `Node Upgraded to $${amount} (By Super Setup)`;
-      await createTransaction({
-        userId: targetUser.userId, type: "topup", amount, fromUserId: currentUser.userId, toUserId: targetUser.userId,
-        description: txDescription, status: 'success', date: new Date(),
-        package: amount // 🔥 ADDED PACKAGE HERE
-      });
+//       let txDescription = isFirstTopup ? ` Activated with $${amount} (By Super Setup)` : `Node Upgraded to $${amount} (By Super Setup)`;
+//       await createTransaction({
+//         userId: targetUser.userId, type: "topup", amount, fromUserId: currentUser.userId, toUserId: targetUser.userId,
+//         description: txDescription, status: 'success', date: new Date(),
+//         package: amount // 🔥 ADDED PACKAGE HERE
+//       });
 
-      // 🔥 TELEGRAM ALERT BHEJEIN 🔥
-      try {
-          await sendTelegramAlert(targetUser.name, targetUser.userId, amount, targetUser.country);
-      } catch (alertErr) {
-          console.error("Telegram Alert Error:", alertErr);
-      }
+//       // 🔥 TELEGRAM ALERT BHEJEIN 🔥
+//       try {
+//           await sendTelegramAlert(targetUser.name, targetUser.userId, amount, targetUser.country);
+//       } catch (alertErr) {
+//           console.error("Telegram Alert Error:", alertErr);
+//       }
 
-      res.json({ success: true, message: `Success! $${amount} Package Activated by Super Setup.` });
+//       res.json({ success: true, message: `Success! $${amount} Package Activated by Super Setup.` });
 
-      // =======================================================
-      // 🔹 4. BACKGROUND MLM ENGINE
-      // =======================================================
-      (async () => {
-          try {
-              if (isFirstTopup && typeof processGlobalTeamGrowth === 'function') {
-                  await processGlobalTeamGrowth(targetUser.userId);
-              }
+//       // =======================================================
+//       // 🔹 4. BACKGROUND MLM ENGINE
+//       // =======================================================
+//       (async () => {
+//           try {
+//               if (isFirstTopup && typeof processGlobalTeamGrowth === 'function') {
+//                   await processGlobalTeamGrowth(targetUser.userId);
+//               }
 
-              // ==========================================================
-              // 🔥 REAL CROWD GROWTH LOGIC
-              // ==========================================================
-              try {
-                  const pkgToGrow = amount; 
-                  const SystemStat = require('../models/SystemStat');
+//               // ==========================================================
+//               // 🔥 REAL CROWD GROWTH LOGIC
+//               // ==========================================================
+//               try {
+//                   const pkgToGrow = amount; 
+//                   const SystemStat = require('../models/SystemStat');
 
-                  await SystemStat.findOneAndUpdate(
-                      {}, 
-                      { $inc: { globalTeamCount: 1, [`packageStats.${pkgToGrow}.allCrowd`]: 1 } }, 
-                      { upsert: true }
-                  );
+//                   await SystemStat.findOneAndUpdate(
+//                       {}, 
+//                       { $inc: { globalTeamCount: 1, [`packageStats.${pkgToGrow}.allCrowd`]: 1 } }, 
+//                       { upsert: true }
+//                   );
 
-                  const activeUsers = await User.find({ isToppedUp: true }).select('_id userId highestPackage purchasedPackages');
-                  const bulkOps = [];
+//                   const activeUsers = await User.find({ isToppedUp: true }).select('_id userId highestPackage purchasedPackages');
+//                   const bulkOps = [];
 
-                  for (const u of activeUsers) {
-                      if (Number(u.userId) === Number(targetUser.userId)) continue;
-                      const uMax = u.highestPackage || 0;
-                      const uPurchased = u.purchasedPackages || [];
+//                   for (const u of activeUsers) {
+//                       if (Number(u.userId) === Number(targetUser.userId)) continue;
+//                       const uMax = u.highestPackage || 0;
+//                       const uPurchased = u.purchasedPackages || [];
                       
-                      if (uPurchased.includes(pkgToGrow) || uMax >= pkgToGrow) {
-                          bulkOps.push({
-                              updateOne: {
-                                  filter: { _id: u._id },
-                                  update: { $inc: { globalTeamCount: 1, [`packageStats.${pkgToGrow}.globalTeamCount`]: 1 } }
-                              }
-                          });
-                      }
-                  }
+//                       if (uPurchased.includes(pkgToGrow) || uMax >= pkgToGrow) {
+//                           bulkOps.push({
+//                               updateOne: {
+//                                   filter: { _id: u._id },
+//                                   update: { $inc: { globalTeamCount: 1, [`packageStats.${pkgToGrow}.globalTeamCount`]: 1 } }
+//                               }
+//                           });
+//                       }
+//                   }
 
-                  if (bulkOps.length > 0) {
-                      await User.bulkWrite(bulkOps);
-                  }
-              } catch (growthErr) {
-                  console.error("Real User Growth Error:", growthErr);
-              }
+//                   if (bulkOps.length > 0) {
+//                       await User.bulkWrite(bulkOps);
+//                   }
+//               } catch (growthErr) {
+//                   console.error("Real User Growth Error:", growthErr);
+//               }
 
-              // ==========================================================
-              // ✅ 1. DIRECT / BOUNCE BACK LOGIC (Setup/Super Setup Allowed)
-              // ==========================================================
-              if (targetUser.sponsorId) {
-                  const directBonusAmount = (amount * 10) / 100;
-                  const directSponsor = await User.findOne({ userId: targetUser.sponsorId });
+//               // ==========================================================
+//               // ✅ 1. DIRECT / BOUNCE BACK LOGIC (Setup/Super Setup Allowed)
+//               // ==========================================================
+//               if (targetUser.sponsorId) {
+//                   const directBonusAmount = (amount * 10) / 100;
+//                   const directSponsor = await User.findOne({ userId: targetUser.sponsorId });
 
-                  if (directSponsor) {
-                      if (isFirstTopup) {
-                          directSponsor.directCount = (Number(directSponsor.directCount) || 0) + 1;
-                          await directSponsor.save();
-                      }
+//                   if (directSponsor) {
+//                       if (isFirstTopup) {
+//                           directSponsor.directCount = (Number(directSponsor.directCount) || 0) + 1;
+//                           await directSponsor.save();
+//                       }
 
-                      if (directSponsor.isToppedUp && Number(directSponsor.highestPackage) >= Number(amount)) {
-                          await User.updateOne({ _id: directSponsor._id }, { $inc: { directIncome: directBonusAmount, totalDirectIncome: directBonusAmount } });
+//                       if (directSponsor.isToppedUp && Number(directSponsor.highestPackage) >= Number(amount)) {
+//                           await User.updateOne({ _id: directSponsor._id }, { $inc: { directIncome: directBonusAmount, totalDirectIncome: directBonusAmount } });
                           
-                          await createTransaction({ 
-                              userId: directSponsor.userId, type: "direct_income", source: "direct",
-                              amount: directBonusAmount, fromUserId: targetUser.userId,
-                              description: `Direct Bonus from ${targetUser.name}'s $${amount} Package`,
-                              status: 'success', package: amount 
-                          }); 
-                      } else {
-                          // Bounce Back
-                          let current = directSponsor.sponsorId;
-                          let depth = 0;
-                          while (current && depth < 100) {
-                              const up = await User.findOne({ userId: current });
-                              if (!up) break;
+//                           await createTransaction({ 
+//                               userId: directSponsor.userId, type: "direct_income", source: "direct",
+//                               amount: directBonusAmount, fromUserId: targetUser.userId,
+//                               description: `Direct Bonus from ${targetUser.name}'s $${amount} Package`,
+//                               status: 'success', package: amount 
+//                           }); 
+//                       } else {
+//                           // Bounce Back
+//                           let current = directSponsor.sponsorId;
+//                           let depth = 0;
+//                           while (current && depth < 100) {
+//                               const up = await User.findOne({ userId: current });
+//                               if (!up) break;
                               
-                              if (up.isToppedUp && Number(up.highestPackage) >= Number(amount)) {
-                                  await User.updateOne({ _id: up._id }, { $inc: { upgradeBounceBackIncome: directBonusAmount, totalUpgradeBounceBackIncome: directBonusAmount } });
+//                               if (up.isToppedUp && Number(up.highestPackage) >= Number(amount)) {
+//                                   await User.updateOne({ _id: up._id }, { $inc: { upgradeBounceBackIncome: directBonusAmount, totalUpgradeBounceBackIncome: directBonusAmount } });
                                   
-                                  await createTransaction({ 
-                                      userId: up.userId, type: "upgrade_bounce_back_income", source: "bounce_back",
-                                      amount: directBonusAmount, fromUserId: targetUser.userId,
-                                      description: `Upgrade Bounce Back from ${targetUser.name}'s $${amount} Package`,
-                                      status: 'success', package: amount 
-                                  });
-                                  break;
-                              }
-                              current = up.sponsorId;
-                              depth++;
-                          }
-                      }
-                  }
-              }
+//                                   await createTransaction({ 
+//                                       userId: up.userId, type: "upgrade_bounce_back_income", source: "bounce_back",
+//                                       amount: directBonusAmount, fromUserId: targetUser.userId,
+//                                       description: `Upgrade Bounce Back from ${targetUser.name}'s $${amount} Package`,
+//                                       status: 'success', package: amount 
+//                                   });
+//                                   break;
+//                               }
+//                               current = up.sponsorId;
+//                               depth++;
+//                           }
+//                       }
+//                   }
+//               }
 
-              // ==========================================================
-              // 🔥 2. SETTING INCOME (OLD STRICT BLOCKER RESTORED)
-              // ==========================================================
-              const immediateSponsorObj = await User.findOne({ userId: targetUser.sponsorId }).select('role');
-              const isDirectSponsorSpecial = immediateSponsorObj && (immediateSponsorObj.role === 'setup' || immediateSponsorObj.role === 'super_setup');
+//               // ==========================================================
+//               // 🔥 2. SETTING INCOME (OLD STRICT BLOCKER RESTORED)
+//               // ==========================================================
+//               const immediateSponsorObj = await User.findOne({ userId: targetUser.sponsorId }).select('role');
+//               const isDirectSponsorSpecial = immediateSponsorObj && (immediateSponsorObj.role === 'setup' || immediateSponsorObj.role === 'super_setup');
 
-              let paidSetupUserId = null; // Record ke liye
+//               let paidSetupUserId = null; // Record ke liye
 
-              if (isDirectSponsorSpecial) {
-                  // Pehle wali condition: Agar direct lagane wala Setup/Super Setup hai, toh setting income BLOCK.
-                  console.log(`[BLOCKED] Direct sponsor is ${immediateSponsorObj.role}. Setting income is BLOCKED as per old rule.`);
-              } else {
-                  let settingUplineId = targetUser.sponsorId;
-                  let setupPaid = false;
-                  let superSetupPaid = false;
-                  let settingDepth = 100;
+//               if (isDirectSponsorSpecial) {
+//                   // Pehle wali condition: Agar direct lagane wala Setup/Super Setup hai, toh setting income BLOCK.
+//                   console.log(`[BLOCKED] Direct sponsor is ${immediateSponsorObj.role}. Setting income is BLOCKED as per old rule.`);
+//               } else {
+//                   let settingUplineId = targetUser.sponsorId;
+//                   let setupPaid = false;
+//                   let superSetupPaid = false;
+//                   let settingDepth = 100;
 
-                  while (settingUplineId && settingDepth > 0) {
-                      const sUpline = await User.findOne({ userId: settingUplineId }).select('userId role isToppedUp sponsorId _id');
-                      if (!sUpline) break;
+//                   while (settingUplineId && settingDepth > 0) {
+//                       const sUpline = await User.findOne({ userId: settingUplineId }).select('userId role isToppedUp sponsorId _id');
+//                       if (!sUpline) break;
 
-                      if (sUpline.isToppedUp) {
-                          if (sUpline.role === 'setup' && !setupPaid) {
-                              const setupAmt = (amount * 5) / 100;
-                              await User.updateOne({ _id: sUpline._id }, { $inc: { walletBalance: setupAmt } });
-                              await createTransaction({
-                                  userId: sUpline.userId, type: "credit_to_wallet", source: "setting_income",
-                                  amount: setupAmt, fromUserId: targetUser.userId,
-                                  description: `5% Setup Setting Income ($${amount} Package)`, status: "success", package: amount
-                              });
-                              setupPaid = true; 
-                              paidSetupUserId = sUpline.userId; 
-                          }
-                          else if (sUpline.role === 'super_setup' && !superSetupPaid) {
-                              const superSetupAmt = (amount * 10) / 100;
-                              await User.updateOne({ _id: sUpline._id }, { $inc: { walletBalance: superSetupAmt } });
-                              await createTransaction({
-                                  userId: sUpline.userId, type: "credit_to_wallet", source: "setting_income",
-                                  amount: superSetupAmt, fromUserId: targetUser.userId,
-                                  description: `10% Super Setup Setting Income ($${amount} Package)`, status: "success", package: amount
-                              });
-                              superSetupPaid = true; 
-                          }
-                      }
-                      if (setupPaid && superSetupPaid) break;
-                      settingUplineId = sUpline.sponsorId;
-                      settingDepth--;
-                  }
-              }
+//                       if (sUpline.isToppedUp) {
+//                           if (sUpline.role === 'setup' && !setupPaid) {
+//                               const setupAmt = (amount * 5) / 100;
+//                               await User.updateOne({ _id: sUpline._id }, { $inc: { walletBalance: setupAmt } });
+//                               await createTransaction({
+//                                   userId: sUpline.userId, type: "credit_to_wallet", source: "setting_income",
+//                                   amount: setupAmt, fromUserId: targetUser.userId,
+//                                   description: `5% Setup Setting Income ($${amount} Package)`, status: "success", package: amount
+//                               });
+//                               setupPaid = true; 
+//                               paidSetupUserId = sUpline.userId; 
+//                           }
+//                           else if (sUpline.role === 'super_setup' && !superSetupPaid) {
+//                               const superSetupAmt = (amount * 10) / 100;
+//                               await User.updateOne({ _id: sUpline._id }, { $inc: { walletBalance: superSetupAmt } });
+//                               await createTransaction({
+//                                   userId: sUpline.userId, type: "credit_to_wallet", source: "setting_income",
+//                                   amount: superSetupAmt, fromUserId: targetUser.userId,
+//                                   description: `10% Super Setup Setting Income ($${amount} Package)`, status: "success", package: amount
+//                               });
+//                               superSetupPaid = true; 
+//                           }
+//                       }
+//                       if (setupPaid && superSetupPaid) break;
+//                       settingUplineId = sUpline.sponsorId;
+//                       settingDepth--;
+//                   }
+//               }
 
-              // ==========================================================
-              // 🌟 3. UNIFIED 20-LEVEL ENGINE (SMART SKIP LOGIC)
-              // ==========================================================
-              let currentUplineId = targetUser.sponsorId; 
-              let currentLevel = 1;
-              let isBreakawayHit = false;
+//               // ==========================================================
+//               // 🌟 3. UNIFIED 20-LEVEL ENGINE (SMART SKIP LOGIC)
+//               // ==========================================================
+//               let currentUplineId = targetUser.sponsorId; 
+//               let currentLevel = 1;
+//               let isBreakawayHit = false;
 
-              while (currentUplineId && currentLevel <= 20) {
-                  const upline = await User.findOne({ userId: currentUplineId }).select('userId isToppedUp sponsorId role directCount highestPackage _id');
-                  if (!upline) break;
+//               while (currentUplineId && currentLevel <= 20) {
+//                   const upline = await User.findOne({ userId: currentUplineId }).select('userId isToppedUp sponsorId role directCount highestPackage _id');
+//                   if (!upline) break;
 
-                  if (!upline.isToppedUp) {
-                      currentUplineId = upline.sponsorId;
-                      continue; 
-                  }
+//                   if (!upline.isToppedUp) {
+//                       currentUplineId = upline.sponsorId;
+//                       continue; 
+//                   }
 
-                  // 🔥 Setup SKIP Logic
-                //   if (upline.role === 'setup' && upline.userId !== paidSetupUserId) {
-                //       currentUplineId = upline.sponsorId;
-                //       continue; 
-                //   }
-                // 🔥 Setup SKIP Logic
-if (upline.role === 'setup' && upline.userId !== paidSetupUserId) {
-    currentUplineId = upline.sponsorId;
-    currentLevel++; // 👈 YEH LINE ADD KARNI HAI! (Taki level count ho)
-    continue; 
-}
+//                   // 🔥 Setup SKIP Logic
+//                 //   if (upline.role === 'setup' && upline.userId !== paidSetupUserId) {
+//                 //       currentUplineId = upline.sponsorId;
+//                 //       continue; 
+//                 //   }
+//                 // 🔥 Setup SKIP Logic
+// if (upline.role === 'setup' && upline.userId !== paidSetupUserId) {
+//     currentUplineId = upline.sponsorId;
+//     currentLevel++; // 👈 YEH LINE ADD KARNI HAI! (Taki level count ho)
+//     continue; 
+// }
 
-                  const isCurrentUplineLeader = (upline.role === 'leader');
-                  const isCurrentUplineSuperLeader = (upline.role === 'superleader'); 
+//                   const isCurrentUplineLeader = (upline.role === 'leader');
+//                   const isCurrentUplineSuperLeader = (upline.role === 'superleader'); 
 
-                  if (isBreakawayHit && isCurrentUplineLeader && !isCurrentUplineSuperLeader) {
-                      currentUplineId = upline.sponsorId;
-                      currentLevel++; 
-                      continue; 
-                  }
+//                   if (isBreakawayHit && isCurrentUplineLeader && !isCurrentUplineSuperLeader) {
+//                       currentUplineId = upline.sponsorId;
+//                       currentLevel++; 
+//                       continue; 
+//                   }
 
-                  if (currentLevel >= 2 && currentLevel <= 20) {
-                      let percentage = 0;
-                      if (currentLevel === 2) percentage = 5;
-                      else if (currentLevel === 3) percentage = 3;
-                      else if (currentLevel === 4) percentage = 2;
-                      else if (currentLevel === 5) percentage = 1;
-                      else if (currentLevel >= 6 && currentLevel <= 10) percentage = 0.50;
-                      else if (currentLevel >= 11 && currentLevel <= 20) percentage = 0.25;
+//                   if (currentLevel >= 2 && currentLevel <= 20) {
+//                       let percentage = 0;
+//                       if (currentLevel === 2) percentage = 5;
+//                       else if (currentLevel === 3) percentage = 3;
+//                       else if (currentLevel === 4) percentage = 2;
+//                       else if (currentLevel === 5) percentage = 1;
+//                       else if (currentLevel >= 6 && currentLevel <= 10) percentage = 0.50;
+//                       else if (currentLevel >= 11 && currentLevel <= 20) percentage = 0.25;
 
-                      const hasSufficientPackage = upline.highestPackage >= amount;
+//                       const hasSufficientPackage = upline.highestPackage >= amount;
 
-                      if (hasSufficientPackage) {
-                          const levelAmount = (amount * percentage) / 100;
-                          if (levelAmount > 0) {
-                              await User.updateOne({ _id: upline._id }, { $inc: { levelIncome: levelAmount, totalLevelIncome: levelAmount } });
-                              await createTransaction({
-                                  userId: upline.userId, type: "level_income", source: "level", amount: levelAmount,
-                                  fromUserId: targetUser.userId, description: `Level ${currentLevel} Income (${percentage}%) from $${amount} Package`, 
-                                  status: 'success', package: amount
-                              });
-                          }
-                      }
-                  }
+//                       if (hasSufficientPackage) {
+//                           const levelAmount = (amount * percentage) / 100;
+//                           if (levelAmount > 0) {
+//                               await User.updateOne({ _id: upline._id }, { $inc: { levelIncome: levelAmount, totalLevelIncome: levelAmount } });
+//                               await createTransaction({
+//                                   userId: upline.userId, type: "level_income", source: "level", amount: levelAmount,
+//                                   fromUserId: targetUser.userId, description: `Level ${currentLevel} Income (${percentage}%) from $${amount} Package`, 
+//                                   status: 'success', package: amount
+//                               });
+//                           }
+//                       }
+//                   }
 
-                  // Breakaway Logic
-                  if (currentLevel >= 2 && isCurrentUplineLeader && !isBreakawayHit) {
-                      const instantBonusAmount = (amount * 10) / 100;
-                      await User.updateOne({ _id: upline._id }, { $inc: { walletBalance: instantBonusAmount } });
-                      isBreakawayHit = true; 
-                  }
+//                   // Breakaway Logic
+//                   if (currentLevel >= 2 && isCurrentUplineLeader && !isBreakawayHit) {
+//                       const instantBonusAmount = (amount * 10) / 100;
+//                       await User.updateOne({ _id: upline._id }, { $inc: { walletBalance: instantBonusAmount } });
+//                       isBreakawayHit = true; 
+//                   }
 
-                  currentUplineId = upline.sponsorId;
-                  currentLevel++; 
-              }
-          } catch (bgError) {
-              console.error("Background MLM Engine Error:", bgError);
-          }
-      })();
+//                   currentUplineId = upline.sponsorId;
+//                   currentLevel++; 
+//               }
+//           } catch (bgError) {
+//               console.error("Background MLM Engine Error:", bgError);
+//           }
+//       })();
       
-    } catch (err) {
-      console.error('Super Setup Top-up Error:', err);
-      if (!res.headersSent) res.status(500).json({ message: 'Server error during super setup top-up' });
-    }
-  }
-);
+//     } catch (err) {
+//       console.error('Super Setup Top-up Error:', err);
+//       if (!res.headersSent) res.status(500).json({ message: 'Server error during super setup top-up' });
+//     }
+//   }
+// );
 
 // Backend Route: promo-dummy-topup
 // ✅ PROMO DUMMY TOPUP - FIXED & ROBUST
