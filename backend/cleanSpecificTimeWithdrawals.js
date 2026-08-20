@@ -14,7 +14,7 @@ const rl = readline.createInterface({
 
 const askQuestion = (query) => new Promise(resolve => rl.question(query, resolve));
 
-const deleteScheduledWithdrawals = async () => {
+const deleteSpecificTimeWithdrawals = async () => {
     try {
         if (!process.env.MONGO_URI) {
             console.log("❌ Error: MONGO_URI missing in .env");
@@ -25,29 +25,34 @@ const deleteScheduledWithdrawals = async () => {
         await mongoose.connect(process.env.MONGO_URI);
         console.log("✅ Connected!");
 
-        // 🔥 THE REAL MAGIC: Hum MongoDB ke original '_id' timestamp ka use karenge
-        // 20 August 2026, 12:00 AM IST
-        const cutoffDate = new Date('2026-08-20T00:00:00.000+05:30');
-        
-        // MongoDB ko batana ki is exact time ka '_id' kaisa dikhta hai
-        const objectIdCutoff = mongoose.Types.ObjectId.createFromTime(Math.floor(cutoffDate.getTime() / 1000));
+        // 🔥 EXACT TIME WINDOWS (IST Timezone) 🔥
+        // Window 1: 12:45 PM to 12:55 PM
+        const t1Start = mongoose.Types.ObjectId.createFromTime(Math.floor(new Date('2026-08-20T12:45:00.000+05:30').getTime() / 1000));
+        const t1End = mongoose.Types.ObjectId.createFromTime(Math.floor(new Date('2026-08-20T12:55:00.000+05:30').getTime() / 1000));
 
-        // Query: Sirf PENDING + "Installment" + REAL Insertion Time 20 Tareekh ya uske baad
+        // Window 2: 2:10 PM to 2:15 PM
+        const t2Start = mongoose.Types.ObjectId.createFromTime(Math.floor(new Date('2026-08-20T14:10:00.000+05:30').getTime() / 1000));
+        const t2End = mongoose.Types.ObjectId.createFromTime(Math.floor(new Date('2026-08-20T14:15:00.000+05:30').getTime() / 1000));
+
+        // Query: Pending + "Installment" + Sirf in 2 specific times par bane huye
         const query = {
             status: "pending", 
             description: { $regex: /Installment/i },
-            _id: { $gte: objectIdCutoff } // ✅ createdAt ka use hi nahi kiya, direct _id se check kiya!
+            $or: [
+                { _id: { $gte: t1Start, $lte: t1End } }, // 12:50 PM wale check
+                { _id: { $gte: t2Start, $lte: t2End } }  // 2:12 PM wale check
+            ]
         };
 
         const scheduledWithdrawals = await Withdrawal.find(query);
 
         if (scheduledWithdrawals.length === 0) {
-            console.log("ℹ️ 20 Tareekh ko lagaya gaya koi bhi galat Installment nahi mila.");
+            console.log("ℹ️ 12:50 PM ya 2:12 PM ke aas-paas koi pending withdrawal nahi mila. Baaki sab safe hain.");
             mongoose.connection.close();
             process.exit(0);
         }
 
-        console.log(`🔍 Total ${scheduledWithdrawals.length} entries mili hain jo SACH MEIN 20 Tareekh ko insert hui hain! (19 Tareekh wale safe hain)`);
+        console.log(`🔍 Total ${scheduledWithdrawals.length} entries mili hain jo theek 12:50 PM aur 2:12 PM ke time par insert hui hain!`);
 
         const userDeductions = {};
         scheduledWithdrawals.forEach(w => {
@@ -55,24 +60,24 @@ const deleteScheduledWithdrawals = async () => {
             userDeductions[w.userId] += w.netAmount;
         });
 
-        const showList = await askQuestion("👀 Kya aap list dekhna chahte hain ki kiska kitna minus hoga? (Y/N): ");
+        const showList = await askQuestion("👀 Kya aap list dekhna chahte hain ki in specific times par kisne lagaya aur kitna minus hoga? (Y/N): ");
         if (showList.trim().toLowerCase() === 'y') {
-            console.log("\n📋 --- USERS & AMOUNT TO REVERT ---");
+            console.log("\n📋 --- AFFECTED USERS (12:50 PM & 2:12 PM) ---");
             console.table(Object.keys(userDeductions).map(userId => ({
                 UserID: userId,
                 "Amount To Deduct (Revert)": userDeductions[userId]
             })));
-            console.log("-----------------------------------\n");
+            console.log("-------------------------------------------\n");
         }
 
-        const confirm = await askQuestion("⚠️ Kya aap sach me 20 tareekh wale saare galat installments DELETE karna chahte hain? (Y/N): ");
+        const confirm = await askQuestion("⚠️ Kya aap sach me SIRF INHI TIMINGS WALE galat installments DELETE karna chahte hain? (Y/N): ");
         
         if (confirm.trim().toLowerCase() === 'y') {
-            const logFilePath = path.join(__dirname, 'deleted_installments_20Aug_REALTIME.json');
+            const logFilePath = path.join(__dirname, 'deleted_specific_time_withdrawals.json');
             fs.writeFileSync(logFilePath, JSON.stringify(scheduledWithdrawals, null, 2));
             console.log(`\n📂 Backup save ho gaya hai: ${logFilePath}`);
 
-            console.log("⏳ Withdrawals delete ho rahe hain aur User ka totalWithdrawn theek ho raha hai...");
+            console.log("⏳ Withdrawals delete ho rahe hain aur User ka totalWithdrawn minus ho raha hai...");
 
             for (const userId of Object.keys(userDeductions)) {
                 const amountToMinus = userDeductions[userId];
@@ -84,7 +89,7 @@ const deleteScheduledWithdrawals = async () => {
 
             const deleteResult = await Withdrawal.deleteMany(query);
             
-            console.log(`✅ Success! ${deleteResult.deletedCount} entries hamesha ke liye delete ho gayi hain.`);
+            console.log(`✅ Success! ${deleteResult.deletedCount} entries jo 12:50 PM aur 2:12 PM ko bani thi, hamesha ke liye delete ho gayi hain. Baaki data ekdum safe hai!`);
         } else {
             console.log("🛑 Operation Cancelled.");
         }
@@ -98,4 +103,4 @@ const deleteScheduledWithdrawals = async () => {
     }
 };
 
-deleteScheduledWithdrawals();
+deleteSpecificTimeWithdrawals();
