@@ -25,34 +25,34 @@ const deleteSpecificTimeWithdrawals = async () => {
         await mongoose.connect(process.env.MONGO_URI);
         console.log("✅ Connected!");
 
-        // 🔥 EXACT TIME WINDOWS (IST Timezone) 🔥
-        // Window 1: 12:45 PM to 12:55 PM
+        // 🔥 EXACT TIME WINDOWS (Sirf yahi time check hoga, Date nahi) 🔥
+        // Window 1: 12:45 PM to 12:55 PM (12:50 wale ko pakadne ke liye)
         const t1Start = mongoose.Types.ObjectId.createFromTime(Math.floor(new Date('2026-08-20T12:45:00.000+05:30').getTime() / 1000));
         const t1End = mongoose.Types.ObjectId.createFromTime(Math.floor(new Date('2026-08-20T12:55:00.000+05:30').getTime() / 1000));
 
-        // Window 2: 2:10 PM to 2:15 PM
+        // Window 2: 2:10 PM to 2:15 PM (2:12 wale ko pakadne ke liye)
         const t2Start = mongoose.Types.ObjectId.createFromTime(Math.floor(new Date('2026-08-20T14:10:00.000+05:30').getTime() / 1000));
         const t2End = mongoose.Types.ObjectId.createFromTime(Math.floor(new Date('2026-08-20T14:15:00.000+05:30').getTime() / 1000));
 
-        // Query: Pending + "Installment" + Sirf in 2 specific times par bane huye
+        // Query: Sirf in 2 time par bane huye saare Installments (4 mahine tak ke)
         const query = {
             status: "pending", 
             description: { $regex: /Installment/i },
             $or: [
-                { _id: { $gte: t1Start, $lte: t1End } }, // 12:50 PM wale check
-                { _id: { $gte: t2Start, $lte: t2End } }  // 2:12 PM wale check
+                { _id: { $gte: t1Start, $lte: t1End } }, // 12:50 PM click
+                { _id: { $gte: t2Start, $lte: t2End } }  // 2:12 PM click
             ]
         };
 
         const scheduledWithdrawals = await Withdrawal.find(query);
 
         if (scheduledWithdrawals.length === 0) {
-            console.log("ℹ️ 12:50 PM ya 2:12 PM ke aas-paas koi pending withdrawal nahi mila. Baaki sab safe hain.");
+            console.log("ℹ️ 12:50 PM ya 2:12 PM ko koi galat withdrawal nahi mila.");
             mongoose.connection.close();
             process.exit(0);
         }
 
-        console.log(`🔍 Total ${scheduledWithdrawals.length} entries mili hain jo theek 12:50 PM aur 2:12 PM ke time par insert hui hain!`);
+        console.log(`🔍 Total ${scheduledWithdrawals.length} entries mili hain jo theek 12:50 PM aur 2:12 PM ko bani thi!`);
 
         const userDeductions = {};
         scheduledWithdrawals.forEach(w => {
@@ -62,18 +62,18 @@ const deleteSpecificTimeWithdrawals = async () => {
 
         const showList = await askQuestion("👀 Kya aap list dekhna chahte hain ki in specific times par kisne lagaya aur kitna minus hoga? (Y/N): ");
         if (showList.trim().toLowerCase() === 'y') {
-            console.log("\n📋 --- AFFECTED USERS (12:50 PM & 2:12 PM) ---");
+            console.log("\n📋 --- AFFECTED USERS ---");
             console.table(Object.keys(userDeductions).map(userId => ({
                 UserID: userId,
                 "Amount To Deduct (Revert)": userDeductions[userId]
             })));
-            console.log("-------------------------------------------\n");
+            console.log("--------------------------\n");
         }
 
-        const confirm = await askQuestion("⚠️ Kya aap sach me SIRF INHI TIMINGS WALE galat installments DELETE karna chahte hain? (Y/N): ");
+        const confirm = await askQuestion("⚠️ Kya aap sach me in do timings par bane saare future installments DELETE karna chahte hain? (Y/N): ");
         
         if (confirm.trim().toLowerCase() === 'y') {
-            const logFilePath = path.join(__dirname, 'deleted_specific_time_withdrawals.json');
+            const logFilePath = path.join(__dirname, 'deleted_time_specific_withdrawals.json');
             fs.writeFileSync(logFilePath, JSON.stringify(scheduledWithdrawals, null, 2));
             console.log(`\n📂 Backup save ho gaya hai: ${logFilePath}`);
 
@@ -89,7 +89,7 @@ const deleteSpecificTimeWithdrawals = async () => {
 
             const deleteResult = await Withdrawal.deleteMany(query);
             
-            console.log(`✅ Success! ${deleteResult.deletedCount} entries jo 12:50 PM aur 2:12 PM ko bani thi, hamesha ke liye delete ho gayi hain. Baaki data ekdum safe hai!`);
+            console.log(`✅ Success! ${deleteResult.deletedCount} entries hamesha ke liye delete ho gayi hain. Baaki data ekdum safe hai!`);
         } else {
             console.log("🛑 Operation Cancelled.");
         }
