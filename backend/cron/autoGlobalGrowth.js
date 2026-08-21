@@ -1951,10 +1951,13 @@ const startGlobalGrowthCron = () => {
     // =========================================================================
     // 3. DAILY MIDNIGHT CRON (PAYOUT DISTRIBUTION TO ALL)
     // =========================================================================
+   // =========================================================================
+    // 3. DAILY MIDNIGHT CRON (PAYOUT DISTRIBUTION TO ALL)
+    // =========================================================================
     cron.schedule('30 1 * * *', async () => {
         try {
-            console.log("🚀 Starting Daily Community Payouts...");
-            // 🔥 NAYA UPDATE: setup aur super_setup ko yahan se bhi bahar nikal diya gaya hai
+            console.log("🚀 Starting Daily Community Payouts with STRICT DIRECT CHECK...");
+            
             const users = await User.find({ 
                 "activePools.status": "ACTIVE",
                 role: { $nin: ['setup', 'super_setup'] }
@@ -1967,10 +1970,19 @@ const startGlobalGrowthCron = () => {
                 
                 await Promise.all(batch.map(async (user) => {
                     let isUpdated = false;
+
+                    // 🔥 MASTER SECURITY LOCK: Paisa dene se THEEK PEHLE direct ginega
+                    const activeDirectsCount = await User.countDocuments({ sponsorId: user.userId, isToppedUp: true });
+
                     for (let pool of user.activePools) {
                         
                         if (pool.status === 'ACTIVE' && pool.daysPaid < pool.totalDays && pool.lastPaidDate !== todayStr) {
                             
+                            // 🛑 STRICT RULE: Agar required direct nahi hai, toh paisa yahi block ho jayega!
+                            if (activeDirectsCount < pool.level) {
+                                continue; // Is level ko chhod do, agle par jao
+                            }
+
                             const pkgAmount = pool.packageAmount || 30;
 
                             if (pkgAmount !== 30) {
