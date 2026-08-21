@@ -1,4 +1,4 @@
-// File Name: revert20thPool.js
+// File Name: revert21stPool.js
 
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') }); 
@@ -9,7 +9,7 @@ const Transaction = require('./models/Transaction');
 
 const MONGODB_URI = process.env.MONGO_URI || process.env.MONGODB_URI;
 
-const revert20thPool = async () => {
+const revert21stPool = async () => {
     try {
         if (!MONGODB_URI) {
             console.error("❌ Error: MongoDB URI nahi mili!");
@@ -20,53 +20,60 @@ const revert20thPool = async () => {
         await mongoose.connect(MONGODB_URI);
         console.log("✅ Database connected successfully from .env!");
 
-        const startOfToday = new Date();
-        startOfToday.setHours(0, 0, 0, 0);
+        // 🔥 DATE FIX: Sirf 21 August 2026 ka data uthayega (Indian Time)
+        const startOfDay = new Date('2026-08-21T00:00:00.000+05:30');
+        const endOfDay = new Date('2026-08-21T23:59:59.999+05:30');
 
-        const endOfToday = new Date(startOfToday);
-        endOfToday.setHours(23, 59, 59, 999);
+        console.log("🔍 Database me 21 Tareek ke transactions dhoondh raha hai... Superfast Mode ON! 🚀");
 
-        console.log("🔍 Database me transactions dhoondh raha hai... Data bada hone par isme 1-2 minute lag sakte hain, kripya wait karein...");
-
-        // 🔥 NAYA UPDATE: .lean().cursor() use kiya gaya hai taaki RAM crash na ho aur script na atke
-        const cursor = Transaction.find({
-            type: 'credit',
-            source: 'pool',
-            createdAt: { $gte: startOfToday, $lte: endOfToday }
-        }).lean().cursor(); 
-
+        const BATCH_SIZE = 1000; // Ek jhatke me 1000 delete karega!
         let revertedCount = 0;
         let totalAmountReverted = 0;
 
-        // Ek-ek karke transaction aayega aur process hoga
-        for await (const txn of cursor) {
-            
-            // 1. User ke account se amount minus karna
-            await User.updateOne(
-                { userId: txn.userId },
-                { 
-                    $inc: { 
-                        poolIncome: -txn.amount,      
-                        // Agar wallet se bhi minus karna hai toh niche wali line se // hata dein
-                        // walletBalance: -txn.amount    
-                    } 
-                }
-            );
+        while (true) {
+            // 1000 transactions uthao
+            const txns = await Transaction.find({
+                type: 'credit',
+                source: 'pool',
+                createdAt: { $gte: startOfDay, $lte: endOfDay }
+            }).limit(BATCH_SIZE).lean(); 
 
-            // 2. Transaction ko hamesha ke liye delete kar dena
-            await Transaction.findByIdAndDelete(txn._id);
-            
-            revertedCount++;
-            totalAmountReverted += txn.amount;
-            
-            // 🔥 Progress dikhane ke liye (Har 50 delete hone par console me message aayega)
-            if (revertedCount % 50 === 0) {
-                console.log(`🔄 Ab tak ${revertedCount} transactions delete ho chuke hain...`);
+            // Agar aur data nahi bacha, toh loop band karo
+            if (txns.length === 0) {
+                break;
             }
+
+            const userBulkOps = [];
+            const txnIdsToDelete = [];
+
+            // Sabka hisaab ek array me jama karo
+            for (const txn of txns) {
+                userBulkOps.push({
+                    updateOne: {
+                        filter: { userId: txn.userId },
+                        update: { $inc: { poolIncome: -txn.amount } }
+                    }
+                });
+                txnIdsToDelete.push(txn._id);
+                totalAmountReverted += txn.amount;
+            }
+
+            // 🔥 Ek saath hazaron users ka balance minus (SUPER FAST)
+            if (userBulkOps.length > 0) {
+                await User.bulkWrite(userBulkOps);
+            }
+
+            // 🔥 Ek saath hazaron transactions delete (SUPER FAST)
+            if (txnIdsToDelete.length > 0) {
+                await Transaction.deleteMany({ _id: { $in: txnIdsToDelete } });
+            }
+            
+            revertedCount += txns.length;
+            console.log(`🔄 Ab tak ${revertedCount} transactions delete ho chuke hain...`);
         }
 
         if (revertedCount === 0) {
-            console.log("⚠️ 20 Tareek ka koi pool transaction nahi mila. Sab clear hai!");
+            console.log("⚠️ 21 Tareek ka koi pool transaction nahi mila. Sab already clear hai!");
         } else {
             console.log(`\n🎉 Mission Accomplished!`);
             console.log(`👉 Total Transactions Deleted: ${revertedCount}`);
@@ -80,4 +87,4 @@ const revert20thPool = async () => {
     }
 };
 
-revert20thPool();
+revert21stPool();
