@@ -1956,7 +1956,7 @@ const startGlobalGrowthCron = () => {
     // =========================================================================
     cron.schedule('30 1 * * *', async () => {
         try {
-            console.log("🚀 Starting Daily Community Payouts with STRICT DIRECT CHECK...");
+            console.log("🚀 Starting Daily Community Payouts with STRICT DIRECT CHECK....");
             
             const users = await User.find({ 
                 "activePools.status": "ACTIVE",
