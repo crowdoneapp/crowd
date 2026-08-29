@@ -1541,6 +1541,262 @@ router.get("/withdrawable/:userId", async (req, res) => {
 // =========================================================================
 // 🔹 PROCESS WITHDRAWAL (DYNAMIC RULES + UPLINE DISTRIBUTION)
 // =========================================================================
+// router.post("/withdraw", authMiddleware, async (req, res) => {
+//   try {
+//     const { items, transactionPassword, dryRun } = req.body;
+
+//     const user = await User.findOne({ userId: req.user.userId });
+//     if (!user) return res.status(404).json({ message: "User not found" });
+
+//     // 🛡️ BASIC CHECKS
+//     if (!user.isToppedUp) return res.status(400).json({ message: "Active ID (Top-up) is required to withdraw." });
+    
+//     const isPasswordValid = (transactionPassword.toLowerCase() === user.transactionPassword.toLowerCase());
+//     if (!isPasswordValid) return res.status(403).json({ message: "Invalid Transaction Password." });
+
+//     if (!items || !Array.isArray(items) || items.length === 0) {
+//         return res.status(400).json({ message: "No withdrawal items provided." });
+//     }
+
+//     let totalAmt = 0;
+//     let hasPool = false;
+//     let hasNonPool = false;
+
+//     for (let item of items) {
+//       const amt = Math.floor(parseFloat(item.amount));
+//       if (amt <= 0) return res.status(400).json({ message: "Invalid amount detected." });
+//       totalAmt += amt; 
+      
+//       if (item.source === "pool") hasPool = true;
+//       else hasNonPool = true;
+//     }
+    
+//     // 🔥 NAYA RULE 1: Setup aur Super Setup 'Pool' withdraw nahi kar sakte
+//     if (hasPool && (user.role === 'setup' || user.role === 'super_setup')) {
+//         return res.status(403).json({ message: "Setup and Super Setup accounts are not eligible to withdraw Crowd Donation (Pool) Income." });
+//     }
+
+//     if (hasPool && hasNonPool) {
+//         return res.status(400).json({ message: "Pool Income must be withdrawn separately. Do not mix it with other incomes." });
+//     }
+
+//     if (totalAmt % 10 !== 0) {
+//         return res.status(400).json({ message: `Total withdrawal amount must be in multiples of $10. Your total is $${totalAmt}.` });
+//     }
+//     if (totalAmt < 10) {
+//         return res.status(400).json({ message: "Minimum total withdrawal amount is $10." });
+//     }
+
+//     const requiredWalletBalance = hasPool ? 0 : (totalAmt / 2); 
+//     const FEE_PERCENTAGE = hasPool ? 0.20 : 0.10; 
+//     const TOTAL_WEEKS = hasPool ? 1 : 10; 
+
+//     // 🔥 WALLET CHECK FOR NON-POOL
+//     if ((user.walletBalance || 0) < requiredWalletBalance) {
+//         return res.status(400).json({ 
+//             message: `Insufficient Deposit Wallet! To withdraw $${totalAmt} of working income, you need at least 50% ($${requiredWalletBalance}) in your Top-up Wallet.` 
+//         });
+//     }
+
+//     // =========================================================
+//     // 🔥 STEP 1: PRE-CHECK LOGIC (GATEKEEPER)
+//     // =========================================================
+//     let simBalances = {
+//         direct: user.directIncome || 0,
+//         level: user.levelIncome || 0,
+//         reward: user.rewardIncome || 0,
+//         pool: user.poolIncome || 0,
+//         roi: user.roiIncome || 0,
+//         matchingRoi: user.matchingRoiIncome || 0
+//     };
+
+//     for (let item of items) {
+//       const amt = Math.floor(parseFloat(item.amount));
+//       const src = item.source;
+      
+//       if (simBalances[src] === undefined) {
+//          return res.status(400).json({ message: `Invalid income source: ${src}` });
+//       }
+//       if (simBalances[src] < amt) {
+//          return res.status(400).json({ message: `Insufficient balance in ${src.toUpperCase()}.` });
+//       }
+//       simBalances[src] -= amt;
+//     }
+
+//     // =========================================================
+//     // 🔥 STEP 2: REPORT GENERATION (For Frontend)
+//     // =========================================================
+//     const amountPerWeek = totalAmt / TOTAL_WEEKS; 
+//     const feePerWeek = amountPerWeek * FEE_PERCENTAGE; 
+//     const netPerWeek = amountPerWeek - feePerWeek; 
+
+//     let finalReport = {
+//         totalRequested: totalAmt,
+//         requiredWalletDeduction: requiredWalletBalance,
+//         totalFeeDeducted: totalAmt * FEE_PERCENTAGE,
+//         totalNetUSDT: totalAmt - (totalAmt * FEE_PERCENTAGE),
+//         installments: TOTAL_WEEKS,
+//         amountPerWeek: amountPerWeek,
+//         netPerWeek: netPerWeek
+//     };
+
+//     if (dryRun) {
+//         return res.json({ success: true, message: "Pre-check calculated", report: finalReport });
+//     }
+
+//     // =========================================================
+//     // 🔥 STEP 3: REAL DEDUCTION & DISTRIBUTION LOGIC
+//     // =========================================================
+
+//     // 1. Deduct 50% from Top-up Wallet (Only for Non-Pool)
+//     if (requiredWalletBalance > 0) {
+//         user.walletBalance -= requiredWalletBalance;
+        
+//         await Transaction.create({
+//             userId: user.userId, type: "debit", source: "wallet_deduction",
+//             amount: requiredWalletBalance, 
+//             description: `50% Wallet Deduction for $${totalAmt} Withdrawal Request`, 
+//             status: "success"
+//         });
+
+//         // 🔥 NAYA RULE 2: Distribution of 50% Deducted Amount (Withdrawal Deposit) 🔥
+//         // Direct ko 10%, 10 Levels tak 1% -> Add to their walletBalance (Top-up wallet)
+//         let currentSponsorId = user.sponsorId;
+//         let currentLevel = 1;
+
+//       // ... (Upar ka code same rahega) ...
+
+//         while (currentSponsorId && currentLevel <= 10) {
+//             const upline = await User.findOne({ userId: currentSponsorId });
+//             if (!upline) break; // Agar upline nahi mila to loop tod do
+
+//             let totalBonusForUpline = 0;
+
+//             if (currentLevel === 1) {
+//                 // 🔥 Level 1 (Direct Sponsor): Sirf 10% Direct Bonus milega
+//                 const directBonus = requiredWalletBalance * 0.10; // 10%
+//                 totalBonusForUpline += directBonus;
+
+//                 await Transaction.create({
+//                     userId: upline.userId, type: "credit", source: "direct_withdrawal_fund",
+//                     amount: directBonus, 
+//                     description: `10% Direct Team Withdrawal Fund from User ${user.userId}`, 
+//                     status: "success"
+//                 });
+//             } else {
+//                 // 🔥 Level 2 se Level 10: Sirf 1% Level Bonus milega
+//                 const levelBonus = requiredWalletBalance * 0.01; // 1%
+//                 totalBonusForUpline += levelBonus;
+
+//                 await Transaction.create({
+//                     userId: upline.userId, type: "credit", source: "level_withdrawal_fund",
+//                     amount: levelBonus, 
+//                     description: `1% Level ${currentLevel} Withdrawal Fund from User ${user.userId}`, 
+//                     status: "success"
+//                 });
+//             }
+
+//             // Upline ke Top-up Wallet me paisa add kar do
+//             upline.walletBalance = (upline.walletBalance || 0) + totalBonusForUpline;
+//             await upline.save();
+
+//             // Next Upline par jao
+//             currentSponsorId = upline.sponsorId;
+//             currentLevel++;
+//         }
+        
+//      }
+
+//     // 2. Deduct from Income Wallets & Create Entries
+//     for (let item of items) {
+//       const amt = Math.floor(parseFloat(item.amount));
+//       let dbSource = item.source; 
+//       let descriptionName = dbSource.replace("_", " ").toUpperCase();
+
+//       // Income Deductions
+//       if (dbSource === "direct") user.directIncome -= amt;
+//       else if (dbSource === "level") user.levelIncome -= amt;
+//       else if (dbSource === "reward") user.rewardIncome -= amt;
+//       else if (dbSource === "pool") user.poolIncome -= amt;
+//       else if (dbSource === "roi") {
+//           user.roiIncome -= amt;
+//           descriptionName = "DAILY TRADE INCOME (5%)";
+//       }
+//       else if (dbSource === "matchingRoi") {
+//           user.matchingRoiIncome -= amt;
+//           descriptionName = "TEAM COMPOUNDING INCOME (1%)";
+//       }
+
+//       // Passbook Transaction Log
+//       await Transaction.create({
+//         userId: user.userId, type: "withdrawal_request", source: dbSource,
+//         amount: amt, 
+//         description: `Requested $${amt} from ${descriptionName}` + (hasPool ? ` (Direct 80/20 Rule)` : ` (Split into 10 weeks)`), 
+//         status: "pending"
+//       });
+
+//       const itemAmtPerWeek = amt / TOTAL_WEEKS;         
+//       const itemFeePerWeek = itemAmtPerWeek * FEE_PERCENTAGE; 
+//       const itemNetPerWeek = itemAmtPerWeek - itemFeePerWeek; 
+
+//       // Create Admin Withdrawal Entries
+//       for (let i = 1; i <= TOTAL_WEEKS; i++) {
+//           let releaseDate = new Date();
+          
+//           if (!hasPool) {
+//               releaseDate.setDate(releaseDate.getDate() + (i * 7)); 
+//           }
+
+//           await Withdrawal.create({
+//             userId: user.userId, 
+//             source: dbSource, 
+//             grossAmount: itemAmtPerWeek, 
+//             fee: itemFeePerWeek,         
+//             netAmount: itemNetPerWeek,   
+//             walletAddress: user.walletAddress || "Not Provided",
+//             status: "pending", 
+//             date: releaseDate,           
+//             createdAt: releaseDate,     
+//             description: hasPool ? `Direct Withdrawal (80/20 Applied)` : `Week ${i} of ${TOTAL_WEEKS} Installment`
+//           });
+//       }
+//     }
+
+//     user.totalWithdrawn = (user.totalWithdrawn || 0) + finalReport.totalNetUSDT; 
+//     await user.save();
+
+//     return res.json({ 
+//       success: true, 
+//       message: hasPool 
+//          ? "Auto-Pool Withdrawal processed directly (80/20 Rule applied without Top-up requirement)." 
+//          : "Working Withdrawal processed successfully. 50% Top-up deducted and distributed to uplines.", 
+//       report: finalReport 
+//     });
+
+//   } catch (err) {
+//     console.error("Withdraw Error:", err);
+//     res.status(500).json({ message: "Server processing error." });
+//   }
+// });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 router.post("/withdraw", authMiddleware, async (req, res) => {
   try {
     const { items, transactionPassword, dryRun } = req.body;
@@ -1559,27 +1815,13 @@ router.post("/withdraw", authMiddleware, async (req, res) => {
     }
 
     let totalAmt = 0;
-    let hasPool = false;
-    let hasNonPool = false;
 
     for (let item of items) {
       const amt = Math.floor(parseFloat(item.amount));
       if (amt <= 0) return res.status(400).json({ message: "Invalid amount detected." });
       totalAmt += amt; 
-      
-      if (item.source === "pool") hasPool = true;
-      else hasNonPool = true;
     }
     
-    // 🔥 NAYA RULE 1: Setup aur Super Setup 'Pool' withdraw nahi kar sakte
-    if (hasPool && (user.role === 'setup' || user.role === 'super_setup')) {
-        return res.status(403).json({ message: "Setup and Super Setup accounts are not eligible to withdraw Crowd Donation (Pool) Income." });
-    }
-
-    if (hasPool && hasNonPool) {
-        return res.status(400).json({ message: "Pool Income must be withdrawn separately. Do not mix it with other incomes." });
-    }
-
     if (totalAmt % 10 !== 0) {
         return res.status(400).json({ message: `Total withdrawal amount must be in multiples of $10. Your total is $${totalAmt}.` });
     }
@@ -1587,9 +1829,9 @@ router.post("/withdraw", authMiddleware, async (req, res) => {
         return res.status(400).json({ message: "Minimum total withdrawal amount is $10." });
     }
 
-    const requiredWalletBalance = hasPool ? 0 : (totalAmt / 2); 
-    const FEE_PERCENTAGE = hasPool ? 0.20 : 0.10; 
-    const TOTAL_WEEKS = hasPool ? 1 : 10; 
+    const requiredWalletBalance = totalAmt / 2; 
+    const FEE_PERCENTAGE = 0.10; 
+    const TOTAL_WEEKS = 10; 
 
     // 🔥 WALLET CHECK FOR NON-POOL
     if ((user.walletBalance || 0) < requiredWalletBalance) {
@@ -1605,7 +1847,6 @@ router.post("/withdraw", authMiddleware, async (req, res) => {
         direct: user.directIncome || 0,
         level: user.levelIncome || 0,
         reward: user.rewardIncome || 0,
-        pool: user.poolIncome || 0,
         roi: user.roiIncome || 0,
         matchingRoi: user.matchingRoiIncome || 0
     };
@@ -1648,7 +1889,7 @@ router.post("/withdraw", authMiddleware, async (req, res) => {
     // 🔥 STEP 3: REAL DEDUCTION & DISTRIBUTION LOGIC
     // =========================================================
 
-    // 1. Deduct 50% from Top-up Wallet (Only for Non-Pool)
+    // 1. Deduct 50% from Top-up Wallet 
     if (requiredWalletBalance > 0) {
         user.walletBalance -= requiredWalletBalance;
         
@@ -1659,22 +1900,20 @@ router.post("/withdraw", authMiddleware, async (req, res) => {
             status: "success"
         });
 
-        // 🔥 NAYA RULE 2: Distribution of 50% Deducted Amount (Withdrawal Deposit) 🔥
+        // 🔥 Distribution of 50% Deducted Amount (Withdrawal Deposit) 🔥
         // Direct ko 10%, 10 Levels tak 1% -> Add to their walletBalance (Top-up wallet)
         let currentSponsorId = user.sponsorId;
         let currentLevel = 1;
 
-      // ... (Upar ka code same rahega) ...
-
         while (currentSponsorId && currentLevel <= 10) {
             const upline = await User.findOne({ userId: currentSponsorId });
-            if (!upline) break; // Agar upline nahi mila to loop tod do
+            if (!upline) break; 
 
             let totalBonusForUpline = 0;
 
             if (currentLevel === 1) {
-                // 🔥 Level 1 (Direct Sponsor): Sirf 10% Direct Bonus milega
-                const directBonus = requiredWalletBalance * 0.10; // 10%
+                // Level 1 (Direct Sponsor): Sirf 10% Direct Bonus milega
+                const directBonus = requiredWalletBalance * 0.10; 
                 totalBonusForUpline += directBonus;
 
                 await Transaction.create({
@@ -1684,8 +1923,8 @@ router.post("/withdraw", authMiddleware, async (req, res) => {
                     status: "success"
                 });
             } else {
-                // 🔥 Level 2 se Level 10: Sirf 1% Level Bonus milega
-                const levelBonus = requiredWalletBalance * 0.01; // 1%
+                // Level 2 se Level 10: Sirf 1% Level Bonus milega
+                const levelBonus = requiredWalletBalance * 0.01; 
                 totalBonusForUpline += levelBonus;
 
                 await Transaction.create({
@@ -1704,7 +1943,6 @@ router.post("/withdraw", authMiddleware, async (req, res) => {
             currentSponsorId = upline.sponsorId;
             currentLevel++;
         }
-        
      }
 
     // 2. Deduct from Income Wallets & Create Entries
@@ -1717,7 +1955,6 @@ router.post("/withdraw", authMiddleware, async (req, res) => {
       if (dbSource === "direct") user.directIncome -= amt;
       else if (dbSource === "level") user.levelIncome -= amt;
       else if (dbSource === "reward") user.rewardIncome -= amt;
-      else if (dbSource === "pool") user.poolIncome -= amt;
       else if (dbSource === "roi") {
           user.roiIncome -= amt;
           descriptionName = "DAILY TRADE INCOME (5%)";
@@ -1731,7 +1968,7 @@ router.post("/withdraw", authMiddleware, async (req, res) => {
       await Transaction.create({
         userId: user.userId, type: "withdrawal_request", source: dbSource,
         amount: amt, 
-        description: `Requested $${amt} from ${descriptionName}` + (hasPool ? ` (Direct 80/20 Rule)` : ` (Split into 10 weeks)`), 
+        description: `Requested $${amt} from ${descriptionName} (Split into 10 weeks)`, 
         status: "pending"
       });
 
@@ -1742,10 +1979,7 @@ router.post("/withdraw", authMiddleware, async (req, res) => {
       // Create Admin Withdrawal Entries
       for (let i = 1; i <= TOTAL_WEEKS; i++) {
           let releaseDate = new Date();
-          
-          if (!hasPool) {
-              releaseDate.setDate(releaseDate.getDate() + (i * 7)); 
-          }
+          releaseDate.setDate(releaseDate.getDate() + (i * 7)); 
 
           await Withdrawal.create({
             userId: user.userId, 
@@ -1757,7 +1991,7 @@ router.post("/withdraw", authMiddleware, async (req, res) => {
             status: "pending", 
             date: releaseDate,           
             createdAt: releaseDate,     
-            description: hasPool ? `Direct Withdrawal (80/20 Applied)` : `Week ${i} of ${TOTAL_WEEKS} Installment`
+            description: `Week ${i} of ${TOTAL_WEEKS} Installment`
           });
       }
     }
@@ -1767,9 +2001,7 @@ router.post("/withdraw", authMiddleware, async (req, res) => {
 
     return res.json({ 
       success: true, 
-      message: hasPool 
-         ? "Auto-Pool Withdrawal processed directly (80/20 Rule applied without Top-up requirement)." 
-         : "Working Withdrawal processed successfully. 50% Top-up deducted and distributed to uplines.", 
+      message: "Working Withdrawal processed successfully. 50% Top-up deducted and distributed to uplines.", 
       report: finalReport 
     });
 
