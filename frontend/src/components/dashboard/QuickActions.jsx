@@ -23,14 +23,14 @@ const QuickActions = ({
       iconColor: "text-emerald-400",
       glowBg: "bg-emerald-500/20",
     },
-    {
-      label: "Donate",
-      subLabel: "Upgrade",
-      icon: ArrowUpCircle,
-      onClick: onTopUpClick,
-      iconColor: "text-amber-400",
-      glowBg: "bg-amber-500/20",
-    },
+    // {
+    //   label: "Donate",
+    //   subLabel: "Upgrade",
+    //   icon: ArrowUpCircle,
+    //   onClick: onTopUpClick,
+    //   iconColor: "text-amber-400",
+    //   glowBg: "bg-amber-500/20",
+    // },
     {
       label: "P2P",
       subLabel: "Transfer",

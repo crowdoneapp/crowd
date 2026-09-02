@@ -702,12 +702,118 @@ router.get('/pool-status/:userId', async (req, res) => {
 // =========================================================================
 // 🎁 SPECIAL ROUTE: FREE $100 PACKAGE (INSTANT DIRECT + INSTANT ROI)
 // =========================================================================
+// router.put('/topup-free-100/:userId', authMiddleware, async (req, res) => {
+//     try {
+//         const targetUserId = Number(req.params.userId);
+//         const { transactionPassword } = req.body;
+//         const amount = 100; // Fix $100 Package
+//         const dailyRoi = 5; // 5% ROI ($5)
+
+//         const currentUser = await User.findOne({ userId: req.user.userId }).lean();
+//         if (!currentUser) return res.status(404).json({ message: "Current user not found" });
+
+//         // 🔥 TRANSACTION PASSWORD CHECK
+//         if (!transactionPassword || transactionPassword.toLowerCase() !== currentUser.transactionPassword.toLowerCase()) {
+//             return res.status(403).json({ message: "Invalid transaction password!" });
+//         }
+
+//         let targetUser = await User.findOne({ userId: targetUserId });
+//         if (!targetUser) return res.status(404).json({ message: 'Target user not found' });
+
+//         // 🚫 DOUBLE TOP-UP RESTRICTION
+//         const isAlreadyBought = targetUser.packages?.some(p => p.plan === "Free-100-Promo");
+//         if (isAlreadyBought) {
+//             return res.status(400).json({ message: `Aap already ye free $100 package le chuke hain!` });
+//         }
+
+//         const createTransaction = async (data) => {
+//             const Transaction = require('../models/Transaction'); 
+//             return Transaction.create({ ...data, date: new Date() });
+//         };
+
+//         // 🔹 1. ACTIVATE PACKAGE & GIVE INSTANT 5% ROI ($5) TO USER
+//         targetUser.packages = targetUser.packages || [];
+//         targetUser.packages.push({ 
+//             plan: "Free-100-Promo", 
+//             amount: amount, 
+//             startDate: new Date(), 
+//             withdrawn: 0, 
+//             isDummy: false 
+//         });
+        
+//         targetUser.isToppedUp = true;
+//         if (!targetUser.topUpDate) targetUser.topUpDate = new Date();
+//         targetUser.highestPackage = Math.max(targetUser.highestPackage || 0, amount);
+        
+//         // INSTANT ROI ADDED HERE
+//         targetUser.roiIncome = (targetUser.roiIncome || 0) + dailyRoi;
+//         targetUser.totalRoiIncome = (targetUser.totalRoiIncome || 0) + dailyRoi;
+        
+//         await targetUser.save();
+
+//         // Transaction log for Topup
+//         await createTransaction({ 
+//             userId: targetUser.userId, type: "topup", amount: amount, 
+//             description: `Claimed Free $100 Promo Package`, status: 'success', package: amount 
+//         });
+
+//         // Transaction log for Instant ROI
+//         await createTransaction({
+//             userId: targetUser.userId, type: 'credit', source: 'roi_income', amount: dailyRoi,
+//             description: `Instant 5% Daily ROI for Free $100 Package`, status: 'success'
+//         });
+
+//         // ==========================================================
+//         // 💰 2. 100% DIRECT INCOME ($100) + 100% MATCHING ROI ($5) TO SPONSOR
+//         // ==========================================================
+//         if (targetUser.sponsorId) {
+//             const directSponsor = await User.findOne({ userId: targetUser.sponsorId });
+
+//             if (directSponsor) {
+//                 await User.updateOne(
+//                     { _id: directSponsor._id }, 
+//                     { 
+//                         $inc: { 
+//                             directIncome: amount, totalDirectIncome: amount, // $100 Direct
+//                             roiIncome: dailyRoi, totalRoiIncome: dailyRoi,   // $5 Matching ROI
+//                             matchingRoiIncome: dailyRoi, totalMatchingRoiIncome: dailyRoi // Tracking
+//                         } 
+//                     }
+//                 );
+                
+//                 // Tx for Direct Income
+//                 await createTransaction({ 
+//                     userId: directSponsor.userId, type: "direct_income", source: "direct",
+//                     amount: amount, fromUserId: targetUser.userId,
+//                     description: `100% Direct Bonus from ${targetUser.name}'s Free $100 Package`,
+//                     status: 'success', package: amount 
+//                 }); 
+
+//                 // Tx for Instant Matching ROI
+//                 await createTransaction({
+//                     userId: directSponsor.userId, type: 'credit', source: 'matching_roi',
+//                     amount: dailyRoi,
+//                     description: `Instant 100% Matching ROI from Direct ${targetUser.name}'s $100 Package`,
+//                     status: 'success'
+//                 });
+//             }
+//         }
+
+//         res.json({ success: true, message: "🎉 Free $100 Package Activated & Instant ROI Credited!" });
+
+//     } catch (err) {
+//         console.error("Free 100 Topup Error:", err);
+//         res.status(500).json({ message: "Server error" });
+//     }
+// });
+
 router.put('/topup-free-100/:userId', authMiddleware, async (req, res) => {
     try {
         const targetUserId = Number(req.params.userId);
         const { transactionPassword } = req.body;
         const amount = 100; // Fix $100 Package
         const dailyRoi = 5; // 5% ROI ($5)
+        const directIncomeAmount = amount * 0.50; // 🔥 50% Direct Income ($50)
 
         const currentUser = await User.findOne({ userId: req.user.userId }).lean();
         if (!currentUser) return res.status(404).json({ message: "Current user not found" });
@@ -764,7 +870,7 @@ router.put('/topup-free-100/:userId', authMiddleware, async (req, res) => {
         });
 
         // ==========================================================
-        // 💰 2. 100% DIRECT INCOME ($100) + 100% MATCHING ROI ($5) TO SPONSOR
+        // 💰 2. 50% DIRECT INCOME ($50) + 100% MATCHING ROI ($5) TO SPONSOR
         // ==========================================================
         if (targetUser.sponsorId) {
             const directSponsor = await User.findOne({ userId: targetUser.sponsorId });
@@ -774,7 +880,7 @@ router.put('/topup-free-100/:userId', authMiddleware, async (req, res) => {
                     { _id: directSponsor._id }, 
                     { 
                         $inc: { 
-                            directIncome: amount, totalDirectIncome: amount, // $100 Direct
+                            directIncome: directIncomeAmount, totalDirectIncome: directIncomeAmount, // 🔥 $50 Direct (50%)
                             roiIncome: dailyRoi, totalRoiIncome: dailyRoi,   // $5 Matching ROI
                             matchingRoiIncome: dailyRoi, totalMatchingRoiIncome: dailyRoi // Tracking
                         } 
@@ -784,8 +890,8 @@ router.put('/topup-free-100/:userId', authMiddleware, async (req, res) => {
                 // Tx for Direct Income
                 await createTransaction({ 
                     userId: directSponsor.userId, type: "direct_income", source: "direct",
-                    amount: amount, fromUserId: targetUser.userId,
-                    description: `100% Direct Bonus from ${targetUser.name}'s Free $100 Package`,
+                    amount: directIncomeAmount, fromUserId: targetUser.userId, // 🔥 $50 Add Hoga
+                    description: `50% Direct Bonus from ${targetUser.name}'s Free $100 Package`, // 🔥 History Update kar di
                     status: 'success', package: amount 
                 }); 
 

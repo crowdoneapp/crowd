@@ -1795,8 +1795,229 @@ router.get("/withdrawable/:userId", async (req, res) => {
 
 
 
+// const sendWithdrawalTelegramAlert = require('../utils/telegramWithdrawalHelper');
 
+// router.post("/withdraw", authMiddleware, async (req, res) => {
+//   try {
+//     const { items, transactionPassword, dryRun } = req.body;
 
+//     const user = await User.findOne({ userId: req.user.userId });
+//     if (!user) return res.status(404).json({ message: "User not found" });
+
+//     // 🛡️ BASIC CHECKS
+//     if (!user.isToppedUp) return res.status(400).json({ message: "Active ID (Top-up) is required to withdraw." });
+    
+//     const isPasswordValid = (transactionPassword.toLowerCase() === user.transactionPassword.toLowerCase());
+//     if (!isPasswordValid) return res.status(403).json({ message: "Invalid Transaction Password." });
+
+//     if (!items || !Array.isArray(items) || items.length === 0) {
+//         return res.status(400).json({ message: "No withdrawal items provided." });
+//     }
+
+//     let totalAmt = 0;
+
+//     for (let item of items) {
+//       const amt = Math.floor(parseFloat(item.amount));
+//       if (amt <= 0) return res.status(400).json({ message: "Invalid amount detected." });
+//       totalAmt += amt; 
+//     }
+    
+//     if (totalAmt % 10 !== 0) {
+//         return res.status(400).json({ message: `Total withdrawal amount must be in multiples of $10. Your total is $${totalAmt}.` });
+//     }
+//     if (totalAmt < 10) {
+//         return res.status(400).json({ message: "Minimum total withdrawal amount is $10." });
+//     }
+
+//     const requiredWalletBalance = totalAmt / 2; 
+//     const FEE_PERCENTAGE = 0.10; 
+//     const TOTAL_WEEKS = 10; 
+
+//     // 🔥 WALLET CHECK FOR NON-POOL
+//     if ((user.walletBalance || 0) < requiredWalletBalance) {
+//         return res.status(400).json({ 
+//             message: `Insufficient Deposit Wallet! To withdraw $${totalAmt} of working income, you need at least 50% ($${requiredWalletBalance}) in your Top-up Wallet.` 
+//         });
+//     }
+
+//     // =========================================================
+//     // 🔥 STEP 1: PRE-CHECK LOGIC (GATEKEEPER)
+//     // =========================================================
+//     let simBalances = {
+//         direct: user.directIncome || 0,
+//         level: user.levelIncome || 0,
+//         reward: user.rewardIncome || 0,
+//         roi: user.roiIncome || 0,
+//         matchingRoi: user.matchingRoiIncome || 0
+//     };
+
+//     for (let item of items) {
+//       const amt = Math.floor(parseFloat(item.amount));
+//       const src = item.source;
+      
+//       if (simBalances[src] === undefined) {
+//          return res.status(400).json({ message: `Invalid income source: ${src}` });
+//       }
+//       if (simBalances[src] < amt) {
+//          return res.status(400).json({ message: `Insufficient balance in ${src.toUpperCase()}.` });
+//       }
+//       simBalances[src] -= amt;
+//     }
+
+//     // =========================================================
+//     // 🔥 STEP 2: REPORT GENERATION (For Frontend)
+//     // =========================================================
+//     const amountPerWeek = totalAmt / TOTAL_WEEKS; 
+//     const feePerWeek = amountPerWeek * FEE_PERCENTAGE; 
+//     const netPerWeek = amountPerWeek - feePerWeek; 
+
+//     let finalReport = {
+//         totalRequested: totalAmt,
+//         requiredWalletDeduction: requiredWalletBalance,
+//         totalFeeDeducted: totalAmt * FEE_PERCENTAGE,
+//         totalNetUSDT: totalAmt - (totalAmt * FEE_PERCENTAGE),
+//         installments: TOTAL_WEEKS,
+//         amountPerWeek: amountPerWeek,
+//         netPerWeek: netPerWeek
+//     };
+
+//     if (dryRun) {
+//         return res.json({ success: true, message: "Pre-check calculated", report: finalReport });
+//     }
+
+//     // =========================================================
+//     // 🔥 STEP 3: REAL DEDUCTION & DISTRIBUTION LOGIC
+//     // =========================================================
+
+//     // 1. Deduct 50% from Top-up Wallet 
+//     if (requiredWalletBalance > 0) {
+//         user.walletBalance -= requiredWalletBalance;
+        
+//         await Transaction.create({
+//             userId: user.userId, type: "debit", source: "wallet_deduction",
+//             amount: requiredWalletBalance, 
+//             description: `50% Wallet Deduction for $${totalAmt} Withdrawal Request`, 
+//             status: "success"
+//         });
+
+//         // 🔥 Distribution of 50% Deducted Amount (Withdrawal Deposit) 🔥
+//         // Direct ko 10%, 10 Levels tak 1% -> Add to their walletBalance (Top-up wallet)
+//         let currentSponsorId = user.sponsorId;
+//         let currentLevel = 1;
+
+//         while (currentSponsorId && currentLevel <= 10) {
+//             const upline = await User.findOne({ userId: currentSponsorId });
+//             if (!upline) break; 
+
+//             let totalBonusForUpline = 0;
+
+//             if (currentLevel === 1) {
+//                 // Level 1 (Direct Sponsor): Sirf 10% Direct Bonus milega
+//                 const directBonus = requiredWalletBalance * 0.10; 
+//                 totalBonusForUpline += directBonus;
+
+//                 await Transaction.create({
+//                     userId: upline.userId, type: "credit", source: "direct_withdrawal_fund",
+//                     amount: directBonus, 
+//                     description: `10% Direct Team Withdrawal Fund from User ${user.userId}`, 
+//                     status: "success"
+//                 });
+//             } else {
+//                 // Level 2 se Level 10: Sirf 1% Level Bonus milega
+//                 const levelBonus = requiredWalletBalance * 0.01; 
+//                 totalBonusForUpline += levelBonus;
+
+//                 await Transaction.create({
+//                     userId: upline.userId, type: "credit", source: "level_withdrawal_fund",
+//                     amount: levelBonus, 
+//                     description: `1% Level ${currentLevel} Withdrawal Fund from User ${user.userId}`, 
+//                     status: "success"
+//                 });
+//             }
+
+//             // Upline ke Top-up Wallet me paisa add kar do
+//             upline.walletBalance = (upline.walletBalance || 0) + totalBonusForUpline;
+//             await upline.save();
+
+//             // Next Upline par jao
+//             currentSponsorId = upline.sponsorId;
+//             currentLevel++;
+//         }
+//      }
+
+//     // 2. Deduct from Income Wallets & Create Entries
+//     for (let item of items) {
+//       const amt = Math.floor(parseFloat(item.amount));
+//       let dbSource = item.source; 
+//       let descriptionName = dbSource.replace("_", " ").toUpperCase();
+
+//       // Income Deductions
+//       if (dbSource === "direct") user.directIncome -= amt;
+//       else if (dbSource === "level") user.levelIncome -= amt;
+//       else if (dbSource === "reward") user.rewardIncome -= amt;
+//       else if (dbSource === "roi") {
+//           user.roiIncome -= amt;
+//           descriptionName = "DAILY TRADE INCOME (5%)";
+//       }
+//       else if (dbSource === "matchingRoi") {
+//           user.matchingRoiIncome -= amt;
+//           descriptionName = "TEAM COMPOUNDING INCOME (1%)";
+//       }
+
+//       // Passbook Transaction Log
+//       await Transaction.create({
+//         userId: user.userId, type: "withdrawal_request", source: dbSource,
+//         amount: amt, 
+//         description: `Requested $${amt} from ${descriptionName} (Split into 10 weeks)`, 
+//         status: "pending"
+//       });
+
+//       const itemAmtPerWeek = amt / TOTAL_WEEKS;         
+//       const itemFeePerWeek = itemAmtPerWeek * FEE_PERCENTAGE; 
+//       const itemNetPerWeek = itemAmtPerWeek - itemFeePerWeek; 
+
+//       // Create Admin Withdrawal Entries
+//       for (let i = 1; i <= TOTAL_WEEKS; i++) {
+//           let releaseDate = new Date();
+//           releaseDate.setDate(releaseDate.getDate() + (i * 7)); 
+
+//           await Withdrawal.create({
+//             userId: user.userId, 
+//             source: dbSource, 
+//             grossAmount: itemAmtPerWeek, 
+//             fee: itemFeePerWeek,         
+//             netAmount: itemNetPerWeek,   
+//             walletAddress: user.walletAddress || "Not Provided",
+//             status: "pending", 
+//             date: releaseDate,           
+//             createdAt: releaseDate,     
+//             description: `Week ${i} of ${TOTAL_WEEKS} Installment`
+//           });
+//       }
+//     }
+
+//     user.totalWithdrawn = (user.totalWithdrawn || 0) + finalReport.totalNetUSDT; 
+//     await user.save();
+
+//     return res.json({ 
+//       success: true, 
+//       message: "Working Withdrawal processed successfully. 50% Top-up deducted and distributed to uplines.", 
+//       report: finalReport 
+//     });
+
+//   } catch (err) {
+//     console.error("Withdraw Error:", err);
+//     res.status(500).json({ message: "Server processing error." });
+//   }
+// });
+
+// 🔥 FILE KE UPAR YE LINE ADD KAREIN (Agar pehle se nahi hai)
+const sendWithdrawalTelegramAlert = require('../utils/telegramWithdrawalHelper');
+ 
+
+// =========================================================
+// REAL WITHDRAWAL ROUTE
+// =========================================================
 router.post("/withdraw", authMiddleware, async (req, res) => {
   try {
     const { items, transactionPassword, dryRun } = req.body;
@@ -1998,6 +2219,16 @@ router.post("/withdraw", authMiddleware, async (req, res) => {
 
     user.totalWithdrawn = (user.totalWithdrawn || 0) + finalReport.totalNetUSDT; 
     await user.save();
+
+    // =========================================================
+    // 🔥 STEP 4: REAL TELEGRAM WITHDRAWAL ALERT 🔥
+    // =========================================================
+    try {
+        // Yeh line async tarike se telegram par image bhej degi bina user ko wait karaye
+        sendWithdrawalTelegramAlert(user.name || "Crypto User", user.userId, totalAmt, user.country || 'IN').catch(err => console.error("Telegram error:", err));
+    } catch (telegramErr) {
+        console.error("Failed to trigger telegram alert:", telegramErr);
+    }
 
     return res.json({ 
       success: true, 

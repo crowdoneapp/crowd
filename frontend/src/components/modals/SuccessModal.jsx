@@ -586,6 +586,8 @@
 
 // export default SuccessModal;
 
+
+
 import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom"; // 🔥 Added ReactDOM for Portal
 import { CheckCircle2, Landmark, PartyPopper, ArrowRightLeft, Gift, ShieldCheck, ArrowDownLeft, User, CalendarDays, ArrowUpCircle, Wallet, Globe, Star, Crown, Clock, X } from "lucide-react";
