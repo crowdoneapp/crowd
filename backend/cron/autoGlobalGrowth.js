@@ -1715,7 +1715,7 @@ const SystemStat = require('../models/SystemStat');
 const Transaction = require('../models/Transaction'); 
 const FakeUser = require('../models/FakeUser'); 
 const { countryNames, countriesProbability } = require('../utils/fakeData'); 
-const sendTelegramAlert = require('../utils/telegramHelper');
+//const sendTelegramAlert = require('../utils/telegramHelper');
 
 // 🔥 50 Levels Dynamic Generator 
 const TOTAL_LEVELS = 50;
