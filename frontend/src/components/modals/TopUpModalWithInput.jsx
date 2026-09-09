@@ -572,7 +572,7 @@ import { X, Wallet, Lock, User, Rocket, Activity, CheckCircle2, Package } from "
 // 🔥 PACKAGE LIST 🔥
 // 🔥 UPDATED PACKAGE LIST ($1 se $5000 tak naye naam ke sath) 🔥
 const packagesList = [
-  { id: 1, name: 'STARTER ($1)', price: 1 },
+  { id: 1, name: 'STARTER ($2)', price: 2 },
    { id: 3, name: 'BRONZE ($5)', price: 5 },
   { id: 4, name: 'SILVER ($10)', price: 10 },
   { id: 5, name: 'GOLD ($20)', price: 20 },
@@ -582,8 +582,7 @@ const packagesList = [
   { id: 9, name: 'RUBY ($500)', price: 500 },
   { id: 10, name: 'SAPPHIRE ($1000)', price: 1000 },
   { id: 11, name: 'MASTER ($2000)', price: 2000 },
-  { id: 12, name: 'APEX ($5000)', price: 5000 },
-];
+ ];
 
 const TopUpModalWithInput = ({ onClose, onSuccess }) => {
   const { user: loggedInUser, token, login } = useAuth();

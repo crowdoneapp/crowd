@@ -499,10 +499,10 @@ const CreditToWalletModal = ({ userId, onClose }) => {
                     <p className="text-purple-400/80 text-[9px] font-bold uppercase tracking-widest mb-1 text-center">Available Income</p>
                     <h3 className="text-lg text-center font-black text-white font-mono">${totalWorkingBalance.toFixed(2)}</h3>
                 </div>
-                <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-2xl shadow-inner">
+                {/* <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-2xl shadow-inner">
                     <p className="text-amber-400/80 text-[9px] font-bold uppercase tracking-widest mb-1 text-center">Deposit Wallet</p>
                     <h3 className="text-lg text-center font-black text-amber-400 font-mono">${balances.walletBalance.toFixed(2)}</h3>
-                </div>
+                </div> */}
             </div>
 
             {/* Input Box */}

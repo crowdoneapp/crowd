@@ -2038,7 +2038,7 @@ router.post('/withdraw', authMiddleware, async (req, res) => {
         // }
 
         // 2. Amount Limits
-        if (!reqAmount || reqAmount < 2 || reqAmount > 5000) {
+        if (!reqAmount || reqAmount < 5 || reqAmount > 5000) {
             return res.status(400).json({ success: false, message: 'Minimum withdrawal is $2 and maximum is $5000.' });
         }
 
@@ -2046,8 +2046,8 @@ router.post('/withdraw', authMiddleware, async (req, res) => {
         if (!user) return res.status(404).json({ success: false, message: 'User not found.' });
 
         // 3. Mandatory Active Status Check ($2 min)
-        if (!user.isToppedUp || (user.topUpAmount || 0) < 1) {
-            return res.status(400).json({ success: false, message: 'A minimum $1 package upgrade is required to withdraw.' });
+        if (!user.isToppedUp || (user.topUpAmount || 0) < 2) {
+            return res.status(400).json({ success: false, message: 'A minimum $2 package upgrade is required to withdraw.' });
         }
 
         // 4. Wallet Check
@@ -2074,8 +2074,8 @@ router.post('/withdraw', authMiddleware, async (req, res) => {
         const startOfToday = new Date(istTime);
         startOfToday.setHours(0, 0, 0, 0); 
         
-        // const alreadyWithdrawn = await Transaction.findOne({ userId: user.userId, type: 'withdrawal', date: { $gte: startOfToday } });
-        // if (alreadyWithdrawn) return res.status(400).json({ success: false, message: 'You can apply for withdrawal only once a day.' });
+        const alreadyWithdrawn = await Transaction.findOne({ userId: user.userId, type: 'withdrawal', date: { $gte: startOfToday } });
+        if (alreadyWithdrawn) return res.status(400).json({ success: false, message: 'You can apply for withdrawal only once a day.' });
 
         // 8. Balance Deduction (Math.round Fix)
         if (directReq > 0) user.directIncome = Math.round((user.directIncome - directReq) * 10000) / 10000;

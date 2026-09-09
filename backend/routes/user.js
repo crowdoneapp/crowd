@@ -624,7 +624,8 @@ router.get('/wallet-history/:userId', async (req, res) => {
     }
 });
 
-router.post('/activate-package', authMiddleware, async (req, res) => {
+
+ router.post('/activate-package', authMiddleware, async (req, res) => {
     try {
         const { memberId, packageAmount, txnPassword } = req.body;
         const buyerId = req.user.userId; // Secure: Hamesha token se buyer ka ID nikalega
@@ -669,7 +670,7 @@ router.post('/activate-package', authMiddleware, async (req, res) => {
         const startDate = new Date();
         const endDate = new Date();
         endDate.setDate(startDate.getDate() + activeDays);
-        const dailyRoi = amount * 0.04; // 5% daily
+        const dailyRoi = amount * 0.04; // 4% daily
 
         const newPackage = await PackageActivation.create({
             userId: targetUser.userId,         
@@ -685,7 +686,7 @@ router.post('/activate-package', authMiddleware, async (req, res) => {
         });
 
         // Update Target User
-        let isFirstTopup = !targetUser.isToppedUp;
+        let isFirstTopup = !targetUser.isToppedUp; // 🔥 Check if this is the first topup
         targetUser.packages = targetUser.packages || [];
         targetUser.packages.push({ plan: "Investment Package", amount: amount, startDate: new Date(), withdrawn: 0 });
         
@@ -711,54 +712,40 @@ router.post('/activate-package', authMiddleware, async (req, res) => {
         // =======================================================
         (async () => {
             try {
-                // 1. SPONSOR DIRECT INCOME (10%) - Minimum $2 Check
+                // 1. SPONSOR DIRECT INCOME (50% on First Topup, 10% on Re-topups)
                 if (targetUser.sponsorId) {
                     const sponsor = await User.findOne({ userId: targetUser.sponsorId });
                     if (sponsor && sponsor.isToppedUp && (sponsor.topUpAmount >= 2)) {
                         sponsor.directCount = (sponsor.directCount || 0) + 1;
-                        const directBonusAmount = (amount * 10) / 100; 
+                        
+                        // 🔥 Logic based on image_b8ba5e.jpg requirements
+                        const bonusPercentage = isFirstTopup ? 50 : 10;
+                        const directBonusAmount = (amount * bonusPercentage) / 100; 
+                        
+                        const description = isFirstTopup 
+                            ? `First Topup Bonus (50%) from ${targetUser.userId}'s Package` 
+                            : `Direct Bonus (10%) from ${targetUser.userId}'s Package`;
 
                         sponsor.directIncome = (sponsor.directIncome || 0) + directBonusAmount;
                         sponsor.totalDirectIncome = (sponsor.totalDirectIncome || 0) + directBonusAmount;
                         
                         await Transaction.create({
-                            userId: sponsor.userId, type: "direct_income", source: "direct", amount: directBonusAmount, 
-                            package: amount, fromUserId: targetUser.userId, description: `Direct Bonus (10%) from ${targetUser.userId}'s Package`, status: 'success', date: new Date()
+                            userId: sponsor.userId, 
+                            type: "direct_income", 
+                            source: "direct", 
+                            amount: directBonusAmount, 
+                            package: amount, 
+                            fromUserId: targetUser.userId, 
+                            description: description, 
+                            status: 'success', 
+                            date: new Date()
                         });
                         await sponsor.save();
                     }
                 }
 
-                // 2. LEVEL INCOME (Level 2 to 12 -> 0.25%)
-                const LEVEL_PERCENTAGES = [0, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25]; 
-                let currentUplineId = targetUser.sponsorId; 
-                let currentLevel = 1; 
+                // 🔥 LEVEL INCOME REMOVED FROM HERE
 
-                while (currentUplineId && currentLevel <= 12) {
-                    const upline = await User.findOne({ userId: currentUplineId }).select('userId isToppedUp topUpAmount sponsorId _id');
-                    if (!upline) break;
-
-                    if (!upline.isToppedUp || (upline.topUpAmount || 0) < 2) {
-                        currentUplineId = upline.sponsorId;
-                        currentLevel++;
-                        continue; 
-                    }
-
-                    if (currentLevel >= 2 && currentLevel <= 12) {
-                        const percentage = LEVEL_PERCENTAGES[currentLevel - 1]; 
-                        const levelAmount = (amount * percentage) / 100;
-
-                        if (levelAmount > 0) {
-                            await User.updateOne({ _id: upline._id }, { $inc: { levelIncome: levelAmount, totalLevelIncome: levelAmount } });
-                            await Transaction.create({
-                                userId: upline.userId, type: "level_income", source: "level", amount: levelAmount,
-                                package: amount, fromUserId: targetUser.userId, description: `Level ${currentLevel} Income (${percentage}%) from Package`, status: 'success', date: new Date()
-                            });
-                        }
-                    }
-                    currentUplineId = upline.sponsorId;
-                    currentLevel++;
-                }
             } catch (bgError) {
                 console.error("Background MLM Error:", bgError);
             }
@@ -768,6 +755,151 @@ router.post('/activate-package', authMiddleware, async (req, res) => {
         res.status(500).json({ success: false, message: "Server Error during activation" });
     }
 });
+
+// router.post('/activate-package', authMiddleware, async (req, res) => {
+//     try {
+//         const { memberId, packageAmount, txnPassword } = req.body;
+//         const buyerId = req.user.userId; // Secure: Hamesha token se buyer ka ID nikalega
+//         const amount = Number(packageAmount);
+
+//         if (!amount || isNaN(amount) || amount <= 0) {
+//             return res.status(400).json({ success: false, message: 'Invalid Package Amount.' });
+//         }
+
+//         const currentUser = await User.findOne({ userId: String(buyerId) });
+//         if (!currentUser) return res.status(404).json({ success: false, message: "Buyer user not found" });
+
+//         const targetUser = await User.findOne({ userId: String(memberId) });
+//         if (!targetUser) return res.status(404).json({ success: false, message: "Target Member ID not found" });
+
+//         // 🔥 24 Hours Limitation Check
+//         const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+//         const recentPackage = await PackageActivation.findOne({
+//             userId: targetUser.userId,
+//             startDate: { $gte: twentyFourHoursAgo }
+//         });
+
+//         if (recentPackage) {
+//             return res.status(400).json({ success: false, message: "This user has already activated a package in the last 24 hours." });
+//         }
+
+//         // 🔐 Password Verify
+//         if (!txnPassword || !currentUser.transactionPassword || txnPassword.toLowerCase() !== currentUser.transactionPassword.toLowerCase()) {
+//             return res.status(400).json({ success: false, message: "Invalid Transaction Password!" });
+//         }
+
+//         // Fund Check & Deduct
+//         if ((currentUser.walletBalance || 0) < amount) {
+//             return res.status(400).json({ success: false, message: "Insufficient Fund Amount ($)!" });
+//         }
+        
+//         currentUser.walletBalance -= amount;
+//         await currentUser.save();
+
+//         // Package Activation
+//         const activeDays = 30; 
+//         const startDate = new Date();
+//         const endDate = new Date();
+//         endDate.setDate(startDate.getDate() + activeDays);
+//         const dailyRoi = amount * 0.04; // 5% daily
+
+//         const newPackage = await PackageActivation.create({
+//             userId: targetUser.userId,         
+//             memberId: targetUser.userId,       
+//             purchasedBy: currentUser.userId,
+//             packageAmount: amount,             
+//             dailyRoi: dailyRoi,
+//             totalDays: activeDays,
+//             daysCompleted: 0,
+//             startDate: startDate,
+//             endDate: endDate,
+//             status: 'active'
+//         });
+
+//         // Update Target User
+//         let isFirstTopup = !targetUser.isToppedUp;
+//         targetUser.packages = targetUser.packages || [];
+//         targetUser.packages.push({ plan: "Investment Package", amount: amount, startDate: new Date(), withdrawn: 0 });
+        
+//         targetUser.topUpAmount = Math.max(targetUser.topUpAmount || 0, amount);
+//         targetUser.updatedAt = new Date(); 
+//         if (isFirstTopup) {
+//             targetUser.isToppedUp = true;
+//             targetUser.topUpDate = new Date();
+//         }
+//         await targetUser.save();
+
+//         // Transaction record for buyer
+//         await Transaction.create({
+//             userId: currentUser.userId, type: "package_activation", amount: amount,
+//             fromUserId: currentUser.userId, toUserId: targetUser.userId,
+//             description: `Activated $${amount} Package for ${targetUser.userId}`, status: 'success', date: new Date()
+//         });
+
+//         res.status(200).json({ success: true, message: `Package of $${amount} activated successfully for ${targetUser.userId}!` });
+
+//         // =======================================================
+//         // 🔹 BACKGROUND MLM ENGINE (Income Distribution)
+//         // =======================================================
+//         (async () => {
+//             try {
+//                 // 1. SPONSOR DIRECT INCOME (10%) - Minimum $2 Check
+//                 if (targetUser.sponsorId) {
+//                     const sponsor = await User.findOne({ userId: targetUser.sponsorId });
+//                     if (sponsor && sponsor.isToppedUp && (sponsor.topUpAmount >= 2)) {
+//                         sponsor.directCount = (sponsor.directCount || 0) + 1;
+//                         const directBonusAmount = (amount * 10) / 100; 
+
+//                         sponsor.directIncome = (sponsor.directIncome || 0) + directBonusAmount;
+//                         sponsor.totalDirectIncome = (sponsor.totalDirectIncome || 0) + directBonusAmount;
+                        
+//                         await Transaction.create({
+//                             userId: sponsor.userId, type: "direct_income", source: "direct", amount: directBonusAmount, 
+//                             package: amount, fromUserId: targetUser.userId, description: `Direct Bonus (10%) from ${targetUser.userId}'s Package`, status: 'success', date: new Date()
+//                         });
+//                         await sponsor.save();
+//                     }
+//                 }
+
+//                 // 2. LEVEL INCOME (Level 2 to 12 -> 0.25%)
+//                 const LEVEL_PERCENTAGES = [0, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25]; 
+//                 let currentUplineId = targetUser.sponsorId; 
+//                 let currentLevel = 1; 
+
+//                 while (currentUplineId && currentLevel <= 12) {
+//                     const upline = await User.findOne({ userId: currentUplineId }).select('userId isToppedUp topUpAmount sponsorId _id');
+//                     if (!upline) break;
+
+//                     if (!upline.isToppedUp || (upline.topUpAmount || 0) < 2) {
+//                         currentUplineId = upline.sponsorId;
+//                         currentLevel++;
+//                         continue; 
+//                     }
+
+//                     if (currentLevel >= 2 && currentLevel <= 12) {
+//                         const percentage = LEVEL_PERCENTAGES[currentLevel - 1]; 
+//                         const levelAmount = (amount * percentage) / 100;
+
+//                         if (levelAmount > 0) {
+//                             await User.updateOne({ _id: upline._id }, { $inc: { levelIncome: levelAmount, totalLevelIncome: levelAmount } });
+//                             await Transaction.create({
+//                                 userId: upline.userId, type: "level_income", source: "level", amount: levelAmount,
+//                                 package: amount, fromUserId: targetUser.userId, description: `Level ${currentLevel} Income (${percentage}%) from Package`, status: 'success', date: new Date()
+//                             });
+//                         }
+//                     }
+//                     currentUplineId = upline.sponsorId;
+//                     currentLevel++;
+//                 }
+//             } catch (bgError) {
+//                 console.error("Background MLM Error:", bgError);
+//             }
+//         })();
+//     } catch (error) {
+//         console.error("Package Activation Error:", error);
+//         res.status(500).json({ success: false, message: "Server Error during activation" });
+//     }
+// });
  
 
  // ========================================================
@@ -2399,39 +2531,8 @@ router.post('/activate-package', authMiddleware, async (req, res) => {
 
 
  // Downline Team Business Details
-router.get("/binary-summary/:userId", async (req, res) => {  
-  try {
-    const user = await User.findOne({ userId: Number(req.params.userId) });
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
+ 
 
-    const strong = user.strongLegBusiness || 0;
-    const weak   = user.weakLegBusiness || 0;
-
-    const totalMatching = Math.min(strong, weak);
-    const carryForward  = Math.abs(strong - weak);
-
-    res.json({
-      strongLegBusiness: strong,
-      weakLegBusiness: weak,
-      totalMatching,
-      carryForward,
-
-      // 🔷 current unreleased / available binary
-      binaryIncome: user.binaryIncome || 0,
-
-      // 🔥 VERY IMPORTANT FOR UI (eligibility)
-      hasWithdrawn100: user.hasWithdrawn100 === true,
-
-      // 🔥 optional (agar future me total released track karna ho)
-      totalEarnedSoFar: user.totalBinaryEarned || user.binaryIncome || 0,
-    });
-  } catch (err) {
-    console.error("Binary summary error:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-});
 
 
 
