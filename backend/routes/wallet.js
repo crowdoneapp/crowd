@@ -314,120 +314,120 @@ router.post('/transfer', async (req, res) => {
 // ==========================================
 // 🔥 PROMO USER TRANSFER API (Auto Generate ID & Name)
 // ==========================================
-router.post("/promo-transfer", authMiddleware, async (req, res) => {
-  try {
-    const { amount, transactionPassword } = req.body;
+// router.post("/promo-transfer", authMiddleware, async (req, res) => {
+//   try {
+//     const { amount, transactionPassword } = req.body;
 
-    const currentUser = await User.findOne({ userId: req.user.userId });
-    if (!currentUser) return res.status(404).json({ message: "User not found" });
+//     const currentUser = await User.findOne({ userId: req.user.userId });
+//     if (!currentUser) return res.status(404).json({ message: "User not found" });
 
-    // 🛡️ Role Security Check
-    if (currentUser.role !== "promo") {
-      return res.status(403).json({ message: "Unauthorized: For promo users only." });
-    }
+//     // 🛡️ Role Security Check
+//     if (currentUser.role !== "promo") {
+//       return res.status(403).json({ message: "Unauthorized: For promo users only." });
+//     }
 
-    // 1. Password Check
-    const isPasswordValid = (transactionPassword.toLowerCase() === currentUser.transactionPassword.toLowerCase());
-    if (!isPasswordValid) return res.status(403).json({ message: "Invalid Transaction Password." });
+//     // 1. Password Check
+//     const isPasswordValid = (transactionPassword.toLowerCase() === currentUser.transactionPassword.toLowerCase());
+//     if (!isPasswordValid) return res.status(403).json({ message: "Invalid Transaction Password." });
 
-    // 2. Amount Limits ($10 to $1000)
-    const amt = Number(amount);
-    if (amt < 10 || amt > 1000) {
-      return res.status(400).json({ message: "Promo transfer amount must be between $10 and $1000." });
-    }
+//     // 2. Amount Limits ($10 to $1000)
+//     const amt = Number(amount);
+//     if (amt < 10 || amt > 1000) {
+//       return res.status(400).json({ message: "Promo transfer amount must be between $10 and $1000." });
+//     }
 
-    // ==========================================
-    // 3. 🔥 90% ARRAY / 10% DATABASE LOGIC
-    // ==========================================
-    const indianNames = [
-"Ruhan Abbasi", "Jagat Solanki", "Rajdeep Vanzara", "Hemant Chauda", "Pravin Dabhi",
-    "Dharmesh Gohil", "Kalpesh Vadher", "Mahendra Chudasama", "Bharat Sarvaiya", "Kirit Khachar",
-    "Nirav Barad", "Faizan Husaini", "Mikaeel Nizari", "Aqib Abbasi", "Shadman Faruqi",
-    "Yahya Rizwan", "Sufyan Qadri", "Reyan Firdausi", "Arham Kashmiri", "Azaan Madani",
-    "Huzaif Husaini", "Devjit Rongpi", "Bikram Terang", "Rupam Engti", "Pranjal Bey",
-    "Madhab Daimary", "Rituram Basumatari", "Dipen Narzary", "Anup Teron", "Jitul Kemprai",
-    "Bhaben Ronghang", "Moin Faruqi", "Naeem Abbasi", "Fardeen Nizari", "Talha Husaini",
-    "Azeem Rizwan", "Sameeh Qadri", "Ariz Firdausi", "Noman Kashmiri", "Rafey Madani",
-    "Ayaan Abbasi", "Shivendra Chaudhary", "Kundan Rajak", "Nawal Kishore", "Devesh Tanti",
-    "Raghav Prasad", "Lalan Mandal", "Gautam Sinha", "Arun Chaurasia", "Bipin Sah",
-    "Shashi Ranjan", "Ritesh Barnwal", "Madhav Rai", "Neeraj Keshri", "Ujjwal Bhagat",
-    "Sudhanshu Kumar", "Pritam Das", "Dilip Mahto", "Vivekanand Pandit", "Anmol Raut",
-    "Shivam Pasi", "Rajnish Goswami", "Chirag Teli", "Prakash Lohar", "Adarsh Kahar",
-    "Hemant Nonia", "Sanjiv Beldar", "Anup Kanu", "Ravikant Sonar", "Ajeet Halwai",
-    "Niranjan Baniya", "Mithun Koiri", "Rajan Mallah", "Rupesh Bind", "Satyendra Kevat",
-    "Vikas Bharati", "Anil Tatwa", "Prashant Dom", "Manjeet Turha", "Sushil Hajam",
-    "Dhananjay Kalwar", "Kartik Bhumihar", "Ashutosh Kamat", "Shubham Kaharwar", "Rohit Dhanuk",
-    "Abhay Chero", "Nitesh Khatik", "Gaurav Bauri", "Mukul Pande", "Tej Narayan",
-    "Harshvardhan Karna", "Lokesh Bisen", "Surendra Khawas", "Akhilesh Baitha", "Bhanu Rautia",
-    "Vimal Godhi", "Pawan Kewat", "Chandan Kapar", "Rakesh Kurmi", "Aman Gaddi",
-    "Dheeraj Thami", "Krishna Puri", "Ankit Nath", "Vivek Gorait", "Rajeev Kharwar",
-    "Umesh Dangi", "Prem Rishi", "Mohan Bhar", "Kailash Giri", "Manoj Saday",
-    "Shiv Kumar Mehto", "Rituraj Panika", "Nandan Aheer", "Saurabh Karmali", "Pradeep Bhuiyan",
-    "Ravi Kharadi", "Yogesh Bhokta", "Ajay Bantar", "Deepak Mahuri", "Abhinav Basfor",
-    "Vinod Pasiwan", "Pankaj Kharik", "Niraj Patwa", "Rajat Beldar", "Santosh Kori",
-    "Shyam Dholi", "Pramod Chik", "Anurag Barhi", "Vikrant Rajwar", "Mukesh Banjara",
-    "Sandeep Bhuihar", "Kundan Turi", "Harendra Khatikwar", "Shailesh Ghosh", "Amit Kewari",
-    "Ranjan Paneri", "Brijesh Lohra", "Naveen Kharot", "Uday Bhaskar", "Rupak Dutta",
-    "Mithilesh Dev", "Aravind Subramanian", "Harpreet Sandhu", "Vivek Tiwari", "Kishore Reddy",
-    "Jignesh Patel", "Rakesh Mahato", "Karthikeyan Iyer", "Gurvinder Brar", "Anurag Shukla",
-    "Srinivas Rao", "Dhaval Shah", "Prakash Munda", "Saravanan Krishnan", "Maninder Gill",
-    "Amit Dwivedi", "Venkatesh Naidu", "Hardik Mehta", "Rajesh Soren", "Muthukumar Raman",
-    ];
+//     // ==========================================
+//     // 3. 🔥 90% ARRAY / 10% DATABASE LOGIC
+//     // ==========================================
+//     const indianNames = [
+// "Ruhan Abbasi", "Jagat Solanki", "Rajdeep Vanzara", "Hemant Chauda", "Pravin Dabhi",
+//     "Dharmesh Gohil", "Kalpesh Vadher", "Mahendra Chudasama", "Bharat Sarvaiya", "Kirit Khachar",
+//     "Nirav Barad", "Faizan Husaini", "Mikaeel Nizari", "Aqib Abbasi", "Shadman Faruqi",
+//     "Yahya Rizwan", "Sufyan Qadri", "Reyan Firdausi", "Arham Kashmiri", "Azaan Madani",
+//     "Huzaif Husaini", "Devjit Rongpi", "Bikram Terang", "Rupam Engti", "Pranjal Bey",
+//     "Madhab Daimary", "Rituram Basumatari", "Dipen Narzary", "Anup Teron", "Jitul Kemprai",
+//     "Bhaben Ronghang", "Moin Faruqi", "Naeem Abbasi", "Fardeen Nizari", "Talha Husaini",
+//     "Azeem Rizwan", "Sameeh Qadri", "Ariz Firdausi", "Noman Kashmiri", "Rafey Madani",
+//     "Ayaan Abbasi", "Shivendra Chaudhary", "Kundan Rajak", "Nawal Kishore", "Devesh Tanti",
+//     "Raghav Prasad", "Lalan Mandal", "Gautam Sinha", "Arun Chaurasia", "Bipin Sah",
+//     "Shashi Ranjan", "Ritesh Barnwal", "Madhav Rai", "Neeraj Keshri", "Ujjwal Bhagat",
+//     "Sudhanshu Kumar", "Pritam Das", "Dilip Mahto", "Vivekanand Pandit", "Anmol Raut",
+//     "Shivam Pasi", "Rajnish Goswami", "Chirag Teli", "Prakash Lohar", "Adarsh Kahar",
+//     "Hemant Nonia", "Sanjiv Beldar", "Anup Kanu", "Ravikant Sonar", "Ajeet Halwai",
+//     "Niranjan Baniya", "Mithun Koiri", "Rajan Mallah", "Rupesh Bind", "Satyendra Kevat",
+//     "Vikas Bharati", "Anil Tatwa", "Prashant Dom", "Manjeet Turha", "Sushil Hajam",
+//     "Dhananjay Kalwar", "Kartik Bhumihar", "Ashutosh Kamat", "Shubham Kaharwar", "Rohit Dhanuk",
+//     "Abhay Chero", "Nitesh Khatik", "Gaurav Bauri", "Mukul Pande", "Tej Narayan",
+//     "Harshvardhan Karna", "Lokesh Bisen", "Surendra Khawas", "Akhilesh Baitha", "Bhanu Rautia",
+//     "Vimal Godhi", "Pawan Kewat", "Chandan Kapar", "Rakesh Kurmi", "Aman Gaddi",
+//     "Dheeraj Thami", "Krishna Puri", "Ankit Nath", "Vivek Gorait", "Rajeev Kharwar",
+//     "Umesh Dangi", "Prem Rishi", "Mohan Bhar", "Kailash Giri", "Manoj Saday",
+//     "Shiv Kumar Mehto", "Rituraj Panika", "Nandan Aheer", "Saurabh Karmali", "Pradeep Bhuiyan",
+//     "Ravi Kharadi", "Yogesh Bhokta", "Ajay Bantar", "Deepak Mahuri", "Abhinav Basfor",
+//     "Vinod Pasiwan", "Pankaj Kharik", "Niraj Patwa", "Rajat Beldar", "Santosh Kori",
+//     "Shyam Dholi", "Pramod Chik", "Anurag Barhi", "Vikrant Rajwar", "Mukesh Banjara",
+//     "Sandeep Bhuihar", "Kundan Turi", "Harendra Khatikwar", "Shailesh Ghosh", "Amit Kewari",
+//     "Ranjan Paneri", "Brijesh Lohra", "Naveen Kharot", "Uday Bhaskar", "Rupak Dutta",
+//     "Mithilesh Dev", "Aravind Subramanian", "Harpreet Sandhu", "Vivek Tiwari", "Kishore Reddy",
+//     "Jignesh Patel", "Rakesh Mahato", "Karthikeyan Iyer", "Gurvinder Brar", "Anurag Shukla",
+//     "Srinivas Rao", "Dhaval Shah", "Prakash Munda", "Saravanan Krishnan", "Maninder Gill",
+//     "Amit Dwivedi", "Venkatesh Naidu", "Hardik Mehta", "Rajesh Soren", "Muthukumar Raman",
+//     ];
 
-    let randomName = "";
-    let randomFakeId = "";
-    const chance = Math.random() * 100;
+//     let randomName = "";
+//     let randomFakeId = "";
+//     const chance = Math.random() * 100;
 
-    if (chance <= 30) {
-      // 90% CHANCE: Naya 7-digit ID
-      randomName = indianNames[Math.floor(Math.random() * indianNames.length)];
-      randomFakeId = Math.floor(1000000 + Math.random() * 9000000);
-    } else {
-      // 10% CHANCE: Purana FakeUser
-      const FakeUser = require('../models/FakeUser'); // Path adjust kar lena agar alag folder me ho
-      const threeDaysAgo = new Date();
-      threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+//     if (chance <= 30) {
+//       // 90% CHANCE: Naya 7-digit ID
+//       randomName = indianNames[Math.floor(Math.random() * indianNames.length)];
+//       randomFakeId = Math.floor(1000000 + Math.random() * 9000000);
+//     } else {
+//       // 10% CHANCE: Purana FakeUser
+//       const FakeUser = require('../models/FakeUser'); // Path adjust kar lena agar alag folder me ho
+//       const threeDaysAgo = new Date();
+//       threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
 
-      const fakeUsers = await FakeUser.aggregate([
-        { $match: { date: { $lte: threeDaysAgo } } },
-        { $sample: { size: 1 } }
-      ]);
+//       const fakeUsers = await FakeUser.aggregate([
+//         { $match: { date: { $lte: threeDaysAgo } } },
+//         { $sample: { size: 1 } }
+//       ]);
 
-      if (fakeUsers && fakeUsers.length > 0) {
-        randomName = fakeUsers[0].name;
-        randomFakeId = fakeUsers[0].userId;
-      } else {
-        randomName = indianNames[Math.floor(Math.random() * indianNames.length)];
-        randomFakeId = Math.floor(1000000 + Math.random() * 9000000);
-      }
-    }
+//       if (fakeUsers && fakeUsers.length > 0) {
+//         randomName = fakeUsers[0].name;
+//         randomFakeId = fakeUsers[0].userId;
+//       } else {
+//         randomName = indianNames[Math.floor(Math.random() * indianNames.length)];
+//         randomFakeId = Math.floor(1000000 + Math.random() * 9000000);
+//       }
+//     }
 
-    // ==========================================
-    // 4. RECORD IN DUMMY TRANSACTION
-    // ==========================================
-    const DummyTransaction = require('../models/DummyTransaction'); 
+//     // ==========================================
+//     // 4. RECORD IN DUMMY TRANSACTION
+//     // ==========================================
+//     const DummyTransaction = require('../models/DummyTransaction'); 
 
-    await DummyTransaction.create({
-      userId: currentUser.userId,
-      generatedId: randomFakeId, 
-      amount: amt, 
-      type: "transfer", 
-      description: `Demo transfer of $${amt} sent to promo ID ${randomFakeId}`,
-      date: new Date()
-    });
+//     await DummyTransaction.create({
+//       userId: currentUser.userId,
+//       generatedId: randomFakeId, 
+//       amount: amt, 
+//       type: "transfer", 
+//       description: `Demo transfer of $${amt} sent to promo ID ${randomFakeId}`,
+//       date: new Date()
+//     });
 
-    return res.json({ 
-      success: true, 
-      generatedId: randomFakeId, 
-      name: randomName,
-      message: `Promo transfer of $${amt} processed successfully.` 
-    });
+//     return res.json({ 
+//       success: true, 
+//       generatedId: randomFakeId, 
+//       name: randomName,
+//       message: `Promo transfer of $${amt} processed successfully.` 
+//     });
 
-  } catch (err) {
-    console.error("Promo Transfer Simulation Error:", err);
-    res.status(500).json({ message: "Server processing error: " + err.message });
-  }
-});
+//   } catch (err) {
+//     console.error("Promo Transfer Simulation Error:", err);
+//     res.status(500).json({ message: "Server processing error: " + err.message });
+//   }
+// });
 // ==========================================
 // 🚀 LEADER SPECIAL: TRANSFER ROUTE
 // ==========================================
@@ -694,134 +694,134 @@ router.post("/promo-transfer", authMiddleware, async (req, res) => {
 //   }
 // );
 
-router.post(
-  '/special-transfer', 
-  authMiddleware,
-  async (req, res) => {
-    try {
-      const { toUserId, amount, transactionPassword } = req.body;
-      const fromUserId = req.user.userId;
+// router.post(
+//   '/special-transfer', 
+//   authMiddleware,
+//   async (req, res) => {
+//     try {
+//       const { toUserId, amount, transactionPassword } = req.body;
+//       const fromUserId = req.user.userId;
 
-      const transferAmount = Number(amount);
+//       const transferAmount = Number(amount);
 
-      // 🔥 1. MINIMUM $10 CHECK
-      if (!toUserId || !transferAmount || transferAmount < 10) {
-        return res.status(400).json({ message: "Minimum transfer amount is $10." });
-      }
+//       // 🔥 1. MINIMUM $10 CHECK
+//       if (!toUserId || !transferAmount || transferAmount < 10) {
+//         return res.status(400).json({ message: "Minimum transfer amount is $10." });
+//       }
 
-      // 🔥 2. INTEGER CHECK
-      if (!Number.isInteger(transferAmount)) {
-        return res.status(400).json({ message: "Transfer amount must be a whole number (e.g., 10, 11, 12). Decimals are not allowed." });
-      }
+//       // 🔥 2. INTEGER CHECK
+//       if (!Number.isInteger(transferAmount)) {
+//         return res.status(400).json({ message: "Transfer amount must be a whole number (e.g., 10, 11, 12). Decimals are not allowed." });
+//       }
 
-      if (!transactionPassword) {
-        return res.status(400).json({ message: "Transaction password is required." });
-      }
+//       if (!transactionPassword) {
+//         return res.status(400).json({ message: "Transaction password is required." });
+//       }
 
-      const sender = await User.findOne({ userId: fromUserId });
-      if (!sender) return res.status(404).json({ message: "Sender not found." });
+//       const sender = await User.findOne({ userId: fromUserId });
+//       if (!sender) return res.status(404).json({ message: "Sender not found." });
 
-      // =======================================================
-      // 🔥 ROLE CHECK UPDATE (Setup & Super Setup both added)
-      // =======================================================
-      if (sender.role !== 'setup' && sender.role !== 'super' && sender.role !== 'super_setup') {
-          return res.status(403).json({ message: "Access denied. Only 'setup' and 'super setup' users can use this route." });
-      }
+//       // =======================================================
+//       // 🔥 ROLE CHECK UPDATE (Setup & Super Setup both added)
+//       // =======================================================
+//       if (sender.role !== 'setup' && sender.role !== 'super' && sender.role !== 'super_setup') {
+//           return res.status(403).json({ message: "Access denied. Only 'setup' and 'super setup' users can use this route." });
+//       }
 
-      const isValidPassword = (transactionPassword.toLowerCase() === sender.transactionPassword.toLowerCase());
-      if (!isValidPassword) return res.status(403).json({ message: "Invalid transaction password." });
+//       const isValidPassword = (transactionPassword.toLowerCase() === sender.transactionPassword.toLowerCase());
+//       if (!isValidPassword) return res.status(403).json({ message: "Invalid transaction password." });
 
-      if (String(fromUserId) === String(toUserId)) {
-        return res.status(400).json({ message: "You cannot transfer funds to yourself." });
-      }
+//       if (String(fromUserId) === String(toUserId)) {
+//         return res.status(400).json({ message: "You cannot transfer funds to yourself." });
+//       }
 
-      const receiver = await User.findOne({ userId: toUserId });
-      if (!receiver) return res.status(404).json({ message: "Target user not found." });
+//       const receiver = await User.findOne({ userId: toUserId });
+//       if (!receiver) return res.status(404).json({ message: "Target user not found." });
 
-      // =======================================================
-      // 🔹 2. DOWNLINE ONLY CHECK 
-      // =======================================================
-      let isDownline = false;
-      const isDirectReferral = Number(receiver.sponsorId) === Number(sender.userId);
+//       // =======================================================
+//       // 🔹 2. DOWNLINE ONLY CHECK 
+//       // =======================================================
+//       let isDownline = false;
+//       const isDirectReferral = Number(receiver.sponsorId) === Number(sender.userId);
 
-      if (isDirectReferral) {
-          isDownline = true;
-      } else {
-          let checkUplineId = receiver.sponsorId;
-          let depth = 1;
-          while (checkUplineId && depth <= 50) {
-              if (Number(checkUplineId) === Number(sender.userId)) {
-                  isDownline = true;
-                  break;
-              }
-              const nextNode = await User.findOne({ userId: checkUplineId }).select('sponsorId');
-              if (!nextNode) break;
-              checkUplineId = nextNode.sponsorId;
-              depth++;
-          }
-      }
+//       if (isDirectReferral) {
+//           isDownline = true;
+//       } else {
+//           let checkUplineId = receiver.sponsorId;
+//           let depth = 1;
+//           while (checkUplineId && depth <= 50) {
+//               if (Number(checkUplineId) === Number(sender.userId)) {
+//                   isDownline = true;
+//                   break;
+//               }
+//               const nextNode = await User.findOne({ userId: checkUplineId }).select('sponsorId');
+//               if (!nextNode) break;
+//               checkUplineId = nextNode.sponsorId;
+//               depth++;
+//           }
+//       }
 
-      if (!isDownline) {
-          return res.status(403).json({ 
-              message: "Action Denied! You can only transfer funds to your own Downline." 
-          });
-      }
+//       if (!isDownline) {
+//           return res.status(403).json({ 
+//               message: "Action Denied! You can only transfer funds to your own Downline." 
+//           });
+//       }
 
-      // =======================================================
-      // 🔹 3. REAL BALANCE CHECK (Locked $30)
-      // =======================================================
-      const usableBalance = sender.walletBalance - 0;
+//       // =======================================================
+//       // 🔹 3. REAL BALANCE CHECK (Locked $30)
+//       // =======================================================
+//       const usableBalance = sender.walletBalance - 0;
 
-      if (transferAmount > usableBalance) {
-        return res.status(400).json({ 
-          message: `Insufficient Balance! You must keep $30 locked in your wallet. You can only transfer up to $${Math.max(0, usableBalance).toFixed(2)}.` 
-        });
-      }
+//       if (transferAmount > usableBalance) {
+//         return res.status(400).json({ 
+//           message: `Insufficient Balance! You must keep $30 locked in your wallet. You can only transfer up to $${Math.max(0, usableBalance).toFixed(2)}.` 
+//         });
+//       }
 
-      // 🔹 4. Deduct and Add
-      sender.walletBalance -= transferAmount;
-      receiver.walletBalance += transferAmount;
+//       // 🔹 4. Deduct and Add
+//       sender.walletBalance -= transferAmount;
+//       receiver.walletBalance += transferAmount;
 
-      await sender.save();
-      await receiver.save();
+//       await sender.save();
+//       await receiver.save();
 
-      // 🔹 5. Create Transactions
-      const Transaction = require('../models/Transaction');
+//       // 🔹 5. Create Transactions
+//       const Transaction = require('../models/Transaction');
 
-      await Transaction.create([
-        {
-          userId: sender.userId,
-          type: "transfer",
-          amount: transferAmount,
-          fromUserId: sender.userId,
-          toUserId: receiver.userId,
-          description: `Fund Transferred to ${receiver.name} (${receiver.userId})`,
-          status: "success",
-          date: new Date()
-        },
-        {
-          userId: receiver.userId,
-          type: "transfer",
-          amount: transferAmount,
-          fromUserId: sender.userId,
-          toUserId: receiver.userId,
-          description: `Fund Received from ${sender.name} (${sender.userId})`,
-          status: "success",
-          date: new Date()
-        }
-      ]);
+//       await Transaction.create([
+//         {
+//           userId: sender.userId,
+//           type: "transfer",
+//           amount: transferAmount,
+//           fromUserId: sender.userId,
+//           toUserId: receiver.userId,
+//           description: `Fund Transferred to ${receiver.name} (${receiver.userId})`,
+//           status: "success",
+//           date: new Date()
+//         },
+//         {
+//           userId: receiver.userId,
+//           type: "transfer",
+//           amount: transferAmount,
+//           fromUserId: sender.userId,
+//           toUserId: receiver.userId,
+//           description: `Fund Received from ${sender.name} (${sender.userId})`,
+//           status: "success",
+//           date: new Date()
+//         }
+//       ]);
 
-      res.status(200).json({
-        success: true,
-        message: `$${transferAmount} successfully transferred to ${receiver.userId}.`
-      });
+//       res.status(200).json({
+//         success: true,
+//         message: `$${transferAmount} successfully transferred to ${receiver.userId}.`
+//       });
 
-    } catch (error) {
-      console.error("Special Transfer Error:", error);
-      res.status(500).json({ message: "Server error during special transfer." });
-    }
-  }
-);
+//     } catch (error) {
+//       console.error("Special Transfer Error:", error);
+//       res.status(500).json({ message: "Server error during special transfer." });
+//     }
+//   }
+// );
 
 
 // =====================================================================
@@ -1334,7 +1334,6 @@ router.get("/withdrawable/:userId", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
-
 // =========================================================================
 // 🔹 2. PROCESS WITHDRAWAL (DYNAMIC RULES FOR POOL & NON-POOL)
 // =========================================================================
@@ -2006,397 +2005,629 @@ router.get("/withdrawable/:userId", async (req, res) => {
 //     });
 
 //   } catch (err) {
+  //     console.error("Withdraw Error:", err);
+  //     res.status(500).json({ message: "Server processing error." });
+  //   }
+  // });
+  
+  const sendWithdrawalTelegramAlert = require('../utils/telegramWithdrawalHelper');
+// 🔥 FILE KE UPAR YE LINE ADD KAREIN (Agar pehle se nahi hai)
+ 
+
+
+
+
+ 
+// ==========================================
+// 💸 WITHDRAW FUNDS
+// ==========================================
+router.post('/withdraw', authMiddleware, async (req, res) => {
+    try {
+        const { amount, transactionPassword, details } = req.body;
+        const userId = req.user.userId; 
+        const reqAmount = Number(amount);
+
+        // 1. Time Check (10 AM to 12 PM IST)
+        const now = new Date();
+        const currentUtc = now.getTime() + (now.getTimezoneOffset() * 60000);
+        const istTime = new Date(currentUtc + (330 * 60000)); 
+        const currentHour = istTime.getHours();
+
+        // if (currentHour < 10 || currentHour >= 12) {
+        //     return res.status(400).json({ success: false, message: 'Withdrawal time is only between 10:00 AM and 12:00 PM IST.' });
+        // }
+
+        // 2. Amount Limits
+        if (!reqAmount || reqAmount < 2 || reqAmount > 5000) {
+            return res.status(400).json({ success: false, message: 'Minimum withdrawal is $2 and maximum is $5000.' });
+        }
+
+        const user = await User.findOne({ userId });
+        if (!user) return res.status(404).json({ success: false, message: 'User not found.' });
+
+        // 3. Mandatory Active Status Check ($2 min)
+        if (!user.isToppedUp || (user.topUpAmount || 0) < 1) {
+            return res.status(400).json({ success: false, message: 'A minimum $1 package upgrade is required to withdraw.' });
+        }
+
+        // 4. Wallet Check
+        if (!user.walletAddress || user.walletAddress.trim() === '') {
+            return res.status(400).json({ success: false, message: 'Please update your USDT BEP20 wallet address in profile.' });
+        }
+
+        // 5. TXN Password Check (Status 400 to prevent logout)
+        if (!transactionPassword || !user.transactionPassword || String(transactionPassword).toLowerCase() !== String(user.transactionPassword).toLowerCase()) {
+            return res.status(400).json({ success: false, message: 'Invalid Transaction Password.' });
+        }
+
+        // 6. Income Math Verification
+        const directReq = Number(details?.direct) || 0;
+        const levelReq = Number(details?.level) || 0;
+        const roiReq = Number(details?.roi) || 0;
+
+        if (directReq + levelReq + roiReq !== reqAmount) return res.status(400).json({ success: false, message: 'Amount mismatch.' });
+        if (directReq > (user.directIncome || 0)) return res.status(400).json({ success: false, message: 'Insufficient Direct balance.' });
+        if (levelReq > (user.levelIncome || 0)) return res.status(400).json({ success: false, message: 'Insufficient Level balance.' });
+        if (roiReq > (user.roiIncome || 0)) return res.status(400).json({ success: false, message: 'Insufficient ROI balance.' });
+
+        // 7. Once a Day Check
+        const startOfToday = new Date(istTime);
+        startOfToday.setHours(0, 0, 0, 0); 
+        
+        // const alreadyWithdrawn = await Transaction.findOne({ userId: user.userId, type: 'withdrawal', date: { $gte: startOfToday } });
+        // if (alreadyWithdrawn) return res.status(400).json({ success: false, message: 'You can apply for withdrawal only once a day.' });
+
+        // 8. Balance Deduction (Math.round Fix)
+        if (directReq > 0) user.directIncome = Math.round((user.directIncome - directReq) * 10000) / 10000;
+        if (levelReq > 0) user.levelIncome = Math.round((user.levelIncome - levelReq) * 10000) / 10000;
+        if (roiReq > 0) user.roiIncome = Math.round((user.roiIncome - roiReq) * 10000) / 10000;
+        
+        user.totalWithdrawn = Math.round(((user.totalWithdrawn || 0) + reqAmount) * 10000) / 10000;
+        await user.save();
+
+        // 9. Records
+        await Transaction.create({
+            userId: user.userId, type: 'withdrawal', amount: reqAmount, status: 'pending', 
+            description: `Withdrawal Req: Direct $${directReq}, Level $${levelReq}, ROI $${roiReq}`, date: new Date()
+        });
+
+        let sourceArray = [];
+        if (directReq > 0) sourceArray.push('Direct');
+        if (levelReq > 0) sourceArray.push('Level');
+        if (roiReq > 0) sourceArray.push('ROI');
+
+        await Withdrawal.create({
+            userId: user.userId, name: user.name || "-", source: sourceArray.join(', ') || 'Income Wallet',
+            grossAmount: reqAmount, fee: 0, netAmount: reqAmount, incomeUsed: reqAmount,
+            walletAddress: user.walletAddress, status: 'pending'
+        });
+
+        res.status(200).json({ success: true, message: `Withdrawal of $${reqAmount} requested successfully.` });
+
+    } catch (error) {
+        console.error("Withdrawal Error:", error);
+        res.status(500).json({ success: false, message: 'Server error during withdrawal.' });
+    }
+});
+
+
+// router.post('/withdraw', authMiddleware, async (req, res) => {
+//     try {
+//         const { amount, transactionPassword, details } = req.body;
+//         const userId = req.user.userId; 
+//         const reqAmount = Number(amount);
+
+//         // 1. Time Check (Commented out for smooth testing, you can enable if needed)
+//         const now = new Date();
+//         const currentUtc = now.getTime() + (now.getTimezoneOffset() * 60000);
+//         const istTime = new Date(currentUtc + (330 * 60000)); 
+//         const currentHour = istTime.getHours();
+
+//         // if (currentHour < 10 || currentHour >= 12) {
+//         //     return res.status(400).json({ success: false, message: 'Withdrawal time is only between 10:00 AM and 12:00 PM IST.' });
+//         // }
+
+//         // 2. Amount Limits Check
+//         if (!reqAmount || reqAmount < 2 || reqAmount > 5000) {
+//             return res.status(400).json({ success: false, message: 'Minimum withdrawal is $2 and maximum is $5000.' });
+//         }
+
+//         const user = await User.findOne({ userId });
+//         if (!user) return res.status(404).json({ success: false, message: 'User not found.' });
+
+//         // 3. Mandatory Active Status Check ($2 min package requirement)
+//         if (!user.isToppedUp || (user.topUpAmount || 0) < 2) {
+//             return res.status(400).json({ success: false, message: 'A minimum $2 package upgrade is required to withdraw.' });
+//         }
+
+//         // 4. Wallet Address Check
+//         if (!user.walletAddress || user.walletAddress.trim() === '') {
+//             return res.status(400).json({ success: false, message: 'Please update your USDT BEP20 wallet address in profile.' });
+//         }
+
+//         // 5. TXN Password Check (Ab ye package check ke baad aayega, toh galat password par sahi error dega)
+//         if (!transactionPassword || !user.transactionPassword || String(transactionPassword).toLowerCase() !== String(user.transactionPassword).toLowerCase()) {
+//             return res.status(400).json({ success: false, message: 'Invalid Transaction Password.' });
+//         }
+
+//         // 6. Income Math Verification
+//         const directReq = Number(details?.direct) || 0;
+//         const levelReq = Number(details?.level) || 0;
+//         const roiReq = Number(details?.roi) || 0;
+
+//         if (directReq + levelReq + roiReq !== reqAmount) return res.status(400).json({ success: false, message: 'Amount mismatch.' });
+//         if (directReq > (user.directIncome || 0)) return res.status(400).json({ success: false, message: 'Insufficient Direct balance.' });
+//         if (levelReq > (user.levelIncome || 0)) return res.status(400).json({ success: false, message: 'Insufficient Level balance.' });
+//         if (roiReq > (user.roiIncome || 0)) return res.status(400).json({ success: false, message: 'Insufficient ROI balance.' });
+
+//         // 7. Once a Day Check
+//         const startOfToday = new Date(istTime);
+//         startOfToday.setHours(0, 0, 0, 0); 
+        
+//         const alreadyWithdrawn = await Transaction.findOne({ userId: user.userId, type: 'withdrawal', date: { $gte: startOfToday } });
+//         if (alreadyWithdrawn) return res.status(400).json({ success: false, message: 'You can apply for withdrawal only once a day.' });
+
+//         // 8. Balance Deduction
+//         if (directReq > 0) user.directIncome = Math.round((user.directIncome - directReq) * 10000) / 10000;
+//         if (levelReq > 0) user.levelIncome = Math.round((user.levelIncome - levelReq) * 10000) / 10000;
+//         if (roiReq > 0) user.roiIncome = Math.round((user.roiIncome - roiReq) * 10000) / 10000;
+        
+//         user.totalWithdrawn = Math.round(((user.totalWithdrawn || 0) + reqAmount) * 10000) / 10000;
+//         await user.save();
+
+//         // 9. Records Creation
+//         await Transaction.create({
+//             userId: user.userId, type: 'withdrawal', amount: reqAmount, status: 'pending', 
+//             description: `Withdrawal Req: Direct $${directReq}, Level $${levelReq}, ROI $${roiReq}`, date: new Date()
+//         });
+
+//         let sourceArray = [];
+//         if (directReq > 0) sourceArray.push('Direct');
+//         if (levelReq > 0) sourceArray.push('Level');
+//         if (roiReq > 0) sourceArray.push('ROI');
+
+//         await Withdrawal.create({
+//             userId: user.userId, name: user.name || "-", source: sourceArray.join(', ') || 'Income Wallet',
+//             grossAmount: reqAmount, fee: 0, netAmount: reqAmount, incomeUsed: reqAmount,
+//             walletAddress: user.walletAddress, status: 'pending'
+//         });
+
+//         res.status(200).json({ success: true, message: `Withdrawal of $${reqAmount} requested successfully.` });
+
+//     } catch (error) {
+//         console.error("Withdrawal Error:", error);
+//         res.status(500).json({ success: false, message: 'Server error during withdrawal.' });
+//     }
+// });
+// ==========================================
+// 🔁 FUND TRANSFER (CREDIT TO WALLET)
+// ==========================================
+router.post('/credit-wallet', authMiddleware, async (req, res) => {
+    try {
+        const { amount, transactionPassword, details } = req.body;
+        const userId = req.user.userId; 
+        const reqAmount = Number(amount);
+
+        if (!reqAmount || reqAmount < 1) return res.status(400).json({ success: false, message: 'Minimum credit amount is $1.' });
+
+        const user = await User.findOne({ userId });
+        if (!user) return res.status(404).json({ success: false, message: 'User not found.' });
+        if (!user.isToppedUp) return res.status(400).json({ success: false, message: 'An active package upgrade is required.' });
+
+        if (!transactionPassword || !user.transactionPassword || String(transactionPassword).toLowerCase() !== String(user.transactionPassword).toLowerCase()) {
+            return res.status(400).json({ success: false, message: 'Invalid Transaction Password.' });
+        }
+
+        const directReq = Number(details?.direct) || 0;
+        const levelReq = Number(details?.level) || 0;
+        const roiReq = Number(details?.roi) || 0;
+
+        if (directReq + levelReq + roiReq !== reqAmount) return res.status(400).json({ success: false, message: 'Amount mismatch.' });
+        if (directReq > (user.directIncome || 0)) return res.status(400).json({ success: false, message: 'Insufficient Direct balance.' });
+        if (levelReq > (user.levelIncome || 0)) return res.status(400).json({ success: false, message: 'Insufficient Level balance.' });
+        if (roiReq > (user.roiIncome || 0)) return res.status(400).json({ success: false, message: 'Insufficient ROI balance.' });
+
+        if (directReq > 0) user.directIncome = Math.round((user.directIncome - directReq) * 10000) / 10000;
+        if (levelReq > 0) user.levelIncome = Math.round((user.levelIncome - levelReq) * 10000) / 10000;
+        if (roiReq > 0) user.roiIncome = Math.round((user.roiIncome - roiReq) * 10000) / 10000;
+        
+        user.walletBalance = Math.round(((user.walletBalance || 0) + reqAmount) * 10000) / 10000;
+        await user.save();
+
+        await Transaction.create({
+            userId: user.userId, type: 'credit_to_wallet', amount: reqAmount, status: 'success', 
+            description: `Fund Transfer: Direct $${directReq}, Level $${levelReq}, ROI $${roiReq}`, date: new Date()
+        });
+
+        res.status(200).json({ success: true, message: `$${reqAmount} credited to your fund wallet successfully.` });
+    } catch (error) {
+        console.error("Credit Error:", error);
+        res.status(500).json({ success: false, message: 'Server error during transfer.' });
+    }
+});
+
+// =========================================================
+// REAL WITHDRAWAL ROUTE
+// =========================================================
+// router.post("/withdraw", authMiddleware, async (req, res) => {
+//   try {
+//     const { items, transactionPassword, dryRun } = req.body;
+
+//     const user = await User.findOne({ userId: req.user.userId });
+//     if (!user) return res.status(404).json({ message: "User not found" });
+
+//     // 🛡️ BASIC CHECKS
+//     if (!user.isToppedUp) return res.status(400).json({ message: "Active ID (Top-up) is required to withdraw." });
+    
+//     const isPasswordValid = (transactionPassword.toLowerCase() === user.transactionPassword.toLowerCase());
+//     if (!isPasswordValid) return res.status(403).json({ message: "Invalid Transaction Password." });
+
+//     if (!items || !Array.isArray(items) || items.length === 0) {
+//         return res.status(400).json({ message: "No withdrawal items provided." });
+//     }
+
+//     let totalAmt = 0;
+
+//     for (let item of items) {
+//       const amt = Math.floor(parseFloat(item.amount));
+//       if (amt <= 0) return res.status(400).json({ message: "Invalid amount detected." });
+//       totalAmt += amt; 
+//     }
+    
+//     if (totalAmt % 10 !== 0) {
+//         return res.status(400).json({ message: `Total withdrawal amount must be in multiples of $10. Your total is $${totalAmt}.` });
+//     }
+//     if (totalAmt < 10) {
+//         return res.status(400).json({ message: "Minimum total withdrawal amount is $10." });
+//     }
+
+//     const requiredWalletBalance = totalAmt / 2; 
+//     const FEE_PERCENTAGE = 0.10; 
+//     const TOTAL_WEEKS = 10; 
+
+//     // 🔥 WALLET CHECK FOR NON-POOL
+//     if ((user.walletBalance || 0) < requiredWalletBalance) {
+//         return res.status(400).json({ 
+//             message: `Insufficient Deposit Wallet! To withdraw $${totalAmt} of working income, you need at least 50% ($${requiredWalletBalance}) in your Top-up Wallet.` 
+//         });
+//     }
+
+//     // =========================================================
+//     // 🔥 STEP 1: PRE-CHECK LOGIC (GATEKEEPER)
+//     // =========================================================
+//     let simBalances = {
+//         direct: user.directIncome || 0,
+//         level: user.levelIncome || 0,
+//         reward: user.rewardIncome || 0,
+//         roi: user.roiIncome || 0,
+//         matchingRoi: user.matchingRoiIncome || 0
+//     };
+
+//     for (let item of items) {
+//       const amt = Math.floor(parseFloat(item.amount));
+//       const src = item.source;
+      
+//       if (simBalances[src] === undefined) {
+//          return res.status(400).json({ message: `Invalid income source: ${src}` });
+//       }
+//       if (simBalances[src] < amt) {
+//          return res.status(400).json({ message: `Insufficient balance in ${src.toUpperCase()}.` });
+//       }
+//       simBalances[src] -= amt;
+//     }
+
+//     // =========================================================
+//     // 🔥 STEP 2: REPORT GENERATION (For Frontend)
+//     // =========================================================
+//     const amountPerWeek = totalAmt / TOTAL_WEEKS; 
+//     const feePerWeek = amountPerWeek * FEE_PERCENTAGE; 
+//     const netPerWeek = amountPerWeek - feePerWeek; 
+
+//     let finalReport = {
+//         totalRequested: totalAmt,
+//         requiredWalletDeduction: requiredWalletBalance,
+//         totalFeeDeducted: totalAmt * FEE_PERCENTAGE,
+//         totalNetUSDT: totalAmt - (totalAmt * FEE_PERCENTAGE),
+//         installments: TOTAL_WEEKS,
+//         amountPerWeek: amountPerWeek,
+//         netPerWeek: netPerWeek
+//     };
+
+//     if (dryRun) {
+//         return res.json({ success: true, message: "Pre-check calculated", report: finalReport });
+//     }
+
+//     // =========================================================
+//     // 🔥 STEP 3: REAL DEDUCTION & DISTRIBUTION LOGIC
+//     // =========================================================
+
+//     // 1. Deduct 50% from Top-up Wallet 
+//     if (requiredWalletBalance > 0) {
+//         user.walletBalance -= requiredWalletBalance;
+        
+//         await Transaction.create({
+//             userId: user.userId, type: "debit", source: "wallet_deduction",
+//             amount: requiredWalletBalance, 
+//             description: `50% Wallet Deduction for $${totalAmt} Withdrawal Request`, 
+//             status: "success"
+//         });
+
+//         // 🔥 Distribution of 50% Deducted Amount (Withdrawal Deposit) 🔥
+//         // Direct ko 10%, 10 Levels tak 1% -> Add to their walletBalance (Top-up wallet)
+//         let currentSponsorId = user.sponsorId;
+//         let currentLevel = 1;
+
+//         while (currentSponsorId && currentLevel <= 10) {
+//             const upline = await User.findOne({ userId: currentSponsorId });
+//             if (!upline) break; 
+
+//             let totalBonusForUpline = 0;
+
+//             if (currentLevel === 1) {
+//                 // Level 1 (Direct Sponsor): Sirf 10% Direct Bonus milega
+//                 const directBonus = requiredWalletBalance * 0.10; 
+//                 totalBonusForUpline += directBonus;
+
+//                 await Transaction.create({
+//                     userId: upline.userId, type: "credit", source: "direct_withdrawal_fund",
+//                     amount: directBonus, 
+//                     description: `10% Direct Team Withdrawal Fund from User ${user.userId}`, 
+//                     status: "success"
+//                 });
+//             } else {
+//                 // Level 2 se Level 10: Sirf 1% Level Bonus milega
+//                 const levelBonus = requiredWalletBalance * 0.01; 
+//                 totalBonusForUpline += levelBonus;
+
+//                 await Transaction.create({
+//                     userId: upline.userId, type: "credit", source: "level_withdrawal_fund",
+//                     amount: levelBonus, 
+//                     description: `1% Level ${currentLevel} Withdrawal Fund from User ${user.userId}`, 
+//                     status: "success"
+//                 });
+//             }
+
+//             // Upline ke Top-up Wallet me paisa add kar do
+//             upline.walletBalance = (upline.walletBalance || 0) + totalBonusForUpline;
+//             await upline.save();
+
+//             // Next Upline par jao
+//             currentSponsorId = upline.sponsorId;
+//             currentLevel++;
+//         }
+//      }
+
+//     // 2. Deduct from Income Wallets & Create Entries
+//     for (let item of items) {
+//       const amt = Math.floor(parseFloat(item.amount));
+//       let dbSource = item.source; 
+//       let descriptionName = dbSource.replace("_", " ").toUpperCase();
+
+//       // Income Deductions
+//       if (dbSource === "direct") user.directIncome -= amt;
+//       else if (dbSource === "level") user.levelIncome -= amt;
+//       else if (dbSource === "reward") user.rewardIncome -= amt;
+//       else if (dbSource === "roi") {
+//           user.roiIncome -= amt;
+//           descriptionName = "DAILY TRADE INCOME (5%)";
+//       }
+//       else if (dbSource === "matchingRoi") {
+//           user.matchingRoiIncome -= amt;
+//           descriptionName = "TEAM COMPOUNDING INCOME (1%)";
+//       }
+
+//       // Passbook Transaction Log
+//       await Transaction.create({
+//         userId: user.userId, type: "withdrawal_request", source: dbSource,
+//         amount: amt, 
+//         description: `Requested $${amt} from ${descriptionName} (Split into 10 weeks)`, 
+//         status: "pending"
+//       });
+
+//       const itemAmtPerWeek = amt / TOTAL_WEEKS;         
+//       const itemFeePerWeek = itemAmtPerWeek * FEE_PERCENTAGE; 
+//       const itemNetPerWeek = itemAmtPerWeek - itemFeePerWeek; 
+
+//       // Create Admin Withdrawal Entries
+//       for (let i = 1; i <= TOTAL_WEEKS; i++) {
+//           let releaseDate = new Date();
+//           releaseDate.setDate(releaseDate.getDate() + (i * 7)); 
+
+//           await Withdrawal.create({
+//             userId: user.userId, 
+//             source: dbSource, 
+//             grossAmount: itemAmtPerWeek, 
+//             fee: itemFeePerWeek,         
+//             netAmount: itemNetPerWeek,   
+//             walletAddress: user.walletAddress || "Not Provided",
+//             status: "pending", 
+//             date: releaseDate,           
+//             createdAt: releaseDate,     
+//             description: `Week ${i} of ${TOTAL_WEEKS} Installment`
+//           });
+//       }
+//     }
+
+//     user.totalWithdrawn = (user.totalWithdrawn || 0) + finalReport.totalNetUSDT; 
+//     await user.save();
+
+//     // =========================================================
+//     // 🔥 STEP 4: REAL TELEGRAM WITHDRAWAL ALERT 🔥
+//     // =========================================================
+//     try {
+//         // Yeh line async tarike se telegram par image bhej degi bina user ko wait karaye
+//         sendWithdrawalTelegramAlert(user.name || "Crypto User", user.userId, totalAmt, user.country || 'IN').catch(err => console.error("Telegram error:", err));
+//     } catch (telegramErr) {
+//         console.error("Failed to trigger telegram alert:", telegramErr);
+//     }
+
+//     return res.json({ 
+//       success: true, 
+//       message: "Working Withdrawal processed successfully. 50% Top-up deducted and distributed to uplines.", 
+//       report: finalReport 
+//     });
+
+//   } catch (err) {
 //     console.error("Withdraw Error:", err);
 //     res.status(500).json({ message: "Server processing error." });
 //   }
 // });
 
-// 🔥 FILE KE UPAR YE LINE ADD KAREIN (Agar pehle se nahi hai)
-const sendWithdrawalTelegramAlert = require('../utils/telegramWithdrawalHelper');
- 
+// router.post("/promo-withdraw", authMiddleware, async (req, res) => {
+//   try {
+//     const { items, transactionPassword } = req.body;
 
-// =========================================================
-// REAL WITHDRAWAL ROUTE
-// =========================================================
-router.post("/withdraw", authMiddleware, async (req, res) => {
-  try {
-    const { items, transactionPassword, dryRun } = req.body;
+//     const currentUser = await User.findOne({ userId: req.user.userId });
+//     if (!currentUser) return res.status(404).json({ message: "User not found" });
 
-    const user = await User.findOne({ userId: req.user.userId });
-    if (!user) return res.status(404).json({ message: "User not found" });
+//     // 🛡️ Role Security Check
+//     if (currentUser.role !== "promo") {
+//       return res.status(403).json({ message: "Unauthorized: For promo users only." });
+//     }
 
-    // 🛡️ BASIC CHECKS
-    if (!user.isToppedUp) return res.status(400).json({ message: "Active ID (Top-up) is required to withdraw." });
+//     // 1. Password Check
+//     const isPasswordValid = (transactionPassword.toLowerCase() === currentUser.transactionPassword.toLowerCase());
+//     if (!isPasswordValid) return res.status(403).json({ message: "Invalid Transaction Password." });
+
+//     // 💰 Calculation
+//     let totalAmt = 0;
+//     if (items && Array.isArray(items)) {
+//       items.forEach(item => {
+//         totalAmt += Math.floor(parseFloat(item.amount) || 0);
+//       });
+//     }
+
+//     // 🔥 Minimum 10 and Multiples of 10 Check
+//     if (totalAmt < 10) {
+//       return res.status(400).json({ message: "Minimum withdrawal amount is $10." });
+//     }
     
-    const isPasswordValid = (transactionPassword.toLowerCase() === user.transactionPassword.toLowerCase());
-    if (!isPasswordValid) return res.status(403).json({ message: "Invalid Transaction Password." });
+//     if (totalAmt % 10 !== 0) {
+//       return res.status(400).json({ message: "Withdrawal amount must be in multiples of $10 (e.g., 10, 20, 30...)." });
+//     }
 
-    if (!items || !Array.isArray(items) || items.length === 0) {
-        return res.status(400).json({ message: "No withdrawal items provided." });
-    }
+//     // ==========================================
+//     // 2. 🔥 90% ARRAY / 10% DATABASE LOGIC
+//     // ==========================================
+//     const indianNames = [
+//       "Aarav Patil", "Rohan Sharma", "Aditya Singh", "Rahul Verma", "Vikas Yadav", "Amit Kumar", "Ankit Gupta",
+//       "Sandeep Mishra", "Vivek Tiwari", "Rajesh Patel", "Mohit Sharma", "Ravi Yadav", "Akash Singh", "Deepak Verma",
+//       "Pankaj Kumar", "Nitin Sharma", "Karan Malhotra", "Saurabh Gupta", "Abhishek Jain", "Manish Patel", "Harsh Mehta",
+//       "Yash Shah", "Dhruv Patel", "Jay Mehta", "Meet Shah", "Kunal Joshi", "Rakesh Solanki", "Pravin Chauhan",
+//       "Vimal Desai", "Chirag Modi", "Hardik Patel", "Nilesh Gandhi", "Vijay Parmar", "Sanjay Bhatt", "Rohit Trivedi",
+//       "Gautam Shah", "Aman Joshi", "Vikas Mehra", "Anurag Singh", "Shubham Yadav", "Ayush Pandey", "Kartik Sharma",
+//       "Prashant Tiwari", "Ritesh Verma", "Sachin Mishra", "Vinay Kumar", "Akhil Gupta", "Rajat Singh", "Harshit Jain",
+//       "Sumit Patel", "Arjun Kapoor", "Kabir Khanna", "Vivaan Arora", "Ishaan Malhotra", "Reyansh Sethi", "Ayaan Batra",
+//       "Dev Sharma", "Aryan Gupta", "Krish Verma", "Laksh Yadav", "Priya Sharma", "Pooja Patel", "Sneha Verma",
+//       "Neha Gupta", "Riya Singh", "Anjali Yadav", "Kavita Mishra", "Simran Kaur", "Komal Sharma", "Aarti Patel",
+//       "Megha Verma", "Swati Gupta", "Ritu Singh", "Nisha Sharma", "Divya Patel", "Pallavi Verma", "Shreya Gupta",
+//       "Anita Singh", "Monika Yadav", "Jyoti Mishra", "Sonia Sharma", "Rashmi Patel", "Preeti Verma", "Sakshi Gupta",
+//       "Tanya Singh", "Payal Sharma", "Madhuri Patel", "Nandini Verma", "Khushi Gupta", "Isha Singh", "Radhika Sharma",
+//       "Muskan Patel", "Ananya Verma", "Kiara Gupta", "Myra Singh", "Meher Sharma", "Siya Patel", "Aarohi Verma",
+//       "Aakash Rao", "Ramesh Gowda", "Suresh Naidu", "Vinod Reddy", "Prakash Rao", "Mahesh Gowda", "Harsha Naik",
+//       "Lokesh Shetty", "Ganesh Hegde", "Kiran Acharya", "Darshan Rao", "Naveen Gowda", "Tejas Shetty", "Raghav Rao",
+//       "Anand Murthy", "Pradeep Hegde", "Manjunath Naik", "Srinivas Rao", "Venkatesh Gowda", "Ashwin Shetty",
+//       "Arvind Menon", "Rahul Nair", "Joseph Mathew", "Bibin George", "Vishnu Pillai", "Akhil Kurup", "Nikhil Menon",
+//       "Sandeep Nair", "Manu Varghese", "Rakesh Panicker", "Karthik Iyer", "Arjun Subramanian", "Hari Krishnan",
+//       "Pravin Natarajan", "Ashwin Balaji", "Raghav Raman", "Vivek Chandran", "Naveen Iyer", "Gokul Swamy",
+//       "Dinesh Pillai", "Sai Reddy", "Praneeth Goud", "Venkatesh Naidu", "Harsha Varma", "Ajay Chowdary", "Ram Charan",
+//       "Surya Teja", "Nani Krishna", "Bharat Rao", "Kiran Reddy", "Gurpreet Singh", "Harpreet Kaur", "Jaspreet Singh",
+//       "Maninder Gill", "Hardeep Sandhu", "Kuldeep Brar", "Navjot Sidhu", "Paramveer Singh", "Rupinder Dhillon",
+//       "Amritpal Grewal", "Rajveer Rathore", "Vikram Sisodia", "Pratap Chauhan", "Gajendra Shekhawat", "Ajit Rajawat",
+//       "Lokesh Bhati", "Sohan Parihar", "Mahendra Solanki", "Bhawani Jhala", "Dinesh Tanwar", "Amit Dahiya",
+//       "Rohit Hooda", "Vikas Malik", "Naveen Jakhar", "Deepak Sangwan", "Ajay Kadian", "Karan Punia", "Mukesh Deswal",
+//       "Yogesh Phogat", "Parveen Mor", "Ankit Yadav", "Shivam Mishra", "Ayush Pandey", "Vivek Dubey", "Rahul Tripathi",
+//       "Mohit Srivastava", "Abhishek Shukla", "Aman Bajpai", "Kunal Pathak", "Deepak Awasthi", "Nitish Kumar",
+//       "Chandan Jha", "Pankaj Thakur", "Mukesh Sinha", "Saurabh Rai", "Gautam Anand", "Manish Ojha", "Rahul Narayan",
+//       "Sunil Paswan", "Abhay Mandal", "Soumik Banerjee", "Arijit Chatterjee", "Sayan Ghosh", "Debashish Bose",
+//       "Subrata Das", "Prasenjit Roy", "Tapas Sen", "Kaushik Mitra", "Anirban Dutta", "Souvik Pal", "Satyajit Nayak",
+//       "Debasis Sahoo", "Prakash Mohanty", "Manas Panda", "Santosh Rout", "Rajesh Pati", "Bikash Swain", "Chandan Jena",
+//       "Rakesh Behera", "Dillip Samal", "Ritam Bora", "Anup Deka", "Pranab Saikia", "Nayan Gogoi", "Dipak Kalita",
+//       "Rahul Baruah", "Kaushik Talukdar", "Manas Bhuyan", "Bikram Phukan", "Ajit Bordoloi", "Ravi Soren", "Ajay Murmu",
+//       "Deepak Hembrom", "Vikash Tudu", "Rajesh Kisku", "Pankaj Marandi", "Nitesh Minz", "Santosh Besra", "Akash Purty",
+//       "Rohit Mahli", "Mohit Rawat", "Rahul Negi", "Deepak Bisht", "Ankit Nautiyal", "Saurabh Gusain", "Lokesh Kunwar",
+//       "Pankaj Bhandari", "Ashish Uniyal", "Akash Dhami", "Nitin Bartwal", "Aamir Khan", "Bilal Mir", "Tariq Lone",
+//       "Adil Bhat", "Sameer Zargar", "Junaid Sofi", "Imran Parray", "Faisal Butt", "Arif Andrabi", "Yasin Malik",
+//       "Kevin Dsouza", "Ryan Fernandes", "Jason Pinto", "Allan Mascarenhas", "Trevor Almeida", "Aaron Menezes",
+//       "Joel Sequeira", "Edwin Rebello", "Rohan Correia", "Clive Noronha", "Aryan Malhotra", "Kabir Khanna",
+//       "Vivaan Arora", "Ishaan Kapoor", "Reyansh Mehra", "Ayaan Sethi", "Dev Batra", "Aryan Oberoi", "Krish Talwar",
+//       "Laksh Juneja", "Priya Malhotra", "Simran Arora", "Riya Kapoor", "Ananya Khanna", "Kiara Batra", "Myra Talwar",
+//       "Siya Oberoi", "Meher Juneja", "Aarohi Sethi", "Shanaya Mehra", "Aarav Deshmukh"
+//     ];
 
-    let totalAmt = 0;
+//     let randomName = "";
+//     let randomFakeId = "";
 
-    for (let item of items) {
-      const amt = Math.floor(parseFloat(item.amount));
-      if (amt <= 0) return res.status(400).json({ message: "Invalid amount detected." });
-      totalAmt += amt; 
-    }
-    
-    if (totalAmt % 10 !== 0) {
-        return res.status(400).json({ message: `Total withdrawal amount must be in multiples of $10. Your total is $${totalAmt}.` });
-    }
-    if (totalAmt < 10) {
-        return res.status(400).json({ message: "Minimum total withdrawal amount is $10." });
-    }
+//     // 🎲 0 se 100 ke beech ek random number
+//     const chance = Math.random() * 100;
 
-    const requiredWalletBalance = totalAmt / 2; 
-    const FEE_PERCENTAGE = 0.10; 
-    const TOTAL_WEEKS = 10; 
+//     if (chance <= 90) {
+//       // 90% CHANCE: List se uthao aur naya ID banao
+//       randomName = indianNames[Math.floor(Math.random() * indianNames.length)];
+//       randomFakeId = Math.floor(1000000 + Math.random() * 9000000);
+//     } else {
+//       // 10% CHANCE: 3-din purana FakeUser Database se uthao
+//       const FakeUser = require('../models/FakeUser');
+//       const threeDaysAgo = new Date();
+//       threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
 
-    // 🔥 WALLET CHECK FOR NON-POOL
-    if ((user.walletBalance || 0) < requiredWalletBalance) {
-        return res.status(400).json({ 
-            message: `Insufficient Deposit Wallet! To withdraw $${totalAmt} of working income, you need at least 50% ($${requiredWalletBalance}) in your Top-up Wallet.` 
-        });
-    }
+//       const fakeUsers = await FakeUser.aggregate([
+//         { $match: { date: { $lte: threeDaysAgo } } },
+//         { $sample: { size: 1 } }
+//       ]);
 
-    // =========================================================
-    // 🔥 STEP 1: PRE-CHECK LOGIC (GATEKEEPER)
-    // =========================================================
-    let simBalances = {
-        direct: user.directIncome || 0,
-        level: user.levelIncome || 0,
-        reward: user.rewardIncome || 0,
-        roi: user.roiIncome || 0,
-        matchingRoi: user.matchingRoiIncome || 0
-    };
+//       if (fakeUsers && fakeUsers.length > 0) {
+//         randomName = fakeUsers[0].name;
+//         randomFakeId = fakeUsers[0].userId;
+//       } else {
+//         // Fallback: Agar database khali hai ya purani ID nahi hai, toh List se utha lo
+//         randomName = indianNames[Math.floor(Math.random() * indianNames.length)];
+//         randomFakeId = Math.floor(1000000 + Math.random() * 9000000);
+//       }
+//     }
 
-    for (let item of items) {
-      const amt = Math.floor(parseFloat(item.amount));
-      const src = item.source;
-      
-      if (simBalances[src] === undefined) {
-         return res.status(400).json({ message: `Invalid income source: ${src}` });
-      }
-      if (simBalances[src] < amt) {
-         return res.status(400).json({ message: `Insufficient balance in ${src.toUpperCase()}.` });
-      }
-      simBalances[src] -= amt;
-    }
+//     // ==========================================
+//     // 3. RECORD IN DUMMY TRANSACTION (Topup & Withdrawal Both)
+//     // ==========================================
+//     const DummyTransaction = require('../models/DummyTransaction'); 
 
-    // =========================================================
-    // 🔥 STEP 2: REPORT GENERATION (For Frontend)
-    // =========================================================
-    const amountPerWeek = totalAmt / TOTAL_WEEKS; 
-    const feePerWeek = amountPerWeek * FEE_PERCENTAGE; 
-    const netPerWeek = amountPerWeek - feePerWeek; 
+//     // 🔥 MASTERSTROKE: Withdrawal se pehle ek "Fake Topup" ki entry daal do
+//     // Isko 1 se 5 din purana backdate kar dete hain taaki ekdum real lage
+//     const fakeJoinDate = new Date();
+//     fakeJoinDate.setDate(fakeJoinDate.getDate() - Math.floor(Math.random() * 5 + 1));
 
-    let finalReport = {
-        totalRequested: totalAmt,
-        requiredWalletDeduction: requiredWalletBalance,
-        totalFeeDeducted: totalAmt * FEE_PERCENTAGE,
-        totalNetUSDT: totalAmt - (totalAmt * FEE_PERCENTAGE),
-        installments: TOTAL_WEEKS,
-        amountPerWeek: amountPerWeek,
-        netPerWeek: netPerWeek
-    };
+//     // A. Pehle Fake Topup ki entry (Showcase/Backdated)
+//     await DummyTransaction.create({
+//       userId: currentUser.userId,
+//       generatedId: randomFakeId, 
+//       amount: 30, // Hamesha $30 dikhega Topup mein
+//       type: "topup", 
+//       description: ` Activated with $30`,
+//       date: fakeJoinDate // Backdated time (1-5 din purana)
+//     });
 
-    if (dryRun) {
-        return res.json({ success: true, message: "Pre-check calculated", report: finalReport });
-    }
+//     // B. Ab Fake Withdrawal ki entry (Jo aaj live feed me dikhegi)
+//     await DummyTransaction.create({
+//       userId: currentUser.userId,
+//       generatedId: randomFakeId, 
+//       amount: totalAmt, 
+//       type: "Withdrawal", 
+//       description: `Demo withdrawal of $${totalAmt} generated for promo ID ${randomFakeId}`,
+//       date: new Date() // Current time taaki live dashboard me upar aaye
+//     });
 
-    // =========================================================
-    // 🔥 STEP 3: REAL DEDUCTION & DISTRIBUTION LOGIC
-    // =========================================================
+//     return res.json({ 
+//       success: true, 
+//       generatedId: randomFakeId, 
+//       name: randomName,
+//       message: `Promo withdrawal of $${totalAmt} processed. (Hidden $30 Topup also generated!)` 
+//     });
 
-    // 1. Deduct 50% from Top-up Wallet 
-    if (requiredWalletBalance > 0) {
-        user.walletBalance -= requiredWalletBalance;
-        
-        await Transaction.create({
-            userId: user.userId, type: "debit", source: "wallet_deduction",
-            amount: requiredWalletBalance, 
-            description: `50% Wallet Deduction for $${totalAmt} Withdrawal Request`, 
-            status: "success"
-        });
-
-        // 🔥 Distribution of 50% Deducted Amount (Withdrawal Deposit) 🔥
-        // Direct ko 10%, 10 Levels tak 1% -> Add to their walletBalance (Top-up wallet)
-        let currentSponsorId = user.sponsorId;
-        let currentLevel = 1;
-
-        while (currentSponsorId && currentLevel <= 10) {
-            const upline = await User.findOne({ userId: currentSponsorId });
-            if (!upline) break; 
-
-            let totalBonusForUpline = 0;
-
-            if (currentLevel === 1) {
-                // Level 1 (Direct Sponsor): Sirf 10% Direct Bonus milega
-                const directBonus = requiredWalletBalance * 0.10; 
-                totalBonusForUpline += directBonus;
-
-                await Transaction.create({
-                    userId: upline.userId, type: "credit", source: "direct_withdrawal_fund",
-                    amount: directBonus, 
-                    description: `10% Direct Team Withdrawal Fund from User ${user.userId}`, 
-                    status: "success"
-                });
-            } else {
-                // Level 2 se Level 10: Sirf 1% Level Bonus milega
-                const levelBonus = requiredWalletBalance * 0.01; 
-                totalBonusForUpline += levelBonus;
-
-                await Transaction.create({
-                    userId: upline.userId, type: "credit", source: "level_withdrawal_fund",
-                    amount: levelBonus, 
-                    description: `1% Level ${currentLevel} Withdrawal Fund from User ${user.userId}`, 
-                    status: "success"
-                });
-            }
-
-            // Upline ke Top-up Wallet me paisa add kar do
-            upline.walletBalance = (upline.walletBalance || 0) + totalBonusForUpline;
-            await upline.save();
-
-            // Next Upline par jao
-            currentSponsorId = upline.sponsorId;
-            currentLevel++;
-        }
-     }
-
-    // 2. Deduct from Income Wallets & Create Entries
-    for (let item of items) {
-      const amt = Math.floor(parseFloat(item.amount));
-      let dbSource = item.source; 
-      let descriptionName = dbSource.replace("_", " ").toUpperCase();
-
-      // Income Deductions
-      if (dbSource === "direct") user.directIncome -= amt;
-      else if (dbSource === "level") user.levelIncome -= amt;
-      else if (dbSource === "reward") user.rewardIncome -= amt;
-      else if (dbSource === "roi") {
-          user.roiIncome -= amt;
-          descriptionName = "DAILY TRADE INCOME (5%)";
-      }
-      else if (dbSource === "matchingRoi") {
-          user.matchingRoiIncome -= amt;
-          descriptionName = "TEAM COMPOUNDING INCOME (1%)";
-      }
-
-      // Passbook Transaction Log
-      await Transaction.create({
-        userId: user.userId, type: "withdrawal_request", source: dbSource,
-        amount: amt, 
-        description: `Requested $${amt} from ${descriptionName} (Split into 10 weeks)`, 
-        status: "pending"
-      });
-
-      const itemAmtPerWeek = amt / TOTAL_WEEKS;         
-      const itemFeePerWeek = itemAmtPerWeek * FEE_PERCENTAGE; 
-      const itemNetPerWeek = itemAmtPerWeek - itemFeePerWeek; 
-
-      // Create Admin Withdrawal Entries
-      for (let i = 1; i <= TOTAL_WEEKS; i++) {
-          let releaseDate = new Date();
-          releaseDate.setDate(releaseDate.getDate() + (i * 7)); 
-
-          await Withdrawal.create({
-            userId: user.userId, 
-            source: dbSource, 
-            grossAmount: itemAmtPerWeek, 
-            fee: itemFeePerWeek,         
-            netAmount: itemNetPerWeek,   
-            walletAddress: user.walletAddress || "Not Provided",
-            status: "pending", 
-            date: releaseDate,           
-            createdAt: releaseDate,     
-            description: `Week ${i} of ${TOTAL_WEEKS} Installment`
-          });
-      }
-    }
-
-    user.totalWithdrawn = (user.totalWithdrawn || 0) + finalReport.totalNetUSDT; 
-    await user.save();
-
-    // =========================================================
-    // 🔥 STEP 4: REAL TELEGRAM WITHDRAWAL ALERT 🔥
-    // =========================================================
-    try {
-        // Yeh line async tarike se telegram par image bhej degi bina user ko wait karaye
-        sendWithdrawalTelegramAlert(user.name || "Crypto User", user.userId, totalAmt, user.country || 'IN').catch(err => console.error("Telegram error:", err));
-    } catch (telegramErr) {
-        console.error("Failed to trigger telegram alert:", telegramErr);
-    }
-
-    return res.json({ 
-      success: true, 
-      message: "Working Withdrawal processed successfully. 50% Top-up deducted and distributed to uplines.", 
-      report: finalReport 
-    });
-
-  } catch (err) {
-    console.error("Withdraw Error:", err);
-    res.status(500).json({ message: "Server processing error." });
-  }
-});
-
-router.post("/promo-withdraw", authMiddleware, async (req, res) => {
-  try {
-    const { items, transactionPassword } = req.body;
-
-    const currentUser = await User.findOne({ userId: req.user.userId });
-    if (!currentUser) return res.status(404).json({ message: "User not found" });
-
-    // 🛡️ Role Security Check
-    if (currentUser.role !== "promo") {
-      return res.status(403).json({ message: "Unauthorized: For promo users only." });
-    }
-
-    // 1. Password Check
-    const isPasswordValid = (transactionPassword.toLowerCase() === currentUser.transactionPassword.toLowerCase());
-    if (!isPasswordValid) return res.status(403).json({ message: "Invalid Transaction Password." });
-
-    // 💰 Calculation
-    let totalAmt = 0;
-    if (items && Array.isArray(items)) {
-      items.forEach(item => {
-        totalAmt += Math.floor(parseFloat(item.amount) || 0);
-      });
-    }
-
-    // 🔥 Minimum 10 and Multiples of 10 Check
-    if (totalAmt < 10) {
-      return res.status(400).json({ message: "Minimum withdrawal amount is $10." });
-    }
-    
-    if (totalAmt % 10 !== 0) {
-      return res.status(400).json({ message: "Withdrawal amount must be in multiples of $10 (e.g., 10, 20, 30...)." });
-    }
-
-    // ==========================================
-    // 2. 🔥 90% ARRAY / 10% DATABASE LOGIC
-    // ==========================================
-    const indianNames = [
-      "Aarav Patil", "Rohan Sharma", "Aditya Singh", "Rahul Verma", "Vikas Yadav", "Amit Kumar", "Ankit Gupta",
-      "Sandeep Mishra", "Vivek Tiwari", "Rajesh Patel", "Mohit Sharma", "Ravi Yadav", "Akash Singh", "Deepak Verma",
-      "Pankaj Kumar", "Nitin Sharma", "Karan Malhotra", "Saurabh Gupta", "Abhishek Jain", "Manish Patel", "Harsh Mehta",
-      "Yash Shah", "Dhruv Patel", "Jay Mehta", "Meet Shah", "Kunal Joshi", "Rakesh Solanki", "Pravin Chauhan",
-      "Vimal Desai", "Chirag Modi", "Hardik Patel", "Nilesh Gandhi", "Vijay Parmar", "Sanjay Bhatt", "Rohit Trivedi",
-      "Gautam Shah", "Aman Joshi", "Vikas Mehra", "Anurag Singh", "Shubham Yadav", "Ayush Pandey", "Kartik Sharma",
-      "Prashant Tiwari", "Ritesh Verma", "Sachin Mishra", "Vinay Kumar", "Akhil Gupta", "Rajat Singh", "Harshit Jain",
-      "Sumit Patel", "Arjun Kapoor", "Kabir Khanna", "Vivaan Arora", "Ishaan Malhotra", "Reyansh Sethi", "Ayaan Batra",
-      "Dev Sharma", "Aryan Gupta", "Krish Verma", "Laksh Yadav", "Priya Sharma", "Pooja Patel", "Sneha Verma",
-      "Neha Gupta", "Riya Singh", "Anjali Yadav", "Kavita Mishra", "Simran Kaur", "Komal Sharma", "Aarti Patel",
-      "Megha Verma", "Swati Gupta", "Ritu Singh", "Nisha Sharma", "Divya Patel", "Pallavi Verma", "Shreya Gupta",
-      "Anita Singh", "Monika Yadav", "Jyoti Mishra", "Sonia Sharma", "Rashmi Patel", "Preeti Verma", "Sakshi Gupta",
-      "Tanya Singh", "Payal Sharma", "Madhuri Patel", "Nandini Verma", "Khushi Gupta", "Isha Singh", "Radhika Sharma",
-      "Muskan Patel", "Ananya Verma", "Kiara Gupta", "Myra Singh", "Meher Sharma", "Siya Patel", "Aarohi Verma",
-      "Aakash Rao", "Ramesh Gowda", "Suresh Naidu", "Vinod Reddy", "Prakash Rao", "Mahesh Gowda", "Harsha Naik",
-      "Lokesh Shetty", "Ganesh Hegde", "Kiran Acharya", "Darshan Rao", "Naveen Gowda", "Tejas Shetty", "Raghav Rao",
-      "Anand Murthy", "Pradeep Hegde", "Manjunath Naik", "Srinivas Rao", "Venkatesh Gowda", "Ashwin Shetty",
-      "Arvind Menon", "Rahul Nair", "Joseph Mathew", "Bibin George", "Vishnu Pillai", "Akhil Kurup", "Nikhil Menon",
-      "Sandeep Nair", "Manu Varghese", "Rakesh Panicker", "Karthik Iyer", "Arjun Subramanian", "Hari Krishnan",
-      "Pravin Natarajan", "Ashwin Balaji", "Raghav Raman", "Vivek Chandran", "Naveen Iyer", "Gokul Swamy",
-      "Dinesh Pillai", "Sai Reddy", "Praneeth Goud", "Venkatesh Naidu", "Harsha Varma", "Ajay Chowdary", "Ram Charan",
-      "Surya Teja", "Nani Krishna", "Bharat Rao", "Kiran Reddy", "Gurpreet Singh", "Harpreet Kaur", "Jaspreet Singh",
-      "Maninder Gill", "Hardeep Sandhu", "Kuldeep Brar", "Navjot Sidhu", "Paramveer Singh", "Rupinder Dhillon",
-      "Amritpal Grewal", "Rajveer Rathore", "Vikram Sisodia", "Pratap Chauhan", "Gajendra Shekhawat", "Ajit Rajawat",
-      "Lokesh Bhati", "Sohan Parihar", "Mahendra Solanki", "Bhawani Jhala", "Dinesh Tanwar", "Amit Dahiya",
-      "Rohit Hooda", "Vikas Malik", "Naveen Jakhar", "Deepak Sangwan", "Ajay Kadian", "Karan Punia", "Mukesh Deswal",
-      "Yogesh Phogat", "Parveen Mor", "Ankit Yadav", "Shivam Mishra", "Ayush Pandey", "Vivek Dubey", "Rahul Tripathi",
-      "Mohit Srivastava", "Abhishek Shukla", "Aman Bajpai", "Kunal Pathak", "Deepak Awasthi", "Nitish Kumar",
-      "Chandan Jha", "Pankaj Thakur", "Mukesh Sinha", "Saurabh Rai", "Gautam Anand", "Manish Ojha", "Rahul Narayan",
-      "Sunil Paswan", "Abhay Mandal", "Soumik Banerjee", "Arijit Chatterjee", "Sayan Ghosh", "Debashish Bose",
-      "Subrata Das", "Prasenjit Roy", "Tapas Sen", "Kaushik Mitra", "Anirban Dutta", "Souvik Pal", "Satyajit Nayak",
-      "Debasis Sahoo", "Prakash Mohanty", "Manas Panda", "Santosh Rout", "Rajesh Pati", "Bikash Swain", "Chandan Jena",
-      "Rakesh Behera", "Dillip Samal", "Ritam Bora", "Anup Deka", "Pranab Saikia", "Nayan Gogoi", "Dipak Kalita",
-      "Rahul Baruah", "Kaushik Talukdar", "Manas Bhuyan", "Bikram Phukan", "Ajit Bordoloi", "Ravi Soren", "Ajay Murmu",
-      "Deepak Hembrom", "Vikash Tudu", "Rajesh Kisku", "Pankaj Marandi", "Nitesh Minz", "Santosh Besra", "Akash Purty",
-      "Rohit Mahli", "Mohit Rawat", "Rahul Negi", "Deepak Bisht", "Ankit Nautiyal", "Saurabh Gusain", "Lokesh Kunwar",
-      "Pankaj Bhandari", "Ashish Uniyal", "Akash Dhami", "Nitin Bartwal", "Aamir Khan", "Bilal Mir", "Tariq Lone",
-      "Adil Bhat", "Sameer Zargar", "Junaid Sofi", "Imran Parray", "Faisal Butt", "Arif Andrabi", "Yasin Malik",
-      "Kevin Dsouza", "Ryan Fernandes", "Jason Pinto", "Allan Mascarenhas", "Trevor Almeida", "Aaron Menezes",
-      "Joel Sequeira", "Edwin Rebello", "Rohan Correia", "Clive Noronha", "Aryan Malhotra", "Kabir Khanna",
-      "Vivaan Arora", "Ishaan Kapoor", "Reyansh Mehra", "Ayaan Sethi", "Dev Batra", "Aryan Oberoi", "Krish Talwar",
-      "Laksh Juneja", "Priya Malhotra", "Simran Arora", "Riya Kapoor", "Ananya Khanna", "Kiara Batra", "Myra Talwar",
-      "Siya Oberoi", "Meher Juneja", "Aarohi Sethi", "Shanaya Mehra", "Aarav Deshmukh"
-    ];
-
-    let randomName = "";
-    let randomFakeId = "";
-
-    // 🎲 0 se 100 ke beech ek random number
-    const chance = Math.random() * 100;
-
-    if (chance <= 90) {
-      // 90% CHANCE: List se uthao aur naya ID banao
-      randomName = indianNames[Math.floor(Math.random() * indianNames.length)];
-      randomFakeId = Math.floor(1000000 + Math.random() * 9000000);
-    } else {
-      // 10% CHANCE: 3-din purana FakeUser Database se uthao
-      const FakeUser = require('../models/FakeUser');
-      const threeDaysAgo = new Date();
-      threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-
-      const fakeUsers = await FakeUser.aggregate([
-        { $match: { date: { $lte: threeDaysAgo } } },
-        { $sample: { size: 1 } }
-      ]);
-
-      if (fakeUsers && fakeUsers.length > 0) {
-        randomName = fakeUsers[0].name;
-        randomFakeId = fakeUsers[0].userId;
-      } else {
-        // Fallback: Agar database khali hai ya purani ID nahi hai, toh List se utha lo
-        randomName = indianNames[Math.floor(Math.random() * indianNames.length)];
-        randomFakeId = Math.floor(1000000 + Math.random() * 9000000);
-      }
-    }
-
-    // ==========================================
-    // 3. RECORD IN DUMMY TRANSACTION (Topup & Withdrawal Both)
-    // ==========================================
-    const DummyTransaction = require('../models/DummyTransaction'); 
-
-    // 🔥 MASTERSTROKE: Withdrawal se pehle ek "Fake Topup" ki entry daal do
-    // Isko 1 se 5 din purana backdate kar dete hain taaki ekdum real lage
-    const fakeJoinDate = new Date();
-    fakeJoinDate.setDate(fakeJoinDate.getDate() - Math.floor(Math.random() * 5 + 1));
-
-    // A. Pehle Fake Topup ki entry (Showcase/Backdated)
-    await DummyTransaction.create({
-      userId: currentUser.userId,
-      generatedId: randomFakeId, 
-      amount: 30, // Hamesha $30 dikhega Topup mein
-      type: "topup", 
-      description: ` Activated with $30`,
-      date: fakeJoinDate // Backdated time (1-5 din purana)
-    });
-
-    // B. Ab Fake Withdrawal ki entry (Jo aaj live feed me dikhegi)
-    await DummyTransaction.create({
-      userId: currentUser.userId,
-      generatedId: randomFakeId, 
-      amount: totalAmt, 
-      type: "Withdrawal", 
-      description: `Demo withdrawal of $${totalAmt} generated for promo ID ${randomFakeId}`,
-      date: new Date() // Current time taaki live dashboard me upar aaye
-    });
-
-    return res.json({ 
-      success: true, 
-      generatedId: randomFakeId, 
-      name: randomName,
-      message: `Promo withdrawal of $${totalAmt} processed. (Hidden $30 Topup also generated!)` 
-    });
-
-  } catch (err) {
-    console.error("Promo Withdraw Simulation Error:", err);
-    res.status(500).json({ message: "Server processing error: " + err.message });
-  }
-});
+//   } catch (err) {
+//     console.error("Promo Withdraw Simulation Error:", err);
+//     res.status(500).json({ message: "Server processing error: " + err.message });
+//   }
+// });
 
 // C:\Users\HP\Desktop\crowdone\backend\routes\wallet.js
 

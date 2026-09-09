@@ -4,25 +4,21 @@ const withdrawalSchema = new mongoose.Schema({
   userId: { type: Number, required: true },
   name: { type: String, default: "-" },
 
-  // 🔥 UPDATE: Enum hata diya taaki dynamic sources (pool_1, pool_2) save ho sakein
+  // Source jahan se paisa nikala gaya (Jaise: "Direct, Level, ROI")
   source: {
     type: String,
     required: true
   },
 
-  // ✅ NAYA FIELD: 12-Level Pool Plan ke liye
-  poolLevel: { 
-    type: Number, 
-    default: 0 
-  },
-
+  // Amounts
   grossAmount: { type: Number, required: true },
   fee: { type: Number, default: 0 },
   netAmount: { type: Number, default: 0 },
-
-  walletUsed: { type: Number, default: 0 },
+  
+  // Kitna working income use hua
   incomeUsed: { type: Number, default: 0 },
 
+  // Payment Details
   walletAddress: { type: String, default: "" },
   txnHash: { type: String, default: "" },
 
@@ -32,24 +28,12 @@ const withdrawalSchema = new mongoose.Schema({
     default: "pending" 
   },
 
-  remarks: { type: String, default: "" },
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now },
-
-  schedule: [
-    {
-      day: String,
-      date: String,
-      percent: Number,
-      grossAmount: { type: Number, default: 0 },
-      fee: { type: Number, default: 0 },
-      netAmount: { type: Number, default: 0 },
-      walletUsed: { type: Number, default: 0 },
-      incomeUsed: { type: Number, default: 0 },
-      status: { type: String, default: "pending" },
-      walletAddress: { type: String, default: "" }
-    }
-  ]
+  remarks: { type: String, default: "" }
+  
+}, {
+  // 🔥 Mongoose ka Smart Feature: Ye auto handle karega createdAt & updatedAt!
+  // Isse 'next is not a function' wala error hamesha ke liye khatam.
+  timestamps: true 
 });
 
 module.exports = mongoose.model("Withdrawal", withdrawalSchema);

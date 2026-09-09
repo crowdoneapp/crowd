@@ -556,60 +556,7 @@ router.get('/all-team/:userId', async (req, res) => {
 // ========================================================
 // 🚀 PROMOTE DIRECT TO SETUP (Only for 'super_setup' Role)
 // ========================================================
-router.put('/promote-to-setup/:targetUserId', authMiddleware, async (req, res) => {
-    try {
-        // 1. Check if current user is super_setup
-        const currentUser = await User.findOne({ userId: req.user.userId });
-        if (!currentUser || currentUser.role !== 'super_setup') {
-            return res.status(403).json({ success: false, message: "Access Denied. Only Super Setup accounts can perform this action." });
-        }
-
-        const targetUserId = Number(req.params.targetUserId);
-        const targetUser = await User.findOne({ userId: targetUserId });
-
-        if (!targetUser) {
-            return res.status(404).json({ success: false, message: "Target user not found." });
-        }
-
-        // 2. Must be a direct referral
-        if (targetUser.sponsorId !== currentUser.userId) {
-            return res.status(400).json({ success: false, message: "You can only promote your DIRECT referrals." });
-        }
-
-        // 3. Prevent Double Promotion (Undo nahi ho sakta)
-        if (targetUser.role === 'setup') {
-            return res.status(400).json({ success: false, message: "This user is already a Setup account." });
-        }
-
-        // 4. Check 100 Limit
-        const setupCount = await User.countDocuments({ sponsorId: currentUser.userId, role: 'setup' });
-        if (setupCount >= 100) {
-            return res.status(400).json({ success: false, message: "Limit Reached! You can only promote a maximum of 100 direct referrals to Setup." });
-        }
-
-        // 5. Promote & Give $30 Bonus
-        targetUser.role = 'setup';
-        targetUser.walletBalance = (targetUser.walletBalance || 0) + 30; // $30 Wallet Bonus
-        await targetUser.save();
-
-        // 6. Transaction Record for the $30
-        const Transaction = require('../models/Transaction');
-        await Transaction.create({
-            userId: targetUser.userId,
-            type: 'credit_to_wallet',
-            source: 'setup_promotion_bonus',
-            amount: 30,
-            description: 'Setup Promotion Bonus (From Super Setup)',
-            status: 'success',
-            date: new Date()
-        });
-
-        res.json({ success: true, message: `Success!` });
-    } catch (error) {
-        console.error("Promote to setup error:", error);
-        res.status(500).json({ success: false, message: "Server error during promotion process." });
-    }
-});
+ 
 
 
 
@@ -641,30 +588,7 @@ router.get('/wallet-history/:userId', async (req, res) => {
 // GET USER POOL STATUS
 // GET USER POOL STATUS (Formatted for Frontend)
 // GET USER POOL STATUS
-router.get('/pool-status/:userId', async (req, res) => {
-  try {
-    const user = await User.findOne({ userId: req.params.userId }).select('activePools').lean();
-    if (!user) return res.status(404).json({ message: "User not found" });
-    
-    // 🔥 Sirf wahi pools dikhayenge jo sach me ACTIVE hain aur jinka paisa milna chalu ho gaya hai
-    const formattedPools = (user.activePools || [])
-      .filter(pool => pool.status === 'ACTIVE' || Number(pool.daysPaid) > 0) 
-      .map((pool, index) => {
-        return {
-          level: pool.level || (index + 1),
-          status: (pool.status || 'ACTIVE').toUpperCase(),
-          daysPaid: Number(pool.daysPaid) || 0,
-          totalDays: Number(pool.totalDays) || 100,
-          dailyAmount: Number(pool.dailyAmount) || 0
-        };
-      });
-
-    res.json({ success: true, activePools: formattedPools });
-  } catch (error) {
-    console.error("Pool Status Error:", error);
-    res.status(500).json({ message: "Server Error" });
-  }
-});
+ 
 
 // ✅ PROMO USER DEDICATED ROUTE
 
@@ -674,11 +598,176 @@ router.get('/pool-status/:userId', async (req, res) => {
 
 
 
+
+
 // C:\Users\HP\Desktop\crowdone\backend\routes\user.js (Ya jahan aapki user APIs hain)
 // C:\Users\HP\Desktop\crowdone\backend\routes\user.js
 
- 
- 
+ const PackageActivation = require('../models/PackageActivation');
+
+
+
+ router.get("/packages/:userId", authMiddleware, async (req, res) => {
+    try {
+        const userId = Number(req.params.userId);
+        
+        // User ke saare packages fetch karo (Active aur Completed)
+        const packages = await PackageActivation.find({ userId }).sort({ createdAt: -1 });
+
+        res.status(200).json({
+            success: true,
+            data: packages
+        });
+    } catch (error) {
+        console.error("Fetch Packages Error:", error);
+        res.status(500).json({ success: false, message: "Server error while fetching packages." });
+    }
+});
+
+router.post('/activate-package', authMiddleware, async (req, res) => {
+    try {
+        const { memberId, packageAmount, txnPassword } = req.body;
+        const buyerId = req.user.userId; // Secure: Hamesha token se buyer ka ID nikalega
+        const amount = Number(packageAmount);
+
+        if (!amount || isNaN(amount) || amount <= 0) {
+            return res.status(400).json({ success: false, message: 'Invalid Package Amount.' });
+        }
+
+        const currentUser = await User.findOne({ userId: String(buyerId) });
+        if (!currentUser) return res.status(404).json({ success: false, message: "Buyer user not found" });
+
+        const targetUser = await User.findOne({ userId: String(memberId) });
+        if (!targetUser) return res.status(404).json({ success: false, message: "Target Member ID not found" });
+
+        // 🔥 24 Hours Limitation Check
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const recentPackage = await PackageActivation.findOne({
+            userId: targetUser.userId,
+            startDate: { $gte: twentyFourHoursAgo }
+        });
+
+        if (recentPackage) {
+            return res.status(400).json({ success: false, message: "This user has already activated a package in the last 24 hours." });
+        }
+
+        // 🔐 Password Verify
+        if (!txnPassword || !currentUser.transactionPassword || txnPassword.toLowerCase() !== currentUser.transactionPassword.toLowerCase()) {
+            return res.status(400).json({ success: false, message: "Invalid Transaction Password!" });
+        }
+
+        // Fund Check & Deduct
+        if ((currentUser.walletBalance || 0) < amount) {
+            return res.status(400).json({ success: false, message: "Insufficient Fund Amount ($)!" });
+        }
+        
+        currentUser.walletBalance -= amount;
+        await currentUser.save();
+
+        // Package Activation
+        const activeDays = 30; 
+        const startDate = new Date();
+        const endDate = new Date();
+        endDate.setDate(startDate.getDate() + activeDays);
+        const dailyRoi = amount * 0.04; // 5% daily
+
+        const newPackage = await PackageActivation.create({
+            userId: targetUser.userId,         
+            memberId: targetUser.userId,       
+            purchasedBy: currentUser.userId,
+            packageAmount: amount,             
+            dailyRoi: dailyRoi,
+            totalDays: activeDays,
+            daysCompleted: 0,
+            startDate: startDate,
+            endDate: endDate,
+            status: 'active'
+        });
+
+        // Update Target User
+        let isFirstTopup = !targetUser.isToppedUp;
+        targetUser.packages = targetUser.packages || [];
+        targetUser.packages.push({ plan: "Investment Package", amount: amount, startDate: new Date(), withdrawn: 0 });
+        
+        targetUser.topUpAmount = Math.max(targetUser.topUpAmount || 0, amount);
+        targetUser.updatedAt = new Date(); 
+        if (isFirstTopup) {
+            targetUser.isToppedUp = true;
+            targetUser.topUpDate = new Date();
+        }
+        await targetUser.save();
+
+        // Transaction record for buyer
+        await Transaction.create({
+            userId: currentUser.userId, type: "package_activation", amount: amount,
+            fromUserId: currentUser.userId, toUserId: targetUser.userId,
+            description: `Activated $${amount} Package for ${targetUser.userId}`, status: 'success', date: new Date()
+        });
+
+        res.status(200).json({ success: true, message: `Package of $${amount} activated successfully for ${targetUser.userId}!` });
+
+        // =======================================================
+        // 🔹 BACKGROUND MLM ENGINE (Income Distribution)
+        // =======================================================
+        (async () => {
+            try {
+                // 1. SPONSOR DIRECT INCOME (10%) - Minimum $2 Check
+                if (targetUser.sponsorId) {
+                    const sponsor = await User.findOne({ userId: targetUser.sponsorId });
+                    if (sponsor && sponsor.isToppedUp && (sponsor.topUpAmount >= 2)) {
+                        sponsor.directCount = (sponsor.directCount || 0) + 1;
+                        const directBonusAmount = (amount * 10) / 100; 
+
+                        sponsor.directIncome = (sponsor.directIncome || 0) + directBonusAmount;
+                        sponsor.totalDirectIncome = (sponsor.totalDirectIncome || 0) + directBonusAmount;
+                        
+                        await Transaction.create({
+                            userId: sponsor.userId, type: "direct_income", source: "direct", amount: directBonusAmount, 
+                            package: amount, fromUserId: targetUser.userId, description: `Direct Bonus (10%) from ${targetUser.userId}'s Package`, status: 'success', date: new Date()
+                        });
+                        await sponsor.save();
+                    }
+                }
+
+                // 2. LEVEL INCOME (Level 2 to 12 -> 0.25%)
+                const LEVEL_PERCENTAGES = [0, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25]; 
+                let currentUplineId = targetUser.sponsorId; 
+                let currentLevel = 1; 
+
+                while (currentUplineId && currentLevel <= 12) {
+                    const upline = await User.findOne({ userId: currentUplineId }).select('userId isToppedUp topUpAmount sponsorId _id');
+                    if (!upline) break;
+
+                    if (!upline.isToppedUp || (upline.topUpAmount || 0) < 2) {
+                        currentUplineId = upline.sponsorId;
+                        currentLevel++;
+                        continue; 
+                    }
+
+                    if (currentLevel >= 2 && currentLevel <= 12) {
+                        const percentage = LEVEL_PERCENTAGES[currentLevel - 1]; 
+                        const levelAmount = (amount * percentage) / 100;
+
+                        if (levelAmount > 0) {
+                            await User.updateOne({ _id: upline._id }, { $inc: { levelIncome: levelAmount, totalLevelIncome: levelAmount } });
+                            await Transaction.create({
+                                userId: upline.userId, type: "level_income", source: "level", amount: levelAmount,
+                                package: amount, fromUserId: targetUser.userId, description: `Level ${currentLevel} Income (${percentage}%) from Package`, status: 'success', date: new Date()
+                            });
+                        }
+                    }
+                    currentUplineId = upline.sponsorId;
+                    currentLevel++;
+                }
+            } catch (bgError) {
+                console.error("Background MLM Error:", bgError);
+            }
+        })();
+    } catch (error) {
+        console.error("Package Activation Error:", error);
+        res.status(500).json({ success: false, message: "Server Error during activation" });
+    }
+});
  
 
  // ========================================================
@@ -807,111 +896,111 @@ router.get('/pool-status/:userId', async (req, res) => {
 //     }
 // });
 
-router.put('/topup-free-100/:userId', authMiddleware, async (req, res) => {
-    try {
-        const targetUserId = Number(req.params.userId);
-        const { transactionPassword } = req.body;
-        const amount = 100; // Fix $100 Package
-        const dailyRoi = 5; // 5% ROI ($5)
-        const directIncomeAmount = amount * 0.50; // 🔥 50% Direct Income ($50)
+// router.put('/topup-free-100/:userId', authMiddleware, async (req, res) => {
+//     try {
+//         const targetUserId = Number(req.params.userId);
+//         const { transactionPassword } = req.body;
+//         const amount = 100; // Fix $100 Package
+//         const dailyRoi = 5; // 5% ROI ($5)
+//         const directIncomeAmount = amount * 0.50; // 🔥 50% Direct Income ($50)
 
-        const currentUser = await User.findOne({ userId: req.user.userId }).lean();
-        if (!currentUser) return res.status(404).json({ message: "Current user not found" });
+//         const currentUser = await User.findOne({ userId: req.user.userId }).lean();
+//         if (!currentUser) return res.status(404).json({ message: "Current user not found" });
 
-        // 🔥 TRANSACTION PASSWORD CHECK
-        if (!transactionPassword || transactionPassword.toLowerCase() !== currentUser.transactionPassword.toLowerCase()) {
-            return res.status(403).json({ message: "Invalid transaction password!" });
-        }
+//         // 🔥 TRANSACTION PASSWORD CHECK
+//         if (!transactionPassword || transactionPassword.toLowerCase() !== currentUser.transactionPassword.toLowerCase()) {
+//             return res.status(403).json({ message: "Invalid transaction password!" });
+//         }
 
-        let targetUser = await User.findOne({ userId: targetUserId });
-        if (!targetUser) return res.status(404).json({ message: 'Target user not found' });
+//         let targetUser = await User.findOne({ userId: targetUserId });
+//         if (!targetUser) return res.status(404).json({ message: 'Target user not found' });
 
-        // 🚫 DOUBLE TOP-UP RESTRICTION
-        const isAlreadyBought = targetUser.packages?.some(p => p.plan === "Free-100-Promo");
-        if (isAlreadyBought) {
-            return res.status(400).json({ message: `Aap already ye free $100 package le chuke hain!` });
-        }
+//         // 🚫 DOUBLE TOP-UP RESTRICTION
+//         const isAlreadyBought = targetUser.packages?.some(p => p.plan === "Free-100-Promo");
+//         if (isAlreadyBought) {
+//             return res.status(400).json({ message: `Aap already ye free $100 package le chuke hain!` });
+//         }
 
-        const createTransaction = async (data) => {
-            const Transaction = require('../models/Transaction'); 
-            return Transaction.create({ ...data, date: new Date() });
-        };
+//         const createTransaction = async (data) => {
+//             const Transaction = require('../models/Transaction'); 
+//             return Transaction.create({ ...data, date: new Date() });
+//         };
 
-        // 🔹 1. ACTIVATE PACKAGE & GIVE INSTANT 5% ROI ($5) TO USER
-        targetUser.packages = targetUser.packages || [];
-        targetUser.packages.push({ 
-            plan: "Free-100-Promo", 
-            amount: amount, 
-            startDate: new Date(), 
-            withdrawn: 0, 
-            isDummy: false 
-        });
+//         // 🔹 1. ACTIVATE PACKAGE & GIVE INSTANT 5% ROI ($5) TO USER
+//         targetUser.packages = targetUser.packages || [];
+//         targetUser.packages.push({ 
+//             plan: "Free-100-Promo", 
+//             amount: amount, 
+//             startDate: new Date(), 
+//             withdrawn: 0, 
+//             isDummy: false 
+//         });
         
-        targetUser.isToppedUp = true;
-        if (!targetUser.topUpDate) targetUser.topUpDate = new Date();
-        targetUser.highestPackage = Math.max(targetUser.highestPackage || 0, amount);
+//         targetUser.isToppedUp = true;
+//         if (!targetUser.topUpDate) targetUser.topUpDate = new Date();
+//         targetUser.highestPackage = Math.max(targetUser.highestPackage || 0, amount);
         
-        // INSTANT ROI ADDED HERE
-        targetUser.roiIncome = (targetUser.roiIncome || 0) + dailyRoi;
-        targetUser.totalRoiIncome = (targetUser.totalRoiIncome || 0) + dailyRoi;
+//         // INSTANT ROI ADDED HERE
+//         targetUser.roiIncome = (targetUser.roiIncome || 0) + dailyRoi;
+//         targetUser.totalRoiIncome = (targetUser.totalRoiIncome || 0) + dailyRoi;
         
-        await targetUser.save();
+//         await targetUser.save();
 
-        // Transaction log for Topup
-        await createTransaction({ 
-            userId: targetUser.userId, type: "topup", amount: amount, 
-            description: `Claimed Free $100 Promo Package`, status: 'success', package: amount 
-        });
+//         // Transaction log for Topup
+//         await createTransaction({ 
+//             userId: targetUser.userId, type: "topup", amount: amount, 
+//             description: `Claimed Free $100 Promo Package`, status: 'success', package: amount 
+//         });
 
-        // Transaction log for Instant ROI
-        await createTransaction({
-            userId: targetUser.userId, type: 'credit', source: 'roi_income', amount: dailyRoi,
-            description: `Instant 5% Daily ROI for Free $100 Package`, status: 'success'
-        });
+//         // Transaction log for Instant ROI
+//         await createTransaction({
+//             userId: targetUser.userId, type: 'credit', source: 'roi_income', amount: dailyRoi,
+//             description: `Instant 5% Daily ROI for Free $100 Package`, status: 'success'
+//         });
 
-        // ==========================================================
-        // 💰 2. 50% DIRECT INCOME ($50) + 100% MATCHING ROI ($5) TO SPONSOR
-        // ==========================================================
-        if (targetUser.sponsorId) {
-            const directSponsor = await User.findOne({ userId: targetUser.sponsorId });
+//         // ==========================================================
+//         // 💰 2. 50% DIRECT INCOME ($50) + 100% MATCHING ROI ($5) TO SPONSOR
+//         // ==========================================================
+//         if (targetUser.sponsorId) {
+//             const directSponsor = await User.findOne({ userId: targetUser.sponsorId });
 
-            if (directSponsor) {
-                await User.updateOne(
-                    { _id: directSponsor._id }, 
-                    { 
-                        $inc: { 
-                            directIncome: directIncomeAmount, totalDirectIncome: directIncomeAmount, // 🔥 $50 Direct (50%)
-                            roiIncome: dailyRoi, totalRoiIncome: dailyRoi,   // $5 Matching ROI
-                            matchingRoiIncome: dailyRoi, totalMatchingRoiIncome: dailyRoi // Tracking
-                        } 
-                    }
-                );
+//             if (directSponsor) {
+//                 await User.updateOne(
+//                     { _id: directSponsor._id }, 
+//                     { 
+//                         $inc: { 
+//                             directIncome: directIncomeAmount, totalDirectIncome: directIncomeAmount, // 🔥 $50 Direct (50%)
+//                             roiIncome: dailyRoi, totalRoiIncome: dailyRoi,   // $5 Matching ROI
+//                             matchingRoiIncome: dailyRoi, totalMatchingRoiIncome: dailyRoi // Tracking
+//                         } 
+//                     }
+//                 );
                 
-                // Tx for Direct Income
-                await createTransaction({ 
-                    userId: directSponsor.userId, type: "direct_income", source: "direct",
-                    amount: directIncomeAmount, fromUserId: targetUser.userId, // 🔥 $50 Add Hoga
-                    description: `50% Direct Bonus from ${targetUser.name}'s Free $100 Package`, // 🔥 History Update kar di
-                    status: 'success', package: amount 
-                }); 
+//                 // Tx for Direct Income
+//                 await createTransaction({ 
+//                     userId: directSponsor.userId, type: "direct_income", source: "direct",
+//                     amount: directIncomeAmount, fromUserId: targetUser.userId, // 🔥 $50 Add Hoga
+//                     description: `50% Direct Bonus from ${targetUser.name}'s Free $100 Package`, // 🔥 History Update kar di
+//                     status: 'success', package: amount 
+//                 }); 
 
-                // Tx for Instant Matching ROI
-                await createTransaction({
-                    userId: directSponsor.userId, type: 'credit', source: 'matching_roi',
-                    amount: dailyRoi,
-                    description: `Instant 100% Matching ROI from Direct ${targetUser.name}'s $100 Package`,
-                    status: 'success'
-                });
-            }
-        }
+//                 // Tx for Instant Matching ROI
+//                 await createTransaction({
+//                     userId: directSponsor.userId, type: 'credit', source: 'matching_roi',
+//                     amount: dailyRoi,
+//                     description: `Instant 100% Matching ROI from Direct ${targetUser.name}'s $100 Package`,
+//                     status: 'success'
+//                 });
+//             }
+//         }
 
-        res.json({ success: true, message: "🎉 Free $100 Package Activated & Instant ROI Credited!" });
+//         res.json({ success: true, message: "🎉 Free $100 Package Activated & Instant ROI Credited!" });
 
-    } catch (err) {
-        console.error("Free 100 Topup Error:", err);
-        res.status(500).json({ message: "Server error" });
-    }
-});
+//     } catch (err) {
+//         console.error("Free 100 Topup Error:", err);
+//         res.status(500).json({ message: "Server error" });
+//     }
+// });
 
 // ========================================================
 // router.put('/topup/:userId', authMiddleware, async (req, res) => {
@@ -2014,297 +2103,297 @@ router.put('/topup-free-100/:userId', authMiddleware, async (req, res) => {
 // ✅ UPDATED BACKEND ROUTE (Using DummyTransaction Model)
 // 🚀 PROMO USER TOPUP ROUTE (Strictly for Showcase/Screenshot Popup)
 // 🚀 PROMO USER TOPUP ROUTE (Strictly for Today's Fake IDs)
-router.post('/promo-dummy-topup', authMiddleware, async (req, res) => {
-  try {
-    const { amount, transactionPassword } = req.body;
-    const currentUser = await User.findOne({ userId: req.user.userId });
+// router.post('/promo-dummy-topup', authMiddleware, async (req, res) => {
+//   try {
+//     const { amount, transactionPassword } = req.body;
+//     const currentUser = await User.findOne({ userId: req.user.userId });
 
-    // 1. Password Check
-    if (!transactionPassword || transactionPassword.toLowerCase() !== currentUser.transactionPassword.toLowerCase()) {
-      return res.status(403).json({ message: "Invalid transaction password" });
-    }
+//     // 1. Password Check
+//     if (!transactionPassword || transactionPassword.toLowerCase() !== currentUser.transactionPassword.toLowerCase()) {
+//       return res.status(403).json({ message: "Invalid transaction password" });
+//     }
 
-    // 2. Indian Names List
-  const dummyNames = [
-    "Yashraj Trivedi", "Zoravar Bhatt", "Aarav Sharma", "Vivaan Verma", "Faizan Ansari",
-    "Aditya Singh", "Imran Shaikh", "Arjun Patel", "Krishna Gupta", "Rohan Yadav",
-    "Aftab Sayyed", "Rahul Mishra", "Amit Tiwari", "Nadeem Siddiqui", "Vikas Pandey",
-    "Sandeep Dubey", "Mohit Choudhary", "Arman Pathan", "Nitin Jha", "Manish Joshi",
-    "Deepak Mehta", "Ankit Shah", "Rakesh Agarwal", "Suresh Jain", "Sajid Baig",
-    "Prakash Saxena", "Mukesh Srivastava", "Abhishek Chauhan", "Ravindra Thakur", "Pankaj Rathore",
-    "Sameer Qureshi", "Dinesh Solanki", "Ashok Parmar", "Rajesh Soni", "Salman Mirza",
-    "Sanjay Bansal", "Vivek Goyal", "Harsh Mahajan", "Tarun Arora", "Irfan Momin",
-    "Varun Malhotra", "Rajat Khanna", "Gaurav Kapoor", "Naveen Anand", "Yash Bhatia",
-    "Sohail Shaikh", "Sahil Ahuja", "Akash Nagpal", "Rituraj Sachdeva", "Shubham Oberoi",
-    "Rishi Puri", "Ayaan Khan", "Dev Sehgal", "Ishaan Grover", "Kabir Talwar",
-    "Laksh Kalra", "Dhruv Bedi", "Aryan Wadhwa", "Junaid Pathan", "Rudra Gulati",
-    "Parth Batra", "Keshav Sethi", "Ujjwal Narang", "Pranav Chaturvedi", "Noman Qureshi",
-    "Tushar Bhandari", "Nikhil Upadhyay", "Ayush Tripathi", "Bilal Khan", "Shivam Mishra",
-    "Madhav Joshi", "Kartik Shukla", "Danish Khan", "Anurag Pandey", "Rohit Tiwari",
-    "Hemant Sharma", "Aamir Shaikh", "Kunal Mehta", "Satyam Dwivedi", "Nawaz Pathan",
-    "Alok Srivastava", "Neeraj Dixit", "Faisal Qureshi", "Ajay Kashyap", "Vijay Tyagi",
-    "Shadab Ansari", "Uday Rawat", "Piyush Bisht", "Anmol Negi", "Rizwan Siddiqui",
-    "Nakul Panwar", "Ritik Bhandari", "Chetan Bora", "Farhan Ansari", "Pradeep Kandpal",
-    "Saurabh Karki", "Anand Reddy", "Kiran Rao", "Mahendra Naidu", "Hamza Pathan",
-    "Raghav Kulkarni", "Zeeshan Khan", "Atharv Deshmukh", "Mohammad Arif", "Tejas Patil",
-    "Furqan Ansari", "Niranjan Hegde", "Shariq Siddiqui", "Omkar Jadhav", "Noman Shaikh",
-    "Shreyas Gokhale", "Aadil Pathan", "Prathamesh Sawant", "Sufiyan Qureshi", "Milind Deshpande",
-    "Rauf Mirza", "Amol Chavan", "Taufeeq Momin", "Ajinkya Mane", "Yasin Sayyed",
-    "Nilesh More", "Shahbaz Baig", "Swapnil Pawar", "Javed Khan", "Datta Salunkhe",
-    "Arbaz Ansari", "Sagar Kadam", "Muzammil Shaikh", "Ruturaj Shinde", "Ayan Siddiqui",
-    "Ninad Apte", "Rashid Pathan", "Aniruddha Ranade", "Junaid Qureshi", "Atharva Tambe",
-    "Asad Mirza", "Shankar Bhat", "Faheem Momin", "Ravi Kulkarni", "Aqeel Sayyed",
-    "Sachin Patil", "Nisar Baig", "Pravin Jadhav", "Aamir Khan", "Ganesh Hegde",
-    "Shakib Ansari", "Satish Kamath", "Parvaiz Shaikh", "Venkatesh Iyer", "Arsalan Siddiqui",
-    "Srinivas Rao", "Sohail Pathan", "Harikrishna Menon", "Mudassir Qureshi", "Arvind Nair",
-    "Zubair Mirza", "Madhavan Pillai", "Azeem Momin", "Raghavan Acharya", "Shanawaz Sayyed",
-    "Shankar Shenoy", "Fardeen Baig", "Karthik Raman", "Naved Khan", "Saravanan Krishnan",
-    "Shariq Ansari", "Vignesh Subramanian", "Tanzeel Shaikh", "Prabhu Rajan", "Yameen Siddiqui",
-    "Muthu Sundaram", "Adil Pathan", "Hari Narayanan", "Asif Qureshi", "Bala Subramanian",
-    "Riyaz Mirza", "Joseph Dsouza", "Sajjad Momin", "Brian Fernandes", "Anees Sayyed",
-    "Kevin Rodrigues", "Naeem Baig", "Melvin Pereira", "Fais Khan", "Joel Gonsalves",
-    "Ahtesham Ansari", "Ryan Lobo", "Noman Shaikh", "Bikram Majumdar", "Rauf Siddiqui",
-    "Anirban Banerjee", "Faizan Pathan", "Subhajit Chatterjee", "Talha Qureshi", "Souvik Mukherjee",
-    "Shahid Mirza", "Arindam Bose", "Ruhan Momin", "Kaushik Dutta", "Aqib Sayyed",
-    "Tanmoy Sen", "Salim Baig", "Lakhan Bhadoria", "Bhupendra Tomar", "Jagdish Prajapati",
-    "Moinuddin Khan", "Narendra Lodhi", "Mahavir Gurjar", "Kailash Khatik", "Gajendra Dangi",
-    "Rameez Akhtar", "Govind Kushwaha", "Mukund Purohit", "Ramlal Meena", "Vishal Rajput",
-    "Brijesh Pathak", "Rakesh Khandelwal", "Yogesh Suryavanshi", "Shahrukh Qureshi", "Manoj Vaishnav",
-    "Dheeraj Tanwar", "Lokesh Parihar", "Bharat Sisodiya", "Kamal Baghel", "Vinay Raghuvanshi",
-    "Prem Chouhan", "Naresh Solanki", "Hemraj Jat", "Mukul Goswami", "Raghunath Mali",
-    "Devesh Vyas", "Kishan Bairwa", "Mahesh Dadhich", "Rajendra Sharma", "Ghanshyam Teli",
-    "Pawan Kachhwaha", "Dilip Barot", "Hariram Suthar", "Bhanwar Lal Jat", "Chandrakant Mahajan",
-    "Pratap Rathod", "Shivraj Chandel", "Damodar Acharya", "Narottam Nayak", "Mahendra Behera",
-    "Pradeep Mahapatra", "Ranjit Pradhan", "Subrat Mishra", "Bikash Sahu", "Tapan Nayak",
-    "Jayanta Rout", "Basudev Panda", "Arif Hussain", "Shakil Ahmad", "Fahad Ansari",
-    "Taufiq Shaikh", "Sarfaraz Khan", "Azeem Qadri", "Nadeem Akhtar", "Aamir Siddiqui",
-    "Suhail Khan", "Firoz Alam", "Armaan Farooqui", "Junaid Alam", "Nawab Hussain",
-    "Zaki Ansari", "Adnan Farooqui", "Shayan Khan", "Shadab Alam", "Ayaan Farooqui",
-    "Rehan Akhtar", "Tanzeem Khan", "Furkan Qureshi", "Aatif Siddiqui", "Rizwan Alam",
-    "Sufyan Khan", "Shariq Hussain", "Faheem Akhtar", "Aqdas Ansari", "Noman Farooqui",
-    "Shavez Khan", "Sameer Alam", "Mubeen Qureshi", "Aslam Hussain", "Yasir Siddiqui",
-    "Shadan Khan", "Zeeshan Alam", "Aariz Ansari", "Ahsan Farooqui", "Saif Khan",
-    "Muzammil Alam", "Aadil Siddiqui", "Shan Qureshi", "Arham Khan", "Aatif Alam",
-    "Furqan Siddiqui", "Rayan Ansari", "Imteyaz Khan", "Shahnawaz Qureshi", "Parvez Alam",
-    "Naseem Akhtar", "Tariq Hussain", "Ritesh Choube", "Karan Rathi", "Shahid Usmani",
-    "Mangesh Shirole", "Vikrant Nikam", "Aqeel Ahmed", "Sambhaji Gaikwad", "Nitin Borse",
-    "Haroon Rashid", "Prakash Borse", "Aniket Dhumal", "Amanullah Khan", "Sudarshan Kale",
-    "Rohit Ingle", "Sajid Usmani", "Dattatray Shirsat", "Madhukar Bhosale", "Nafees Ahmad",
-    "Abhay Wankhede", "Shivendra Bundela", "Fahim Akram", "Ganesh Mhatre", "Vilas Thorat",
-    "Shoaib Akhtar", "Nandkishor Chikte", "Umesh Dongre", "Rauf Ahmed", "Balkrishna Chitale",
-    "Shubham Khairnar", "Naved Parveen", "Ravikant Sonkar", "Chandrashekhar Karande", "Zubair Ahmad",
-    "Mohan Tembhurne", "Prashant Meshram", "Ahtesham Ali", "Girish Rane", "Tukaram Koli",
-    "Riyazuddin Khan", "Babulal Sen", "Rupesh Netam", "Sakib Usmani", "Jagannath Mahato",
-    "Tarachand Bhoi", "Waseem Akram", "Mithilesh Mandal", "Suresh Hazarika", "Junaid Ashraf",
-    "Pritam Basumatary", "Keshab Kalita", "Arsalan Ahmed", "Bhaben Gogoi", "Manab Deka",
-    "Noman Ashraf", "Dipankar Saikia", "Rituraj Borthakur", "Suhail Parveen", "Tirthankar Debnath",
-    "Sanjib Kar", "Faiz Alam", "Prasenjit Debbarma", "Kaushik Tripura", "Shariq Ahmed",
-    "Nilotpal Neog", "Utpal Bora", "Yameen Ashraf", "Debojit Nath", "Himadri Talukdar",
-    "Arman Usmani", "Rakesh Karmakar", "Subhash Biswas", "Tanzeel Alam", "Bikramjit Deori",
-    "Parag Medhi", "Ayaan Rashid", "Goutam Barman", "Sudip Sutradhar", "Mubeen Ahmed",
-    "Kunal Lahiri", "Tapan Naskar", "Firoz Parveen", "Arup Bhowmik", "Jaydeep Rakshit",
-    "Sufiyan Akram", "Nirmal Deb", "Rajat Malakar", "Asif Usmani", "Debashis Paul",
-    "Prabir Shil", "Naseem Alam", "Anupam Saha", "Tapas Adhikary", "Rizwan Ahmed",
-    "Biplab Dhar", "Santanu Koley", "Faizan Rashid", "Ujjwal Karfa", "Pranab Maiti",
-    "Azeem Ashraf", "Soumen Jana", "Biswaroop De", "Mahipal Shekhawat", "Iqbal Nizami",
-    "Devendra Poonia", "Samiullah Faridi", "Jagmohan Beniwal", "Shamim Raza", "Surendra Godara",
-    "Aaquib Nadvi", "Hanuman Charan", "Nafees Rizvi", "Balveer Jakhar", "Shariq Warsi",
-    "Ratan Bhakar", "Ayan Rizvi", "Khemraj Mirdha", "Furkan Nadvi", "Girdhari Mahla",
-    "Rashid Warsi", "Bhanwar Puniya", "Talib Rizvi", "Lalit Saran", "Aasim Faridi",
-    "Rohtash Dhaka", "Moin Warsi", "Vijendra Peelwa", "Suhail Rizvi", "Narpat Khichar",
-    "Arbaz Nadvi", "Shyoji Ram Sihag", "Azeem Faridi", "Rajveer Dudi", "Faheem Warsi",
-    "Mukesh Pachar", "Noman Rizvi", "Omveer Jakasaniya", "Aatif Nadvi", "Kuldeep Legha",
-    "Tahir Faridi", "Himmatram Bhamu", "Aqib Warsi", "Dharmpal Burdak", "Javed Rizvi",
-    "Brijlal Karwasra", "Aadil Nadvi", "Sumer Poonia", "Shahid Faridi", "Madan Makkasar",
-    "Anas Warsi", "Ravindra Takhar", "Yusuf Rizvi", "Bhagirath Matoria", "Saad Nadvi",
-    "Gopal Siyag", "Zayan Faridi", "Ramkumar Bhadu", "Naeem Warsi", "Shankar Joon",
-    "Huzaifa Rizvi", "Bhanwarlal Bajiya", "Ayaan Nadvi", "Mahendra Saran", "Zubair Faridi",
-    "Jagdish Gathala", "Fais Warsi", "Ramlal Kookna", "Sameer Rizvi", "Pukhraj Dular",
-    "Arham Nadvi", "Kailash Tetarwal", "Muzammil Faridi", "Gajsingh Bhakar", "Rehan Warsi",
-    "Tejpal Dhaka", "Aariz Rizvi", "Vikram Mirdha", "Shadab Nadvi", "Bhupsingh Poonia",
-    "Rizwan Faridi", "Narendra Legha", "Danish Warsi", "Harphool Sihag", "Asif Rizvi",
-    "Jitendra Godara", "Shan Nadvi", "Moolchand Jakhar", "Ahsan Faridi", "Suresh Beniwal",
-    "Faizan Warsi", "Manphool Dudi", "Imran Rizvi", "Rajendra Burdak", "Sufyan Nadvi",
-    "Hanuman Mahla", "Arsalan Faridi", "Mukhtyar Pachar", "Shahrukh Warsi", "Girdharilal Bajiya",
-    "Fardeen Rizvi", "Omprakash Kookna", "Tanzeel Nadvi", "Bhoopendra Gathala", "Raghunandan Kharol",
-    "Vardhan Bisen", "Yatendra Baghel", "Tribhuvan Markam", "Mustafa Hashmi", "Bhairav Kanwar",
-    "Kuber Netam", "Dushyant Uikey", "Jeevan Tekam", "Arif Chishti", "Harendra Porte",
-    "Bhupat Maravi", "Ramlakhan Dhurve", "Nakul Salam", "Gokul Mandavi", "Vishram Korram",
-    "Aamir Noori", "Devcharan Kawasi", "Mithlesh Potai", "Narayan Atram", "Pratap Kumeti",
-    "Kailash Nagvanshi", "Mahesh Uke", "Qasim Chishti", "Rajkumar Gedam", "Puran Meshram",
-    "Tikaram Markole", "Satyendra Baghmare", "Dinesh Kawde", "Chhotelal Pusam", "Shivprasad Naitam",
-    "Sajjad Hashmi", "Gajraj Sidar", "Bhanu Pratap Sonwani", "Ramesh Neti", "Devvrat Kunjam",
-    "Harinarayan Dhurwe", "Laxmikant Uikey", "Nandlal Atram", "Bhimsen Kawasi", "Damodar Kumre",
-    "Zain Noori", "Shivkumar Potavi", "Premsingh Markam", "Ganesh Poyam", "Ramlal Kunjam",
-    "Chandrakant Salam", "Bhaskar Marai", "Dharamlal Uike", "Kishore Pusam", "Ayaan Hashmi",
-    "Rafi Chishti", "Shayan Noori", "Faiz Hashmi", "Asrar Chishti", "Talha Noori",
-    "Noman Hashmi", "Reyan Chishti", "Sufyan Noori", "Zeeshan Hashmi", "Yameen Chishti",
-    "Aqeel Noori", "Junaid Hashmi", "Ruhan Chishti", "Ahsan Noori", "Arham Hashmi",
-    "Saif Chishti", "Aatif Noori", "Mubeen Hashmi", "Shadman Chishti", "Naeem Noori",
-    "Arsalan Hashmi", "Adil Chishti", "Faizan Noori", "Tanzeel Hashmi", "Furqan Chishti",
-    "Shariq Noori", "Aariz Hashmi", "Rizwan Chishti", "Hamza Noori", "Parvez Hashmi",
-    "Yusuf Chishti", "Naved Noori", "Azeem Hashmi", "Shahid Chishti", "Sohail Noori",
-    "Imteyaz Hashmi", "Aman Chishti", "Waseem Noori", "Fahad Chishti", "Shahrukh Noori",
-    "Asif Hashmi", "Rituraj Kapse", "Manvendra Jhala", "Dharamveer Kataria", "Nikhilesh Dongardive",
-    "Pradyumn Chandel", "Lokendra Hada", "Yograj Devda", "Shivraj Kachhi", "Bhavesh Dholakia",
-    "Anurag Kapse", "Hemraj Baria", "Tushar Vasava", "Chetan Gamit", "Jignesh Rabari",
-    "Mahipal Charan", "Devashish Munda", "Rakesh Tanti", "Prabhat Oraon", "Niraj Hansda",
-    "Kamal Hojam", "Mubashir Kazmi", "Aadil Naqvi", "Rameez Bukhari", "Arbaz Kazmi",
-    "Sarmad Naqvi", "Huzefa Bukhari", "Faheem Kazmi", "Taha Naqvi", "Aarish Bukhari",
-    "Moin Kazmi", "Rudransh Katoch", "Nakul Jamwal", "Yashwant Dogra", "Praveen Thapa",
-    "Dheerendra Rawal", "Mahesh Paneru", "Rajat Bisht", "Sudarshan Lohani", "Pankaj Fartyal",
-    "Vinod Karki", "Shahnawaz Kazmi", "Rehmat Naqvi", "Nabeel Bukhari", "Ayaan Kazmi",
-    "Sufiyan Naqvi", "Zayan Bukhari", "Mudassir Kazmi", "Rayyan Naqvi", "Arham Bukhari",
-    "Talib Kazmi", "Harshad Zala", "Mukund Vekariya", "Nitin Korat", "Bharat Makwana",
-    "Vipul Kathiriya", "Jaydev Savaliya", "Ketan Mangukiya", "Mitesh Donga", "Paresh Sorathiya",
-    "Ravindra Vachhani", "Arshed Naqvi", "Ahtesham Bukhari", "Sajjad Kazmi", "Tanzeem Naqvi",
-    "Noman Bukhari", "Fardeen Kazmi", "Yameer Naqvi", "Huzaifa Bukhari", "Shayaan Kazmi",
-    "Ruhan Naqvi", "Aniket Bhalerao", "Sachindra Gawande", "Rohidas Khobragade", "Mangesh Atram",
-    "Prakash Madavi", "Nandkishor Gedam", "Sopan Meshram", "Ganpat Uikey", "Ravikant Pusam",
-    "Shivkumar Korram", "Aqdas Bukhari", "Jibran Kazmi", "Sameeh Naqvi", "Ayan Bukhari",
-    "Faiyaz Kazmi", "Ariz Naqvi", "Naeem Bukhari", "Rafe Kazmi", "Tameem Naqvi",
-    "Zubyan Bukhari", "Dattatray Ingole", "Balkrishna Waghmare", "Gajanan Lande", "Sanjay Kakde",
-    "Vilas Nagrale", "Madhukar Kharat", "Pandurang Shingade", "Eknath Dhengre", "Ashok Bopche",
-    "Namdeo Wankhade", "Satyajeet Mohite", "Raviraj Nalawade", "Pruthviraj Shirke", "Shailendra Chavan",
-    "Abhijit Barge", "Tanmay Jagtap", "Vaibhav Khade", "Nilesh Ghorpade", "Ruturaj Mohol",
-    "Sanket Dabhade", "Mujtaba Rizwan", "Shayan Qadri", "Hammad Firdausi", "Armaan Nizari",
-    "Zarar Husaini", "Areeb Madani", "Daniyal Faruqi", "Uzair Abbasi", "Sahil Rizvi",
-    "Basit Kashmiri", "Pranay Kshirsagar", "Anand Bawane", "Tejendra Bhoyar", "Rameshwar Dhote",
-    "Yuvraj Khandekar", "Rohidas Futane", "Sharad Bisenkar", "Mahadev Tidke", "Vikasrao Wagh",
-    "Ganeshrao Katre", "Ibrahim Nizami", "Ammar Firdausi", "Mahir Qadri", "Zayan Husaini",
-    "Rayan Abbasi", "Shaheer Faruqi", "Afnan Madani", "Taha Rizwan", "Eesa Kashmiri",
-    "Zubair Nizari", "Siddhesh Surve", "Akshay Dalvi", "Omraj Palav", "Shubhransh Naik",
-    "Nikhil Rautela", "Parag Bhagat", "Mohan Kene", "Vivek Mestri", "Suhas Tandel",
-    "Prasad Parab", "Sarmad Abbasi", "Ramees Husaini", "Aariz Faruqi", "Junaid Nizami",
-    "Haseeb Qadri", "Arsham Rizwan", "Tameem Firdausi", "Aahil Madani", "Zavian Kashmiri",
-    "Jaspreet Dhillon", "Ashutosh Mishra", "Ravi Teja Reddy", "Bhavesh Desai", "Sunil Hembrom",
-    "Pradeep Narayanan", "Sukhdeep Grewal", "Rohit Pandey", "Nagarjuna Chowdary", "Kalpesh Trivedi",
-    "Ajay Tudu", "Senthil Kumar", "Amritpal Sidhu", "Shivam Tripathi", "Harsha Varma",
-    "Mitesh Joshi", "Mahesh Murmu", "Balasubramanian Pillai", "Navjot Randhawa", "Aditya Awasthi",
-    "Sai Charan Goud", "Paresh Bhatt", "Dilip Baskey", "Arunachalam Nair", "Parminder Pannu",
-    "Satyam Chaubey", "Kiran Kumar Reddy", "Nirav Vyas", "Ramesh Hansda", "Sivakumar Swaminathan",
-    "Gagandeep Cheema", "Umesh Pathak", "Raghavendra Yadav", "Jayesh Amin", "Birsa Toppo",
-    "Thangaraj Srinivasan", "Kulwinder Sekhon", "Prashant Dixit", "Lokesh Babu", "Chirag Panchal",
-    "Anil Kisku", "Ravichandran Mahadevan", "Hardeep Virk", "Abhinav Bajpai", "Madhusudhan Rao",
-    "Hemal Modi", "Sanjay Lakra", "Suresh Balan", "Amandeep Toor", "Deepak Tiwari",
-    "Krishna Murthy", "Ketan Gandhi", "Vinod Kerketta", "Murugan Rajan", "Rajwinder Mann",
-    "Nitesh Shukla", "Manoj Reddy", "Vipul Dave", "Arvind Minz", "Selvaraj Ganesan",
-    "Jatinder Chahal", "Akhilesh Upadhyay", "Praveen Naidu", "Hitesh Parekh", "Raju Oraon",
-    "Periyasamy Kannan", "Gurpreet Bajwa", "Rajat Srivastava", "Anand Raju", "Nakul Patel",
-    "Shankar Tirkey", "Elango Venkataraman", "Sandeep Dhaliwal", "Vikas Pande", "Tarun Chowdhury",
-    "Rutvik Solanki", "Mukesh Barla", "Kumaravel Arumugam", "Harjit Bains", "Piyush Tandon",
-    "Chandra Sekhar Reddy", "Yash Bhavsar", "Ajit Kujur", "Arulmozhi Natarajan", "Dineshvel Muthukrishnan",
-    "Jegadeesh Perumal", "Kumaran Thirumalai", "Madhan Velmurugan", "Prabhakaran Annamalai", "Yuvaraj Chockalingam",
-    "Boopathi Palanisamy", "Manikandan Alagappan", "Sathishkumar Dhanapal", "Tejas Bhogayata", "Maulik Kansara",
-    "Viral Chokshi", "Ruturaj Vaghasiya", "Krunal Zaveri", "Devang Majmudar", "Nisarg Jani",
-    "Parthiv Kothari", "Harit Bhayani", "Meet Sanghvi", "Pavan Kalyan Guntur", "Sandeep Penmetsa",
-    "Charan Veeramachaneni", "Lokesh Muppala", "Nikhil Velagapudi", "Tarak Kancherla", "Vamshi Katragadda",
-    "Bhargav Pasupuleti", "Rakesh Adusumilli", "Phanindra Yarlagadda", "Jaskaran Chhina", "Lovepreet Deol",
-    "Ranjodh Boparai", "Satnam Aulakh", "Gurkirat Samra", "Mandeep Basra", "Dilraj Heer",
-    "Harjot Sohal", "Balraj Tiwana", "Inderpal Atwal", "Shubhendu Rastogi", "Naman Saxena",
-    "Pratyush Nigam", "Anshul Agarwal", "Devendra Bhadouria", "Raghvendra Gautam", "Pushpendra Tomar",
-    "Shailendra Chaubey", "Mayank Katiyar", "Vivekanand Purohit", "Sukhram Kandulna", "Babulal Purty",
-    "Prakash Bodra", "Ramesh Pingua", "Nirmal Gagrai", "Ajay Surin", "Mangal Kandir",
-    "Lukas Xalxo", "Mahadev Puran", "Doman Soy", "Aravindhan Chelladurai", "Muthuvel Pandiarajan",
-    "Sarvesh Vora", "Dhruvin Rabari", "Jagadeesh Bommireddy", "Mahesh Kurella", "Amanpreet Bhullar",
-    "Jatinder Sangha", "Pranjal Srivastava", "Ritesh Chitransh", "Karthirajan Somasundaram", "Senthooran Rajasekar",
-    "Bhavin Lad", "Yatin Virani", "Sai Prudhvi Nalluri", "Chaitanya Mandava", "Sai Krishna Darsi",
-    "Raghvendra Tandon", "Ajit Kujur", "Hemal Borad", "Faheem Ansari", "Subrat Pattnaik",
-    "Ankan Ghosh", "Selvarasu Murugan", "Harmeet Sandha", "Rayan Qureshi", "Naveen Velagapudi",
-    "Mayur Chaubey", "Roshan Kisku", "Kalpesh Kanani", "Asif Usmani", "Prasanta Lenka",
-    "Sourav Mitra", "Velraj Chidambaram", "Rajwinder Johal", "Aadil Khan", "Phani Kalluri",
-    "Vivek Srivastava", "Sanjay Baskey", "Yash Virani", "Sameer Akhtar", "Debajyoti Swain",
-    "Agnivo Pal", "Karunanidhi Selvaraj", "Gurman Brar", "Fardeen Qureshi", "Praneel Veeramachaneni",
-    "Anmol Pandey", "Kailash Xalxo", "Bhavin Makwana", "Rizwan Farooqui", "Prabhat Moharana",
-    "Arka Nandi", "Muthuselvan Rajan", "Harjit Pannu", "Aamir Siddiqui", "Sai Karthik Kurella",
-    "Rohit Awasthi", "Prakash Soy", "Nirav Ladani", "Shahid Ansari", "Rabin Pradhan", "Sapta"
-];
+//     // 2. Indian Names List
+//   const dummyNames = [
+//     "Yashraj Trivedi", "Zoravar Bhatt", "Aarav Sharma", "Vivaan Verma", "Faizan Ansari",
+//     "Aditya Singh", "Imran Shaikh", "Arjun Patel", "Krishna Gupta", "Rohan Yadav",
+//     "Aftab Sayyed", "Rahul Mishra", "Amit Tiwari", "Nadeem Siddiqui", "Vikas Pandey",
+//     "Sandeep Dubey", "Mohit Choudhary", "Arman Pathan", "Nitin Jha", "Manish Joshi",
+//     "Deepak Mehta", "Ankit Shah", "Rakesh Agarwal", "Suresh Jain", "Sajid Baig",
+//     "Prakash Saxena", "Mukesh Srivastava", "Abhishek Chauhan", "Ravindra Thakur", "Pankaj Rathore",
+//     "Sameer Qureshi", "Dinesh Solanki", "Ashok Parmar", "Rajesh Soni", "Salman Mirza",
+//     "Sanjay Bansal", "Vivek Goyal", "Harsh Mahajan", "Tarun Arora", "Irfan Momin",
+//     "Varun Malhotra", "Rajat Khanna", "Gaurav Kapoor", "Naveen Anand", "Yash Bhatia",
+//     "Sohail Shaikh", "Sahil Ahuja", "Akash Nagpal", "Rituraj Sachdeva", "Shubham Oberoi",
+//     "Rishi Puri", "Ayaan Khan", "Dev Sehgal", "Ishaan Grover", "Kabir Talwar",
+//     "Laksh Kalra", "Dhruv Bedi", "Aryan Wadhwa", "Junaid Pathan", "Rudra Gulati",
+//     "Parth Batra", "Keshav Sethi", "Ujjwal Narang", "Pranav Chaturvedi", "Noman Qureshi",
+//     "Tushar Bhandari", "Nikhil Upadhyay", "Ayush Tripathi", "Bilal Khan", "Shivam Mishra",
+//     "Madhav Joshi", "Kartik Shukla", "Danish Khan", "Anurag Pandey", "Rohit Tiwari",
+//     "Hemant Sharma", "Aamir Shaikh", "Kunal Mehta", "Satyam Dwivedi", "Nawaz Pathan",
+//     "Alok Srivastava", "Neeraj Dixit", "Faisal Qureshi", "Ajay Kashyap", "Vijay Tyagi",
+//     "Shadab Ansari", "Uday Rawat", "Piyush Bisht", "Anmol Negi", "Rizwan Siddiqui",
+//     "Nakul Panwar", "Ritik Bhandari", "Chetan Bora", "Farhan Ansari", "Pradeep Kandpal",
+//     "Saurabh Karki", "Anand Reddy", "Kiran Rao", "Mahendra Naidu", "Hamza Pathan",
+//     "Raghav Kulkarni", "Zeeshan Khan", "Atharv Deshmukh", "Mohammad Arif", "Tejas Patil",
+//     "Furqan Ansari", "Niranjan Hegde", "Shariq Siddiqui", "Omkar Jadhav", "Noman Shaikh",
+//     "Shreyas Gokhale", "Aadil Pathan", "Prathamesh Sawant", "Sufiyan Qureshi", "Milind Deshpande",
+//     "Rauf Mirza", "Amol Chavan", "Taufeeq Momin", "Ajinkya Mane", "Yasin Sayyed",
+//     "Nilesh More", "Shahbaz Baig", "Swapnil Pawar", "Javed Khan", "Datta Salunkhe",
+//     "Arbaz Ansari", "Sagar Kadam", "Muzammil Shaikh", "Ruturaj Shinde", "Ayan Siddiqui",
+//     "Ninad Apte", "Rashid Pathan", "Aniruddha Ranade", "Junaid Qureshi", "Atharva Tambe",
+//     "Asad Mirza", "Shankar Bhat", "Faheem Momin", "Ravi Kulkarni", "Aqeel Sayyed",
+//     "Sachin Patil", "Nisar Baig", "Pravin Jadhav", "Aamir Khan", "Ganesh Hegde",
+//     "Shakib Ansari", "Satish Kamath", "Parvaiz Shaikh", "Venkatesh Iyer", "Arsalan Siddiqui",
+//     "Srinivas Rao", "Sohail Pathan", "Harikrishna Menon", "Mudassir Qureshi", "Arvind Nair",
+//     "Zubair Mirza", "Madhavan Pillai", "Azeem Momin", "Raghavan Acharya", "Shanawaz Sayyed",
+//     "Shankar Shenoy", "Fardeen Baig", "Karthik Raman", "Naved Khan", "Saravanan Krishnan",
+//     "Shariq Ansari", "Vignesh Subramanian", "Tanzeel Shaikh", "Prabhu Rajan", "Yameen Siddiqui",
+//     "Muthu Sundaram", "Adil Pathan", "Hari Narayanan", "Asif Qureshi", "Bala Subramanian",
+//     "Riyaz Mirza", "Joseph Dsouza", "Sajjad Momin", "Brian Fernandes", "Anees Sayyed",
+//     "Kevin Rodrigues", "Naeem Baig", "Melvin Pereira", "Fais Khan", "Joel Gonsalves",
+//     "Ahtesham Ansari", "Ryan Lobo", "Noman Shaikh", "Bikram Majumdar", "Rauf Siddiqui",
+//     "Anirban Banerjee", "Faizan Pathan", "Subhajit Chatterjee", "Talha Qureshi", "Souvik Mukherjee",
+//     "Shahid Mirza", "Arindam Bose", "Ruhan Momin", "Kaushik Dutta", "Aqib Sayyed",
+//     "Tanmoy Sen", "Salim Baig", "Lakhan Bhadoria", "Bhupendra Tomar", "Jagdish Prajapati",
+//     "Moinuddin Khan", "Narendra Lodhi", "Mahavir Gurjar", "Kailash Khatik", "Gajendra Dangi",
+//     "Rameez Akhtar", "Govind Kushwaha", "Mukund Purohit", "Ramlal Meena", "Vishal Rajput",
+//     "Brijesh Pathak", "Rakesh Khandelwal", "Yogesh Suryavanshi", "Shahrukh Qureshi", "Manoj Vaishnav",
+//     "Dheeraj Tanwar", "Lokesh Parihar", "Bharat Sisodiya", "Kamal Baghel", "Vinay Raghuvanshi",
+//     "Prem Chouhan", "Naresh Solanki", "Hemraj Jat", "Mukul Goswami", "Raghunath Mali",
+//     "Devesh Vyas", "Kishan Bairwa", "Mahesh Dadhich", "Rajendra Sharma", "Ghanshyam Teli",
+//     "Pawan Kachhwaha", "Dilip Barot", "Hariram Suthar", "Bhanwar Lal Jat", "Chandrakant Mahajan",
+//     "Pratap Rathod", "Shivraj Chandel", "Damodar Acharya", "Narottam Nayak", "Mahendra Behera",
+//     "Pradeep Mahapatra", "Ranjit Pradhan", "Subrat Mishra", "Bikash Sahu", "Tapan Nayak",
+//     "Jayanta Rout", "Basudev Panda", "Arif Hussain", "Shakil Ahmad", "Fahad Ansari",
+//     "Taufiq Shaikh", "Sarfaraz Khan", "Azeem Qadri", "Nadeem Akhtar", "Aamir Siddiqui",
+//     "Suhail Khan", "Firoz Alam", "Armaan Farooqui", "Junaid Alam", "Nawab Hussain",
+//     "Zaki Ansari", "Adnan Farooqui", "Shayan Khan", "Shadab Alam", "Ayaan Farooqui",
+//     "Rehan Akhtar", "Tanzeem Khan", "Furkan Qureshi", "Aatif Siddiqui", "Rizwan Alam",
+//     "Sufyan Khan", "Shariq Hussain", "Faheem Akhtar", "Aqdas Ansari", "Noman Farooqui",
+//     "Shavez Khan", "Sameer Alam", "Mubeen Qureshi", "Aslam Hussain", "Yasir Siddiqui",
+//     "Shadan Khan", "Zeeshan Alam", "Aariz Ansari", "Ahsan Farooqui", "Saif Khan",
+//     "Muzammil Alam", "Aadil Siddiqui", "Shan Qureshi", "Arham Khan", "Aatif Alam",
+//     "Furqan Siddiqui", "Rayan Ansari", "Imteyaz Khan", "Shahnawaz Qureshi", "Parvez Alam",
+//     "Naseem Akhtar", "Tariq Hussain", "Ritesh Choube", "Karan Rathi", "Shahid Usmani",
+//     "Mangesh Shirole", "Vikrant Nikam", "Aqeel Ahmed", "Sambhaji Gaikwad", "Nitin Borse",
+//     "Haroon Rashid", "Prakash Borse", "Aniket Dhumal", "Amanullah Khan", "Sudarshan Kale",
+//     "Rohit Ingle", "Sajid Usmani", "Dattatray Shirsat", "Madhukar Bhosale", "Nafees Ahmad",
+//     "Abhay Wankhede", "Shivendra Bundela", "Fahim Akram", "Ganesh Mhatre", "Vilas Thorat",
+//     "Shoaib Akhtar", "Nandkishor Chikte", "Umesh Dongre", "Rauf Ahmed", "Balkrishna Chitale",
+//     "Shubham Khairnar", "Naved Parveen", "Ravikant Sonkar", "Chandrashekhar Karande", "Zubair Ahmad",
+//     "Mohan Tembhurne", "Prashant Meshram", "Ahtesham Ali", "Girish Rane", "Tukaram Koli",
+//     "Riyazuddin Khan", "Babulal Sen", "Rupesh Netam", "Sakib Usmani", "Jagannath Mahato",
+//     "Tarachand Bhoi", "Waseem Akram", "Mithilesh Mandal", "Suresh Hazarika", "Junaid Ashraf",
+//     "Pritam Basumatary", "Keshab Kalita", "Arsalan Ahmed", "Bhaben Gogoi", "Manab Deka",
+//     "Noman Ashraf", "Dipankar Saikia", "Rituraj Borthakur", "Suhail Parveen", "Tirthankar Debnath",
+//     "Sanjib Kar", "Faiz Alam", "Prasenjit Debbarma", "Kaushik Tripura", "Shariq Ahmed",
+//     "Nilotpal Neog", "Utpal Bora", "Yameen Ashraf", "Debojit Nath", "Himadri Talukdar",
+//     "Arman Usmani", "Rakesh Karmakar", "Subhash Biswas", "Tanzeel Alam", "Bikramjit Deori",
+//     "Parag Medhi", "Ayaan Rashid", "Goutam Barman", "Sudip Sutradhar", "Mubeen Ahmed",
+//     "Kunal Lahiri", "Tapan Naskar", "Firoz Parveen", "Arup Bhowmik", "Jaydeep Rakshit",
+//     "Sufiyan Akram", "Nirmal Deb", "Rajat Malakar", "Asif Usmani", "Debashis Paul",
+//     "Prabir Shil", "Naseem Alam", "Anupam Saha", "Tapas Adhikary", "Rizwan Ahmed",
+//     "Biplab Dhar", "Santanu Koley", "Faizan Rashid", "Ujjwal Karfa", "Pranab Maiti",
+//     "Azeem Ashraf", "Soumen Jana", "Biswaroop De", "Mahipal Shekhawat", "Iqbal Nizami",
+//     "Devendra Poonia", "Samiullah Faridi", "Jagmohan Beniwal", "Shamim Raza", "Surendra Godara",
+//     "Aaquib Nadvi", "Hanuman Charan", "Nafees Rizvi", "Balveer Jakhar", "Shariq Warsi",
+//     "Ratan Bhakar", "Ayan Rizvi", "Khemraj Mirdha", "Furkan Nadvi", "Girdhari Mahla",
+//     "Rashid Warsi", "Bhanwar Puniya", "Talib Rizvi", "Lalit Saran", "Aasim Faridi",
+//     "Rohtash Dhaka", "Moin Warsi", "Vijendra Peelwa", "Suhail Rizvi", "Narpat Khichar",
+//     "Arbaz Nadvi", "Shyoji Ram Sihag", "Azeem Faridi", "Rajveer Dudi", "Faheem Warsi",
+//     "Mukesh Pachar", "Noman Rizvi", "Omveer Jakasaniya", "Aatif Nadvi", "Kuldeep Legha",
+//     "Tahir Faridi", "Himmatram Bhamu", "Aqib Warsi", "Dharmpal Burdak", "Javed Rizvi",
+//     "Brijlal Karwasra", "Aadil Nadvi", "Sumer Poonia", "Shahid Faridi", "Madan Makkasar",
+//     "Anas Warsi", "Ravindra Takhar", "Yusuf Rizvi", "Bhagirath Matoria", "Saad Nadvi",
+//     "Gopal Siyag", "Zayan Faridi", "Ramkumar Bhadu", "Naeem Warsi", "Shankar Joon",
+//     "Huzaifa Rizvi", "Bhanwarlal Bajiya", "Ayaan Nadvi", "Mahendra Saran", "Zubair Faridi",
+//     "Jagdish Gathala", "Fais Warsi", "Ramlal Kookna", "Sameer Rizvi", "Pukhraj Dular",
+//     "Arham Nadvi", "Kailash Tetarwal", "Muzammil Faridi", "Gajsingh Bhakar", "Rehan Warsi",
+//     "Tejpal Dhaka", "Aariz Rizvi", "Vikram Mirdha", "Shadab Nadvi", "Bhupsingh Poonia",
+//     "Rizwan Faridi", "Narendra Legha", "Danish Warsi", "Harphool Sihag", "Asif Rizvi",
+//     "Jitendra Godara", "Shan Nadvi", "Moolchand Jakhar", "Ahsan Faridi", "Suresh Beniwal",
+//     "Faizan Warsi", "Manphool Dudi", "Imran Rizvi", "Rajendra Burdak", "Sufyan Nadvi",
+//     "Hanuman Mahla", "Arsalan Faridi", "Mukhtyar Pachar", "Shahrukh Warsi", "Girdharilal Bajiya",
+//     "Fardeen Rizvi", "Omprakash Kookna", "Tanzeel Nadvi", "Bhoopendra Gathala", "Raghunandan Kharol",
+//     "Vardhan Bisen", "Yatendra Baghel", "Tribhuvan Markam", "Mustafa Hashmi", "Bhairav Kanwar",
+//     "Kuber Netam", "Dushyant Uikey", "Jeevan Tekam", "Arif Chishti", "Harendra Porte",
+//     "Bhupat Maravi", "Ramlakhan Dhurve", "Nakul Salam", "Gokul Mandavi", "Vishram Korram",
+//     "Aamir Noori", "Devcharan Kawasi", "Mithlesh Potai", "Narayan Atram", "Pratap Kumeti",
+//     "Kailash Nagvanshi", "Mahesh Uke", "Qasim Chishti", "Rajkumar Gedam", "Puran Meshram",
+//     "Tikaram Markole", "Satyendra Baghmare", "Dinesh Kawde", "Chhotelal Pusam", "Shivprasad Naitam",
+//     "Sajjad Hashmi", "Gajraj Sidar", "Bhanu Pratap Sonwani", "Ramesh Neti", "Devvrat Kunjam",
+//     "Harinarayan Dhurwe", "Laxmikant Uikey", "Nandlal Atram", "Bhimsen Kawasi", "Damodar Kumre",
+//     "Zain Noori", "Shivkumar Potavi", "Premsingh Markam", "Ganesh Poyam", "Ramlal Kunjam",
+//     "Chandrakant Salam", "Bhaskar Marai", "Dharamlal Uike", "Kishore Pusam", "Ayaan Hashmi",
+//     "Rafi Chishti", "Shayan Noori", "Faiz Hashmi", "Asrar Chishti", "Talha Noori",
+//     "Noman Hashmi", "Reyan Chishti", "Sufyan Noori", "Zeeshan Hashmi", "Yameen Chishti",
+//     "Aqeel Noori", "Junaid Hashmi", "Ruhan Chishti", "Ahsan Noori", "Arham Hashmi",
+//     "Saif Chishti", "Aatif Noori", "Mubeen Hashmi", "Shadman Chishti", "Naeem Noori",
+//     "Arsalan Hashmi", "Adil Chishti", "Faizan Noori", "Tanzeel Hashmi", "Furqan Chishti",
+//     "Shariq Noori", "Aariz Hashmi", "Rizwan Chishti", "Hamza Noori", "Parvez Hashmi",
+//     "Yusuf Chishti", "Naved Noori", "Azeem Hashmi", "Shahid Chishti", "Sohail Noori",
+//     "Imteyaz Hashmi", "Aman Chishti", "Waseem Noori", "Fahad Chishti", "Shahrukh Noori",
+//     "Asif Hashmi", "Rituraj Kapse", "Manvendra Jhala", "Dharamveer Kataria", "Nikhilesh Dongardive",
+//     "Pradyumn Chandel", "Lokendra Hada", "Yograj Devda", "Shivraj Kachhi", "Bhavesh Dholakia",
+//     "Anurag Kapse", "Hemraj Baria", "Tushar Vasava", "Chetan Gamit", "Jignesh Rabari",
+//     "Mahipal Charan", "Devashish Munda", "Rakesh Tanti", "Prabhat Oraon", "Niraj Hansda",
+//     "Kamal Hojam", "Mubashir Kazmi", "Aadil Naqvi", "Rameez Bukhari", "Arbaz Kazmi",
+//     "Sarmad Naqvi", "Huzefa Bukhari", "Faheem Kazmi", "Taha Naqvi", "Aarish Bukhari",
+//     "Moin Kazmi", "Rudransh Katoch", "Nakul Jamwal", "Yashwant Dogra", "Praveen Thapa",
+//     "Dheerendra Rawal", "Mahesh Paneru", "Rajat Bisht", "Sudarshan Lohani", "Pankaj Fartyal",
+//     "Vinod Karki", "Shahnawaz Kazmi", "Rehmat Naqvi", "Nabeel Bukhari", "Ayaan Kazmi",
+//     "Sufiyan Naqvi", "Zayan Bukhari", "Mudassir Kazmi", "Rayyan Naqvi", "Arham Bukhari",
+//     "Talib Kazmi", "Harshad Zala", "Mukund Vekariya", "Nitin Korat", "Bharat Makwana",
+//     "Vipul Kathiriya", "Jaydev Savaliya", "Ketan Mangukiya", "Mitesh Donga", "Paresh Sorathiya",
+//     "Ravindra Vachhani", "Arshed Naqvi", "Ahtesham Bukhari", "Sajjad Kazmi", "Tanzeem Naqvi",
+//     "Noman Bukhari", "Fardeen Kazmi", "Yameer Naqvi", "Huzaifa Bukhari", "Shayaan Kazmi",
+//     "Ruhan Naqvi", "Aniket Bhalerao", "Sachindra Gawande", "Rohidas Khobragade", "Mangesh Atram",
+//     "Prakash Madavi", "Nandkishor Gedam", "Sopan Meshram", "Ganpat Uikey", "Ravikant Pusam",
+//     "Shivkumar Korram", "Aqdas Bukhari", "Jibran Kazmi", "Sameeh Naqvi", "Ayan Bukhari",
+//     "Faiyaz Kazmi", "Ariz Naqvi", "Naeem Bukhari", "Rafe Kazmi", "Tameem Naqvi",
+//     "Zubyan Bukhari", "Dattatray Ingole", "Balkrishna Waghmare", "Gajanan Lande", "Sanjay Kakde",
+//     "Vilas Nagrale", "Madhukar Kharat", "Pandurang Shingade", "Eknath Dhengre", "Ashok Bopche",
+//     "Namdeo Wankhade", "Satyajeet Mohite", "Raviraj Nalawade", "Pruthviraj Shirke", "Shailendra Chavan",
+//     "Abhijit Barge", "Tanmay Jagtap", "Vaibhav Khade", "Nilesh Ghorpade", "Ruturaj Mohol",
+//     "Sanket Dabhade", "Mujtaba Rizwan", "Shayan Qadri", "Hammad Firdausi", "Armaan Nizari",
+//     "Zarar Husaini", "Areeb Madani", "Daniyal Faruqi", "Uzair Abbasi", "Sahil Rizvi",
+//     "Basit Kashmiri", "Pranay Kshirsagar", "Anand Bawane", "Tejendra Bhoyar", "Rameshwar Dhote",
+//     "Yuvraj Khandekar", "Rohidas Futane", "Sharad Bisenkar", "Mahadev Tidke", "Vikasrao Wagh",
+//     "Ganeshrao Katre", "Ibrahim Nizami", "Ammar Firdausi", "Mahir Qadri", "Zayan Husaini",
+//     "Rayan Abbasi", "Shaheer Faruqi", "Afnan Madani", "Taha Rizwan", "Eesa Kashmiri",
+//     "Zubair Nizari", "Siddhesh Surve", "Akshay Dalvi", "Omraj Palav", "Shubhransh Naik",
+//     "Nikhil Rautela", "Parag Bhagat", "Mohan Kene", "Vivek Mestri", "Suhas Tandel",
+//     "Prasad Parab", "Sarmad Abbasi", "Ramees Husaini", "Aariz Faruqi", "Junaid Nizami",
+//     "Haseeb Qadri", "Arsham Rizwan", "Tameem Firdausi", "Aahil Madani", "Zavian Kashmiri",
+//     "Jaspreet Dhillon", "Ashutosh Mishra", "Ravi Teja Reddy", "Bhavesh Desai", "Sunil Hembrom",
+//     "Pradeep Narayanan", "Sukhdeep Grewal", "Rohit Pandey", "Nagarjuna Chowdary", "Kalpesh Trivedi",
+//     "Ajay Tudu", "Senthil Kumar", "Amritpal Sidhu", "Shivam Tripathi", "Harsha Varma",
+//     "Mitesh Joshi", "Mahesh Murmu", "Balasubramanian Pillai", "Navjot Randhawa", "Aditya Awasthi",
+//     "Sai Charan Goud", "Paresh Bhatt", "Dilip Baskey", "Arunachalam Nair", "Parminder Pannu",
+//     "Satyam Chaubey", "Kiran Kumar Reddy", "Nirav Vyas", "Ramesh Hansda", "Sivakumar Swaminathan",
+//     "Gagandeep Cheema", "Umesh Pathak", "Raghavendra Yadav", "Jayesh Amin", "Birsa Toppo",
+//     "Thangaraj Srinivasan", "Kulwinder Sekhon", "Prashant Dixit", "Lokesh Babu", "Chirag Panchal",
+//     "Anil Kisku", "Ravichandran Mahadevan", "Hardeep Virk", "Abhinav Bajpai", "Madhusudhan Rao",
+//     "Hemal Modi", "Sanjay Lakra", "Suresh Balan", "Amandeep Toor", "Deepak Tiwari",
+//     "Krishna Murthy", "Ketan Gandhi", "Vinod Kerketta", "Murugan Rajan", "Rajwinder Mann",
+//     "Nitesh Shukla", "Manoj Reddy", "Vipul Dave", "Arvind Minz", "Selvaraj Ganesan",
+//     "Jatinder Chahal", "Akhilesh Upadhyay", "Praveen Naidu", "Hitesh Parekh", "Raju Oraon",
+//     "Periyasamy Kannan", "Gurpreet Bajwa", "Rajat Srivastava", "Anand Raju", "Nakul Patel",
+//     "Shankar Tirkey", "Elango Venkataraman", "Sandeep Dhaliwal", "Vikas Pande", "Tarun Chowdhury",
+//     "Rutvik Solanki", "Mukesh Barla", "Kumaravel Arumugam", "Harjit Bains", "Piyush Tandon",
+//     "Chandra Sekhar Reddy", "Yash Bhavsar", "Ajit Kujur", "Arulmozhi Natarajan", "Dineshvel Muthukrishnan",
+//     "Jegadeesh Perumal", "Kumaran Thirumalai", "Madhan Velmurugan", "Prabhakaran Annamalai", "Yuvaraj Chockalingam",
+//     "Boopathi Palanisamy", "Manikandan Alagappan", "Sathishkumar Dhanapal", "Tejas Bhogayata", "Maulik Kansara",
+//     "Viral Chokshi", "Ruturaj Vaghasiya", "Krunal Zaveri", "Devang Majmudar", "Nisarg Jani",
+//     "Parthiv Kothari", "Harit Bhayani", "Meet Sanghvi", "Pavan Kalyan Guntur", "Sandeep Penmetsa",
+//     "Charan Veeramachaneni", "Lokesh Muppala", "Nikhil Velagapudi", "Tarak Kancherla", "Vamshi Katragadda",
+//     "Bhargav Pasupuleti", "Rakesh Adusumilli", "Phanindra Yarlagadda", "Jaskaran Chhina", "Lovepreet Deol",
+//     "Ranjodh Boparai", "Satnam Aulakh", "Gurkirat Samra", "Mandeep Basra", "Dilraj Heer",
+//     "Harjot Sohal", "Balraj Tiwana", "Inderpal Atwal", "Shubhendu Rastogi", "Naman Saxena",
+//     "Pratyush Nigam", "Anshul Agarwal", "Devendra Bhadouria", "Raghvendra Gautam", "Pushpendra Tomar",
+//     "Shailendra Chaubey", "Mayank Katiyar", "Vivekanand Purohit", "Sukhram Kandulna", "Babulal Purty",
+//     "Prakash Bodra", "Ramesh Pingua", "Nirmal Gagrai", "Ajay Surin", "Mangal Kandir",
+//     "Lukas Xalxo", "Mahadev Puran", "Doman Soy", "Aravindhan Chelladurai", "Muthuvel Pandiarajan",
+//     "Sarvesh Vora", "Dhruvin Rabari", "Jagadeesh Bommireddy", "Mahesh Kurella", "Amanpreet Bhullar",
+//     "Jatinder Sangha", "Pranjal Srivastava", "Ritesh Chitransh", "Karthirajan Somasundaram", "Senthooran Rajasekar",
+//     "Bhavin Lad", "Yatin Virani", "Sai Prudhvi Nalluri", "Chaitanya Mandava", "Sai Krishna Darsi",
+//     "Raghvendra Tandon", "Ajit Kujur", "Hemal Borad", "Faheem Ansari", "Subrat Pattnaik",
+//     "Ankan Ghosh", "Selvarasu Murugan", "Harmeet Sandha", "Rayan Qureshi", "Naveen Velagapudi",
+//     "Mayur Chaubey", "Roshan Kisku", "Kalpesh Kanani", "Asif Usmani", "Prasanta Lenka",
+//     "Sourav Mitra", "Velraj Chidambaram", "Rajwinder Johal", "Aadil Khan", "Phani Kalluri",
+//     "Vivek Srivastava", "Sanjay Baskey", "Yash Virani", "Sameer Akhtar", "Debajyoti Swain",
+//     "Agnivo Pal", "Karunanidhi Selvaraj", "Gurman Brar", "Fardeen Qureshi", "Praneel Veeramachaneni",
+//     "Anmol Pandey", "Kailash Xalxo", "Bhavin Makwana", "Rizwan Farooqui", "Prabhat Moharana",
+//     "Arka Nandi", "Muthuselvan Rajan", "Harjit Pannu", "Aamir Siddiqui", "Sai Karthik Kurella",
+//     "Rohit Awasthi", "Prakash Soy", "Nirav Ladani", "Shahid Ansari", "Rabin Pradhan", "Sapta"
+// ];
 
-    const randomNameIndex = Math.floor(Math.random() * dummyNames.length);
-    const generatedName = dummyNames[randomNameIndex];
-    const generatedId = Math.floor(1000000 + Math.random() * 9000000); 
+//     const randomNameIndex = Math.floor(Math.random() * dummyNames.length);
+//     const generatedName = dummyNames[randomNameIndex];
+//     const generatedId = Math.floor(1000000 + Math.random() * 9000000); 
 
-    // 3. FakeUser Table mein add karo (Taaki Global List me dikhe)
-    const FakeUser = require('../models/FakeUser');
-    await FakeUser.create({
-        userId: generatedId,
-        name: generatedName,
-        package: 30,
-        country: "India",
-        date: new Date() 
-    });
+//     // 3. FakeUser Table mein add karo (Taaki Global List me dikhe)
+//     const FakeUser = require('../models/FakeUser');
+//     await FakeUser.create({
+//         userId: generatedId,
+//         name: generatedName,
+//         package: 30,
+//         country: "India",
+//         date: new Date() 
+//     });
 
-    // =========================================================================
-    // 🚀 NEW: GLOBAL TEAM GROWTH LOGIC (Jaise normal topup aur cron me hota hai)
-    // =========================================================================
-    const activeUsers = await User.find({ isToppedUp: true }).select('_id globalTeamCount directCount');
-    const bulkOps = [];
+//     // =========================================================================
+//     // 🚀 NEW: GLOBAL TEAM GROWTH LOGIC (Jaise normal topup aur cron me hota hai)
+//     // =========================================================================
+//     const activeUsers = await User.find({ isToppedUp: true }).select('_id globalTeamCount directCount');
+//     const bulkOps = [];
 
-    for (const user of activeUsers) {
-        const team = user.globalTeamCount || 0;
-        const directs = user.directCount || 0;
+//     for (const user of activeUsers) {
+//         const team = user.globalTeamCount || 0;
+//         const directs = user.directCount || 0;
         
-        let isLocked = false;
+//         let isLocked = false;
         
-        // Locking conditions (Same as your cron logic)
-        if (team === 2360 && directs < 6) isLocked = true;
-        else if (team === 4360 && directs < 8) isLocked = true;
-        else if (team === 7360 && directs < 10) isLocked = true;
-        else if (team === 11360 && directs < 12) isLocked = true;
-        else if (team === 16360 && directs < 14) isLocked = true;
-        else if (team === 23860 && directs < 16) isLocked = true;
-        else if (team === 33860 && directs < 18) isLocked = true;
+//         // Locking conditions (Same as your cron logic)
+//         if (team === 2360 && directs < 6) isLocked = true;
+//         else if (team === 4360 && directs < 8) isLocked = true;
+//         else if (team === 7360 && directs < 10) isLocked = true;
+//         else if (team === 11360 && directs < 12) isLocked = true;
+//         else if (team === 16360 && directs < 14) isLocked = true;
+//         else if (team === 23860 && directs < 16) isLocked = true;
+//         else if (team === 33860 && directs < 18) isLocked = true;
 
-        if (!isLocked) {
-            bulkOps.push({
-                updateOne: {
-                    filter: { _id: user._id },
-                    update: { $inc: { globalTeamCount: 1 } } // ✅ Sab eligible users ki team 1 se badha di
-                }
-            });
-        }
-    }
+//         if (!isLocked) {
+//             bulkOps.push({
+//                 updateOne: {
+//                     filter: { _id: user._id },
+//                     update: { $inc: { globalTeamCount: 1 } } // ✅ Sab eligible users ki team 1 se badha di
+//                 }
+//             });
+//         }
+//     }
 
-    if (bulkOps.length > 0) {
-        await User.bulkWrite(bulkOps);
-    }
-    // =========================================================================
+//     if (bulkOps.length > 0) {
+//         await User.bulkWrite(bulkOps);
+//     }
+//     // =========================================================================
 
-    // =========================================================================
-    // 🚀 NEW: TOTAL COMMUNITY COUNT UPDATE (SystemStat)
-    // Ye dashboard par total users ka count badhayega
-    // =========================================================================
-    const SystemStat = require('../models/SystemStat');
-    await SystemStat.findOneAndUpdate(
-        {}, 
-        { $inc: { globalFakeCount: 1 } }, // Total community / Fake count ko +1 kar dega
-        { upsert: true, returnDocument: 'after' }
-    );
-    // 4. Record Dummy Transaction (For Admin History)
-    const Transaction = require('../models/Transaction'); 
-    await Transaction.create({
-      userId: generatedId,
-      amount: Number(amount),
-      type: "promo", 
-      fromUserId: currentUser.userId,
-      toUserId: generatedId,
-      status: "success",
-      description: `Promo showcase generated for Fake ID ${generatedId}`,
-      date: new Date()
-    });
+//     // =========================================================================
+//     // 🚀 NEW: TOTAL COMMUNITY COUNT UPDATE (SystemStat)
+//     // Ye dashboard par total users ka count badhayega
+//     // =========================================================================
+//     const SystemStat = require('../models/SystemStat');
+//     await SystemStat.findOneAndUpdate(
+//         {}, 
+//         { $inc: { globalFakeCount: 1 } }, // Total community / Fake count ko +1 kar dega
+//         { upsert: true, returnDocument: 'after' }
+//     );
+//     // 4. Record Dummy Transaction (For Admin History)
+//     const Transaction = require('../models/Transaction'); 
+//     await Transaction.create({
+//       userId: generatedId,
+//       amount: Number(amount),
+//       type: "promo", 
+//       fromUserId: currentUser.userId,
+//       toUserId: generatedId,
+//       status: "success",
+//       description: `Promo showcase generated for Fake ID ${generatedId}`,
+//       date: new Date()
+//     });
 
-    // 5. Success Response
-    res.json({ 
-        success: true, 
-        generatedId: generatedId, 
-        name: generatedName 
-    });
+//     // 5. Success Response
+//     res.json({ 
+//         success: true, 
+//         generatedId: generatedId, 
+//         name: generatedName 
+//     });
 
-  } catch (err) {
-    console.error("Promo Showcase Error:", err);
-    res.status(500).json({ message: "Server error during promo topup: " + err.message });
-  }
-});
+//   } catch (err) {
+//     console.error("Promo Showcase Error:", err);
+//     res.status(500).json({ message: "Server error during promo topup: " + err.message });
+//   }
+// });
 
 
 
