@@ -43,7 +43,7 @@ export default function DepositModal({ onClose, user, userId }) {
   // Step 1 -> Step 2 transition
   const handleProceed = () => {
     const numericAmount = parseFloat(amount);
-    if (!amount || isNaN(numericAmount) || numericAmount < 10) {
+    if (!amount || isNaN(numericAmount) || numericAmount < 1) {
       setAmountError("Minimum deposit is 10 USDT.");
       return;
     }
@@ -248,7 +248,7 @@ export default function DepositModal({ onClose, user, userId }) {
               <div className="mt-5 bg-cyan-500/10 border border-cyan-500/20 p-3.5 rounded-xl flex items-start gap-2 shadow-inner">
                 <ShieldCheck className="text-cyan-400 shrink-0 w-4 h-4 mt-0.5" />
                 <p className="text-slate-300 text-[10px] font-bold leading-relaxed">
-                  Minimum deposit is <span className="text-cyan-400 font-black">10 USDT</span>. Your funds are secured by smart contract infrastructure.
+                  Minimum deposit is <span className="text-cyan-400 font-black">1 USDT</span>. Your funds are secured by smart contract infrastructure.
                 </p>
               </div>
             </div>
