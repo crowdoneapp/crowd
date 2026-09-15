@@ -44,7 +44,7 @@ export default function DepositModal({ onClose, user, userId }) {
   const handleProceed = () => {
     const numericAmount = parseFloat(amount);
     if (!amount || isNaN(numericAmount) || numericAmount < 1) {
-      setAmountError("Minimum deposit is 10 USDT.");
+      setAmountError("Minimum deposit is 1 USDT.");
       return;
     }
     setAmountError("");
@@ -215,10 +215,10 @@ export default function DepositModal({ onClose, user, userId }) {
                       type="number"
                       value={amount}
                       onChange={(e) => {
-                        setAmount(e.target.value);
-                        if (e.target.value && parseFloat(e.target.value) >= 10) setAmountError("");
-                      }}
-                      placeholder="Miminum $10"
+  setAmount(e.target.value);
+  if (e.target.value && parseFloat(e.target.value) >= 1) setAmountError("");
+}}
+placeholder="Minimum $1"
                       className={`w-full bg-black/40 border border-white/10 rounded-2xl py-4 pl-12 pr-16 text-xl font-black text-white font-mono tracking-tight outline-none transition-all shadow-inner placeholder-slate-700
                         ${amountError ? 'border-rose-500/50 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10' : 'focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/10'}`}
                     />
@@ -235,9 +235,9 @@ export default function DepositModal({ onClose, user, userId }) {
 
               <button 
                 onClick={handleProceed}
-                disabled={!amount || parseFloat(amount) < 10}
+                disabled={!amount || parseFloat(amount) < 1}
                 className={`w-full py-4 rounded-xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-[0_0_15px_rgba(34,211,238,0.2)] overflow-hidden relative group
-                    ${(!amount || parseFloat(amount) < 10)
+                    ${(!amount || parseFloat(amount) < 1)
                       ? 'bg-white/5 text-slate-500 cursor-not-allowed border border-white/5' 
                       : 'bg-gradient-to-r from-cyan-500 to-indigo-500 text-white hover:shadow-[0_0_30px_rgba(34,211,238,0.4)] active:scale-95'}`}
               >
