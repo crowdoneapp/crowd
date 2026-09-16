@@ -102,10 +102,46 @@ exports.getUserById = async (req, res) => {
   }
 };
 // 👤 2. Get Sponsor Name (Registration Verification ke liye)
+// exports.getSponsorName = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     const sponsor = await User.findOne({ userId: parseInt(id) });
+    
+//     if (!sponsor) {
+//       return res.status(404).json({ message: 'Invalid Sponsor' });
+//     }
+    
+//     res.json({ name: sponsor.name });
+//   } catch (err) {
+//     res.status(500).json({ message: 'Error fetching sponsor' });
+//   }
+// };
+
+
+ const FakeUser = require('../models/FakeUser');
+const DummyUser = require('../models/DummyUser'); // 🔥 DummyUser import kar liya
+
 exports.getSponsorName = async (req, res) => {
   try {
     const { id } = req.params;
-    const sponsor = await User.findOne({ userId: parseInt(id) });
+    const parsedId = parseInt(id);
+
+    if (isNaN(parsedId)) {
+      return res.status(400).json({ message: 'Invalid Sponsor ID format' });
+    }
+
+    // 1. Pehle Real User table me check karo
+    let sponsor = await User.findOne({ userId: parsedId });
+    
+    // 2. Agar Real me na mile, toh FakeUser me check karo
+    if (!sponsor) {
+      sponsor = await FakeUser.findOne({ userId: parsedId });
+    }
+
+    // 🔥 3. Agar wahan bhi na mile, toh DummyUser (Fake Deposit) me check karo!
+    if (!sponsor) {
+      sponsor = await DummyUser.findOne({ userId: parsedId });
+    }
     
     if (!sponsor) {
       return res.status(404).json({ message: 'Invalid Sponsor' });
@@ -113,10 +149,10 @@ exports.getSponsorName = async (req, res) => {
     
     res.json({ name: sponsor.name });
   } catch (err) {
+    console.error("Get Sponsor Error:", err);
     res.status(500).json({ message: 'Error fetching sponsor' });
   }
 };
-
 // 🔒 3. Block user (Admin Access)
 exports.blockUser = async (req, res) => {
   try {

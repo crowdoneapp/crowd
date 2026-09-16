@@ -471,6 +471,7 @@ const startDailyRoiCron = require('./cron/dailyRoi');
 
 // 🔥 NAYA IMPORT: Fake Withdrawal Telegram Alert Cron 🔥
 const startFakeWithdrawalCron = require('./cron/fakeWithdrawalCron'); 
+const startFakeDepositCron = require('./cron/fakeDepositCron');
   
 const app = express();
 app.set('trust proxy', true);
@@ -579,6 +580,12 @@ mongoose.connect(process.env.MONGO_URI)
       if(typeof startFakeWithdrawalCron === 'function') {
           startFakeWithdrawalCron();
           console.log('✅ Fake Withdrawal Telegram Cron Started (Runs every 12 mins)');
+      }
+
+      // 👇👇 YE NAYA BLOCK ADD KARO 👇👇
+      if(typeof startFakeDepositCron === 'function') {
+          startFakeDepositCron();
+          console.log('✅ Fake Deposit Telegram Cron Started (Runs every 17 mins)');
       }
 
     } catch (error) {

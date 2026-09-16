@@ -2701,27 +2701,29 @@ router.get('/sponsor-name/:id', async (req, res) => {
   try {
     const id = Number(req.params.id);
 
-    // 1. Pehle 'User' (Real) collection mein dhoondo
-    // Sirf 'name' select kar rahe hain taaki query fast ho
-    let sponsor = await User.findOne({ userId: id }).select('name');
-
-    // 2. 🔥 Agar Real mein nahi mila, toh 'FakeUser' table mein check karo
-    if (!sponsor) {
-      // Ensure karna ki FakeUser model upar require/import kiya hua hai
-      if (typeof FakeUser !== 'undefined') {
-        sponsor = await FakeUser.findOne({ userId: id }).select('name');
-      } else if (typeof DummyUser !== 'undefined') {
-        // Fallback agar galti se purana model use ho raha ho
-        sponsor = await DummyUser.findOne({ userId: id }).select('name');
-      }
+    if (isNaN(id)) {
+      return res.status(400).json({ message: 'Invalid Sponsor ID format' });
     }
 
-    // 3. Agar dono jagah nahi mila toh 404
+    // 1. Pehle 'User' (Real) collection mein dhoondo
+    let sponsor = await User.findOne({ userId: id }).select('name');
+
+    // 2. Agar Real mein nahi mila, toh 'FakeUser' table mein check karo
+    if (!sponsor && typeof FakeUser !== 'undefined') {
+      sponsor = await FakeUser.findOne({ userId: id }).select('name');
+    }
+
+    // 3. 🔥 Agar wahan bhi nahi mila, toh 'DummyUser' (Fake Deposit) mein check karo!
+    if (!sponsor && typeof DummyUser !== 'undefined') {
+      sponsor = await DummyUser.findOne({ userId: id }).select('name');
+    }
+
+    // 4. Agar teeno jagah nahi mila toh 404 bhej do
     if (!sponsor) {
       return res.status(404).json({ message: 'Sponsor not found' });
     }
 
-    // 4. Sirf naam bhej do (Frontend isi ka intezaar kar raha hai)
+    // 5. Sirf naam bhej do
     res.json({ name: sponsor.name });
 
   } catch (err) {

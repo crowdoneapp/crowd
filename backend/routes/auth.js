@@ -44,573 +44,7 @@ const generateUserId = async () => {
   return id;
 };
 
-// ====================== REGISTER ======================
-// router.post('/register', checkFeature('allowRegistrations'), async (req, res) => {
-//   try {
-//     let { name, mobile, email, country, password, sponsorId, deviceId } = req.body;
-//     const userIP = getClientIP(req);
-
-//     // 🔥 SECURITY LAYER 0: Remove extra spaces (trim) so bots can't trick the system
-//     name = name ? name.trim() : '';
-//     mobile = mobile ? mobile.trim() : '';
-//     email = email ? email.trim() : '';
-
-//     // 🔥 1. STRICT NAME VALIDATION (Sirf A-Z aur spaces allow karega, max 50 characters)
-//     const nameRegex = /^[A-Za-z\s]{3,50}$/;
-//     if (!name || !nameRegex.test(name)) {
-//         return res.status(400).json({ message: 'Invalid Name. Only alphabets are allowed (No symbols or numbers).' });
-//     }
-
-//     // 🔥 2. STRICT MOBILE VALIDATION (Sirf Numbers, 10 se 15 digits)
-//     const mobileRegex = /^[0-9]{10,15}$/;
-//     if (!mobile || !mobileRegex.test(mobile)) {
-//         return res.status(400).json({ message: 'Invalid Mobile Number. Enter 10 to 15 digits only.' });
-//     }
-
-//     // 🔥 3. EMAIL CHECK
-//     if (!email || !email.toLowerCase().endsWith('@gmail.com')) {
-//         return res.status(400).json({ message: 'Registration failed: Only @gmail.com emails are accepted.' });
-//     }
-
-//     // 🔥 4. STRICT PASSWORD VALIDATION (Naya Logic - Blocks @123 etc.)
-//     if (!password || password.length < 8) {
-//         return res.status(400).json({ message: 'Password must be at least 8 characters long.' });
-//     }
-
-//     const lowerPass = password.toLowerCase();
-
-//     // Check A: Repeating characters (e.g., 11111111, aaaaaaaa)
-//     const isRepeating = /^(.)\1+$/.test(password); 
-
-//     // Check B: Common weak substrings anywhere in the password (Blocks Name@123, etc.)
-//     const weakSubstrings = ['@123', '#123', '1234', '9876', 'password', 'qwerty', 'asdf'];
-//     const containsWeakPattern = weakSubstrings.some(pattern => lowerPass.includes(pattern));
-
-//     // Check C: Sequential characters for the whole string (like 12345678, abcdefgh)
-//     let isAscending = true;
-//     let isDescending = true;
-//     for (let i = 0; i < password.length - 1; i++) {
-//         if (password.charCodeAt(i) + 1 !== password.charCodeAt(i + 1)) isAscending = false;
-//         if (password.charCodeAt(i) - 1 !== password.charCodeAt(i + 1)) isDescending = false;
-//     }
-
-//     if (isRepeating || isAscending || isDescending || containsWeakPattern) {
-//         return res.status(400).json({ 
-//             message: 'Weak password detected! Please do not use predictable patterns like @123, 1234, or repeating characters. Choose a unique password.' 
-//         });
-//     }
-
-//     if (!sponsorId) return res.status(400).json({ message: 'Sponsor ID is compulsory.' });
-
-//     // 🔥 5. SPONSOR CHECK LOGIC (Real and Fake)
-//     let actualSponsorId = parseInt(sponsorId);
-//     let sponsorExists = await User.findOne({ userId: actualSponsorId });
-//     let isFakeSponsor = false;
-
-//     if (!sponsorExists) {
-//          sponsorExists = await FakeUser.findOne({ userId: actualSponsorId });
-//         if (sponsorExists) {
-//             isFakeSponsor = true; // Mark as fake sponsor
-//         }
-//     }
-
-//     if (!sponsorExists) return res.status(400).json({ message: 'Invalid Sponsor ID.' });
-
-//     if (!isFakeSponsor && sponsorExists.isSponsorDeactivated) {
-//         return res.status(403).json({
-//           message: 'Policy violation: The provided sponsor link is invalid or deactivated.'
-//         });    
-//     }
-
-//     // ✨ NAYA LOGIC: Agar Sponsor Fake User hai, toh real user ko seedha 100000 wali ID ke direct me daal do!
-//     if (isFakeSponsor) {
-//         const SYSTEM_TOP_ID = 100000; // 🔥 Aapki fix ki hui Main Earning ID
-        
-//         const topUser = await User.findOne({ userId: SYSTEM_TOP_ID }); 
-//         if (topUser) {
-//             actualSponsorId = topUser.userId; 
-//             console.log(`[SYSTEM ATTACH] Fake Sponsor (${sponsorId}) used. Redirecting to Top Earning ID: ${topUser.userId}`);
-//         } else {
-//             console.log(`⚠️ WARNING: Top ID ${SYSTEM_TOP_ID} not found in database!`);
-//         }
-//     }
-
-//     // 🛡️ SMART REGISTRATION LIMIT (5 Accounts Per IP + Admin Block)
-//     const isLocalIP = userIP === '127.0.0.1' || userIP === '::1';
-
-//     if (!isLocalIP) {
-//         const rule = await IpRule.findOne({ ipAddress: userIP });
-        
-//         if (rule && rule.isBlocked) {
-//             return res.status(403).json({ message: "Access Denied: Your IP has been blocked by the Administrator." });
-//         }
-//     }
-
-//     // 🚀 DEVICE FINGERPRINT CHECK
-//     if (deviceId) {
-//         const isDeviceBlocked = await BlockedDevice.findOne({ deviceId });
-//         if (isDeviceBlocked) {
-//             return res.status(403).json({ message: "Access Denied: Your device has been blocked due to a policy violation." });
-//         }
-//     }
-
-//     // ✨ NAYA LOGIC: 100% Unique ID Check (Real aur Fake dono collection me)
-//     let newUserId;
-//     let isUniqueId = false;
-
-//     while (!isUniqueId) {
-//         newUserId = await generateUserId(); // Temporary ID generate karega
-        
-//         // Check karega ki ye ID kisibhi table me mojood toh nahi hai
-//         const existsInFake = await FakeUser.exists({ userId: newUserId });
-//         const existsInReal = await User.exists({ userId: newUserId });
-
-//         // Agar dono jagah nahi hai, tab isko final manega aur loop todega
-//         if (!existsInFake && !existsInReal) {
-//             isUniqueId = true;
-//         }
-//     }
-
-//     // Ab naya user exactly 100% unique ID ke sath banega
-//     const user = new User({
-//       userId: newUserId, 
-//       name, mobile, email, country,
-//       password, transactionPassword: password,
-//       sponsorId: actualSponsorId, // ✅ Yahan updated sponsor ID aayegi (Real ho ya Admin ki)
-//       role: 'user',
-//       ipAddress: userIP,
-//       deviceId: deviceId || null 
-//     });
-
-//     await user.save();
-
-//     // 👉 EMAIL TEMPLATE
-//     // try {
-//     //     await sendEmail({
-//     //         email: user.email,
-//     //         subject: '🎉 Welcome to Crowd One!',
-//     //         html: `
-//     //         <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: 1px solid #eaeaea;">
-                
-//     //             <div style="background-color: #2b4450; padding: 40px 20px; text-align: center; color: #ffffff;">
-//     //                 <h1 style="margin: 0; font-size: 28px; font-weight: bold;">🚀 Welcome to Crowd One</h1>
-//     //                 <p style="margin: 10px 0 0 0; font-size: 15px; color: #cccccc;">Your journey to financial growth starts here</p>
-//     //             </div>
-                
-//     //             <div style="padding: 40px 30px; color: #333333;">
-//     //                 <p style="font-size: 16px; margin-top: 0; margin-bottom: 15px;">Hello <strong>${user.name}</strong>,</p>
-                    
-//     //                 <p style="font-size: 15px; line-height: 1.6; color: #555555; margin-bottom: 20px;">
-//     //                     Congratulations! Your account has been successfully created. Get ready to build your global network, unlock exciting <strong>Single Leg rewards</strong>, and track your daily growth with our secure platform. We are thrilled to have you on board! 🌟
-//     //                 </p>
-//     //                 <p style="font-size: 15px; line-height: 1.6; color: #555555; margin-bottom: 30px;">
-//     //                     Please find your confidential login details below:
-//     //                 </p>
-                    
-//     //                 <div style="background-color: #f8f9fa; padding: 25px; border-radius: 10px; margin-bottom: 35px; border-left: 4px solid #1e88e5;">
-//     //                     <p style="margin: 0 0 15px 0; font-size: 16px; color: #333;">
-//     //                         <span style="display: inline-block; width: 25px;">👤</span> <strong>User ID:</strong> ${user.userId}
-//     //                     </p>
-//     //                     <p style="margin: 0 0 15px 0; font-size: 16px; color: #333;">
-//     //                         <span style="display: inline-block; width: 25px;">🔑</span> <strong>Password:</strong> ${user.password}
-//     //                     </p>
-//     //                     <p style="margin: 0; font-size: 16px; color: #333;">
-//     //                         <span style="display: inline-block; width: 25px;">🛡️</span> <strong>Transaction Password:</strong> ${user.transactionPassword}
-//     //                     </p>
-//     //                 </div>
-                    
-//     //                 <div style="text-align: center; margin-bottom: 40px;">
-//     //                     <a href="https://crowdone.world/login" style="display: inline-block; background-color: #1e88e5; color: #ffffff; text-decoration: none; padding: 14px 30px; border-radius: 6px; font-size: 16px; font-weight: bold; box-shadow: 0 4px 6px rgba(30,136,229,0.3);">🔐 Login to Dashboard</a>
-//     //                 </div>
-                    
-//     //                 <p style="font-size: 14px; color: #d32f2f; margin: 0; background-color: #ffebee; padding: 12px; border-radius: 6px;">
-//     //                     ⚠️ <strong>Security Alert:</strong> Please do not share your login or transaction passwords with anyone for your account's safety.
-//     //                 </p>
-//     //             </div>
-                
-//     //             <div style="background-color: #1a1a1a; padding: 20px; text-align: center; color: #888888; font-size: 13px;">
-//     //                 © 2026 Crowd One. All rights reserved.<br>
-//     //                 <span style="font-size: 11px;">This is an automated message, please do not reply to this email.</span>
-//     //             </div>
-//     //         </div>
-//     //         ` 
-//     //     });
-//     // } catch (emailErr) { 
-//     //     console.error("Email failed:", emailErr); 
-//     // }
-
-//     res.status(201).json({ message: 'User registered successfully.', userId: user.userId, name: user.name, password: user.password });
-
-//   } catch (err) {
-//     console.error('Register error:', err);
-//     res.status(500).json({ message: 'Server error.' });
-//   }
-// });
-
-// 🔥 RANDOM PASSWORD GENERATOR HELPER FUNCTION
  
-// router.post('/register', checkFeature('allowRegistrations'), async (req, res) => {
-//   try {
-//     // 🔥 Frontend se ab password nahi aayega, sirf ye details aayengi
-//     let { name, mobile, email, country, sponsorId, deviceId, walletAddress } = req.body;
-//     const userIP = getClientIP(req);
-
-//     // 🔥 SECURITY LAYER 0: Remove extra spaces (trim)
-//     name = name ? name.trim() : '';
-//     mobile = mobile ? mobile.trim() : '';
-//     email = email ? email.trim() : '';
-//     walletAddress = walletAddress ? walletAddress.trim() : ''; 
-
-//     // 🔥 1. STRICT NAME VALIDATION
-//     const nameRegex = /^[A-Za-z\s]{3,50}$/;
-//     if (!name || !nameRegex.test(name)) {
-//         return res.status(400).json({ message: 'Invalid Name. Only alphabets are allowed (No symbols or numbers).' });
-//     }
-
-//     // 🔥 2. STRICT MOBILE VALIDATION
-//     const mobileRegex = /^[0-9]{10,15}$/;
-//     if (!mobile || !mobileRegex.test(mobile)) {
-//         return res.status(400).json({ message: 'Invalid Mobile Number.' });
-//     }
-
-//     // 🔥 3. EMAIL CHECK
-//     if (!email || !email.toLowerCase().endsWith('@gmail.com')) {
-//         return res.status(400).json({ message: 'Registration failed: Only @gmail.com emails are accepted.' });
-//     }
-
-//     // 🔥 4. USDT BEP20 WALLET VALIDATION (Flexible Length)
-//     if (!walletAddress) {
-//         return res.status(400).json({ message: 'USDT BEP20 Withdrawal Address is compulsory.' });
-//     }
-//     if (!/^0x[a-fA-F0-9]{28,48}$/.test(walletAddress)) {
-//         return res.status(400).json({ message: 'Invalid USDT BEP20 Address format. It must start with 0x and be valid length.' });
-//     }
-
-//    // if (!sponsorId) return res.status(400).json({ message: 'Sponsor ID is compulsory.' });
-
-//     // 🔥 5. SPONSOR CHECK LOGIC (Real and Fake)
-//     let actualSponsorId = parseInt(sponsorId);
-//     let sponsorExists = await User.findOne({ userId: actualSponsorId });
-//     let isFakeSponsor = false;
-
-//     if (!sponsorExists) {
-//          sponsorExists = await FakeUser.findOne({ userId: actualSponsorId });
-//         if (sponsorExists) {
-//             isFakeSponsor = true; 
-//         }
-//     }
-
-//     if (!sponsorExists) return res.status(400).json({ message: 'Invalid Sponsor ID.' });
-
-//     if (!isFakeSponsor && sponsorExists.isSponsorDeactivated) {
-//         return res.status(403).json({ message: 'Policy violation: The provided sponsor link is invalid or deactivated.' });    
-//     }
-
-//     // ✨ Fake Sponsor Logic
-//     if (isFakeSponsor) {
-//         const SYSTEM_TOP_ID = 100000; 
-//         const topUser = await User.findOne({ userId: SYSTEM_TOP_ID }); 
-//         if (topUser) {
-//             actualSponsorId = topUser.userId; 
-//             console.log(`[SYSTEM ATTACH] Fake Sponsor (${sponsorId}) used. Redirecting to Top Earning ID: ${topUser.userId}`);
-//         } else {
-//             console.log(`⚠️ WARNING: Top ID ${SYSTEM_TOP_ID} not found in database!`);
-//         }
-//     }
-
-//     // 🛡️ SMART REGISTRATION LIMIT
-//     const isLocalIP = userIP === '127.0.0.1' || userIP === '::1';
-//     if (!isLocalIP) {
-//         const rule = await IpRule.findOne({ ipAddress: userIP });
-//         if (rule && rule.isBlocked) {
-//             return res.status(403).json({ message: "Access Denied: Your IP has been blocked by the Administrator." });
-//         }
-//     }
-
-//     // 🚀 DEVICE FINGERPRINT CHECK
-//     if (deviceId) {
-//         const isDeviceBlocked = await BlockedDevice.findOne({ deviceId });
-//         if (isDeviceBlocked) {
-//             return res.status(403).json({ message: "Access Denied: Your device has been blocked due to a policy violation." });
-//         }
-//     }
-
-//     // ✨ Unique ID Generator
-//     let newUserId;
-//     let isUniqueId = false;
-//     while (!isUniqueId) {
-//         newUserId = await generateUserId(); 
-//         const existsInFake = await FakeUser.exists({ userId: newUserId });
-//         const existsInReal = await User.exists({ userId: newUserId });
-//         if (!existsInFake && !existsInReal) {
-//             isUniqueId = true;
-//         }
-//     }
-
-//     // 🔥 AUTO GENERATE PASSWORD
-//     const generatedPassword = generateRandomPassword(8); // 8 character ka strong mix password
-
-//     // User Creation
-//     const user = new User({
-//       userId: newUserId, 
-//       name, mobile, email, country,
-//       password: generatedPassword, 
-//       transactionPassword: generatedPassword, // Same password dono ke liye
-//       sponsorId: actualSponsorId, 
-//       walletAddress: walletAddress, 
-//       role: 'user',
-//       ipAddress: userIP,
-//       deviceId: deviceId || null 
-//     });
-
-//     await user.save();
-
-//     // 👉 EMAIL TEMPLATE (Active)
-//     try {
-//         await sendEmail({
-//             email: user.email,
-//             subject: '🎉 Welcome to Crowd One!',
-//             html: `
-//             <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: 1px solid #eaeaea;">
-//                 <div style="background-color: #2b4450; padding: 40px 20px; text-align: center; color: #ffffff;">
-//                     <h1 style="margin: 0; font-size: 28px; font-weight: bold;">🚀 Welcome to Crowd One</h1>
-//                     <p style="margin: 10px 0 0 0; font-size: 15px; color: #cccccc;">Your journey to financial growth starts here</p>
-//                 </div>
-//                 <div style="padding: 40px 30px; color: #333333;">
-//                     <p style="font-size: 16px; margin-top: 0; margin-bottom: 15px;">Hello <strong>${user.name}</strong>,</p>
-//                     <p style="font-size: 15px; line-height: 1.6; color: #555555; margin-bottom: 20px;">
-//                         Congratulations! Your account has been successfully created. Get ready to build your global network, unlock exciting <strong> Crowd Donation Earning rewards</strong>, and track your daily growth with our secure platform. We are thrilled to have you on board! 🌟
-//                     </p>
-//                     <p style="font-size: 15px; line-height: 1.6; color: #555555; margin-bottom: 30px;">
-//                         Please find your confidential login details below:
-//                     </p>
-//                     <div style="background-color: #f8f9fa; padding: 25px; border-radius: 10px; margin-bottom: 35px; border-left: 4px solid #1e88e5;">
-//                         <p style="margin: 0 0 15px 0; font-size: 16px; color: #333;">
-//                             <span style="display: inline-block; width: 25px;">👤</span> <strong>User ID:</strong> ${user.userId}
-//                         </p>
-//                         <p style="margin: 0 0 15px 0; font-size: 16px; color: #333;">
-//                             <span style="display: inline-block; width: 25px;">🔑</span> <strong>Login Password:</strong> ${user.password}
-//                         </p>
-//                         <p style="margin: 0; font-size: 16px; color: #333;">
-//                             <span style="display: inline-block; width: 25px;">🛡️</span> <strong>Transaction Password:</strong> ${user.transactionPassword}
-//                         </p>
-//                     </div>
-//                     <div style="text-align: center; margin-bottom: 40px;">
-//                         <a href="https://crowdone.world/login" style="display: inline-block; background-color: #1e88e5; color: #ffffff; text-decoration: none; padding: 14px 30px; border-radius: 6px; font-size: 16px; font-weight: bold; box-shadow: 0 4px 6px rgba(30,136,229,0.3);">🔐 Login to Dashboard</a>
-//                     </div>
-//                     <p style="font-size: 14px; color: #d32f2f; margin: 0; background-color: #ffebee; padding: 12px; border-radius: 6px;">
-//                         ⚠️ <strong>Security Alert:</strong> Please do not share your login or transaction passwords with anyone for your account's safety.
-//                     </p>
-//                 </div>
-//                 <div style="background-color: #1a1a1a; padding: 20px; text-align: center; color: #888888; font-size: 13px;">
-//                     © 2026 Crowd One. All rights reserved.<br>
-//                     <span style="font-size: 11px;">This is an automated message, please do not reply to this email.</span>
-//                 </div>
-//             </div>
-//             ` 
-//         });
-//     } catch (emailErr) { 
-//         console.error("Email failed:", emailErr); 
-//     }
-
-//     res.status(201).json({ 
-//         message: 'User registered successfully. Password sent to email.', 
-//         userId: user.userId, 
-//         name: user.name, 
-//         password: user.password // Abhi bhi popup ke liye bhej rahe hain
-//     });
-
-//   } catch (err) {
-//     console.error('Register error:', err);
-//     res.status(500).json({ message: 'Server error.' });
-//   }
-// });
-
-// ====================== LOGIN ======================
-
-
-
-// router.post('/register', checkFeature('allowRegistrations'), async (req, res) => {
-//   try {
-//     // 🔥 Frontend se ab password nahi aayega, sirf ye details aayengi
-//     let { name, mobile, email, country, sponsorId, deviceId, walletAddress } = req.body;
-//     const userIP = getClientIP(req);
-
-//     // 🔥 SECURITY LAYER 0: Remove extra spaces (trim)
-//     name = name ? name.trim() : '';
-//     mobile = mobile ? mobile.trim() : '';
-//     email = email ? email.trim() : '';
-//     walletAddress = walletAddress ? walletAddress.trim() : ''; 
-
-//     // 🔥 1. STRICT NAME VALIDATION
-//     const nameRegex = /^[A-Za-z\s]{3,50}$/;
-//     if (!name || !nameRegex.test(name)) {
-//         return res.status(400).json({ message: 'Invalid Name. Only alphabets are allowed (No symbols or numbers).' });
-//     }
-
-//     // 🔥 2. STRICT MOBILE VALIDATION
-//     const mobileRegex = /^[0-9]{10,15}$/;
-//     if (!mobile || !mobileRegex.test(mobile)) {
-//         return res.status(400).json({ message: 'Invalid Mobile Number.' });
-//     }
-
-//     // 🔥 3. EMAIL CHECK
-//     if (!email || !email.toLowerCase().endsWith('@gmail.com')) {
-//         return res.status(400).json({ message: 'Registration failed: Only @gmail.com emails are accepted.' });
-//     }
-
-//     // 🔥 4. USDT BEP20 WALLET VALIDATION (Flexible Length)
-//     if (!walletAddress) {
-//         return res.status(400).json({ message: 'USDT BEP20 Withdrawal Address is compulsory.' });
-//     }
-//     if (!/^0x[a-fA-F0-9]{28,48}$/.test(walletAddress)) {
-//         return res.status(400).json({ message: 'Invalid USDT BEP20 Address format. It must start with 0x and be valid length.' });
-//     }
-
-//     // 🔥 FIX: Sponsor ID ka check laga diya taaki "NaN" error na aaye
-//     if (!sponsorId || isNaN(sponsorId)) {
-//         return res.status(400).json({ message: 'Sponsor ID is compulsory and must be a valid number.' });
-//     }
-
-//     // 🔥 5. SPONSOR CHECK LOGIC (Real and Fake)
-//     let actualSponsorId = parseInt(sponsorId);
-//     let sponsorExists = await User.findOne({ userId: actualSponsorId });
-//     let isFakeSponsor = false;
-
-//     if (!sponsorExists) {
-//          sponsorExists = await FakeUser.findOne({ userId: actualSponsorId });
-//         if (sponsorExists) {
-//             isFakeSponsor = true; 
-//         }
-//     }
-
-//     if (!sponsorExists) return res.status(400).json({ message: 'Invalid Sponsor ID.' });
-
-//     if (!isFakeSponsor && sponsorExists.isSponsorDeactivated) {
-//         return res.status(403).json({ message: 'Policy violation: The provided sponsor link is invalid or deactivated.' });    
-//     }
-
-//     // ✨ Fake Sponsor Logic
-//     if (isFakeSponsor) {
-//         const SYSTEM_TOP_ID = 100000; 
-//         const topUser = await User.findOne({ userId: SYSTEM_TOP_ID }); 
-//         if (topUser) {
-//             actualSponsorId = topUser.userId; 
-//             console.log(`[SYSTEM ATTACH] Fake Sponsor (${sponsorId}) used. Redirecting to Top Earning ID: ${topUser.userId}`);
-//         } else {
-//             console.log(`⚠️ WARNING: Top ID ${SYSTEM_TOP_ID} not found in database!`);
-//         }
-//     }
-
-//     // 🛡️ SMART REGISTRATION LIMIT
-//     const isLocalIP = userIP === '127.0.0.1' || userIP === '::1';
-//     if (!isLocalIP) {
-//         const rule = await IpRule.findOne({ ipAddress: userIP });
-//         if (rule && rule.isBlocked) {
-//             return res.status(403).json({ message: "Access Denied: Your IP has been blocked by the Administrator." });
-//         }
-//     }
-
-//     // 🚀 DEVICE FINGERPRINT CHECK
-//     if (deviceId) {
-//         const isDeviceBlocked = await BlockedDevice.findOne({ deviceId });
-//         if (isDeviceBlocked) {
-//             return res.status(403).json({ message: "Access Denied: Your device has been blocked due to a policy violation." });
-//         }
-//     }
-
-//     // ✨ Unique ID Generator
-//     let newUserId;
-//     let isUniqueId = false;
-//     while (!isUniqueId) {
-//         newUserId = await generateUserId(); 
-//         const existsInFake = await FakeUser.exists({ userId: newUserId });
-//         const existsInReal = await User.exists({ userId: newUserId });
-//         if (!existsInFake && !existsInReal) {
-//             isUniqueId = true;
-//         }
-//     }
-
-//     // 🔥 AUTO GENERATE PASSWORD
-//     const generatedPassword = generateRandomPassword(8); // 8 character ka strong mix password
-
-//     // User Creation
-//     const user = new User({
-//       userId: newUserId, 
-//       name, mobile, email, country,
-//       password: generatedPassword, 
-//       transactionPassword: generatedPassword, // Same password dono ke liye
-//       sponsorId: actualSponsorId, 
-//       walletAddress: walletAddress, 
-//       role: 'user',
-//       ipAddress: userIP,
-//       deviceId: deviceId || null 
-//     });
-
-//     await user.save();
-
-//     // 👉 EMAIL TEMPLATE (Active)
-//     try {
-//         await sendEmail({
-//             email: user.email,
-//             subject: '🎉 Welcome to Crowd One!',
-//             html: `
-//             <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: 1px solid #eaeaea;">
-//                 <div style="background-color: #2b4450; padding: 40px 20px; text-align: center; color: #ffffff;">
-//                     <h1 style="margin: 0; font-size: 28px; font-weight: bold;">🚀 Welcome to Crowd One</h1>
-//                     <p style="margin: 10px 0 0 0; font-size: 15px; color: #cccccc;">Your journey to financial growth starts here</p>
-//                 </div>
-//                 <div style="padding: 40px 30px; color: #333333;">
-//                     <p style="font-size: 16px; margin-top: 0; margin-bottom: 15px;">Hello <strong>${user.name}</strong>,</p>
-//                     <p style="font-size: 15px; line-height: 1.6; color: #555555; margin-bottom: 20px;">
-//                         Congratulations! Your account has been successfully created. Get ready to build your global network, unlock exciting <strong> Crowd Donation Earning rewards</strong>, and track your daily growth with our secure platform. We are thrilled to have you on board! 🌟
-//                     </p>
-//                     <p style="font-size: 15px; line-height: 1.6; color: #555555; margin-bottom: 30px;">
-//                         Please find your confidential login details below:
-//                     </p>
-//                     <div style="background-color: #f8f9fa; padding: 25px; border-radius: 10px; margin-bottom: 35px; border-left: 4px solid #1e88e5;">
-//                         <p style="margin: 0 0 15px 0; font-size: 16px; color: #333;">
-//                             <span style="display: inline-block; width: 25px;">👤</span> <strong>User ID:</strong> ${user.userId}
-//                         </p>
-//                         <p style="margin: 0 0 15px 0; font-size: 16px; color: #333;">
-//                             <span style="display: inline-block; width: 25px;">🔑</span> <strong>Login Password:</strong> ${user.password}
-//                         </p>
-//                         <p style="margin: 0; font-size: 16px; color: #333;">
-//                             <span style="display: inline-block; width: 25px;">🛡️</span> <strong>Transaction Password:</strong> ${user.transactionPassword}
-//                         </p>
-//                     </div>
-//                     <div style="text-align: center; margin-bottom: 40px;">
-//                         <a href="https://crowdone.world/login" style="display: inline-block; background-color: #1e88e5; color: #ffffff; text-decoration: none; padding: 14px 30px; border-radius: 6px; font-size: 16px; font-weight: bold; box-shadow: 0 4px 6px rgba(30,136,229,0.3);">🔐 Login to Dashboard</a>
-//                     </div>
-//                     <p style="font-size: 14px; color: #d32f2f; margin: 0; background-color: #ffebee; padding: 12px; border-radius: 6px;">
-//                         ⚠️ <strong>Security Alert:</strong> Please do not share your login or transaction passwords with anyone for your account's safety.
-//                     </p>
-//                 </div>
-//                 <div style="background-color: #1a1a1a; padding: 20px; text-align: center; color: #888888; font-size: 13px;">
-//                     © 2026 Crowd One. All rights reserved.<br>
-//                     <span style="font-size: 11px;">This is an automated message, please do not reply to this email.</span>
-//                 </div>
-//             </div>
-//             ` 
-//         });
-//     } catch (emailErr) { 
-//         console.error("Email failed:", emailErr); 
-//     }
-
-//     res.status(201).json({ 
-//         message: 'User registered successfully. Password sent to email.', 
-//         userId: user.userId, 
-//         name: user.name, 
-//         password: user.password // Abhi bhi popup ke liye bhej rahe hain
-//     });
-
-//   } catch (err) {
-//     console.error('Register error:', err);
-//     res.status(500).json({ message: 'Server error.' });
-//   }
-// });
-
-
 
 // 🔥 Numeric-only password generator (replaces the old alphanumeric generateRandomPassword)
 // Generates an N-digit numeric string, e.g. "48213967"
@@ -621,6 +55,219 @@ function generateNumericPassword(length = 8) {
   }
   return password;
 }
+
+// router.post('/register', checkFeature('allowRegistrations'), async (req, res) => {
+//   try {
+//     // 🔥 Frontend se ab password nahi aayega, sirf ye details aayengi
+//     // 🔥 walletAddress hata diya gaya hai (ab required nahi hai)
+//     // 🔥 hp (honeypot) aur formLoadedAt anti-bot fields
+//     let { name, mobile, email, country, sponsorId, deviceId, hp, formLoadedAt } = req.body;
+//     const userIP = getClientIP(req);
+
+//     // 🛡️ ANTI-BOT CHECK 1: Honeypot field must be empty.
+//     if (hp && hp.trim() !== '') {
+//       console.log(`[ANTI-BOT] Honeypot triggered from IP: ${userIP}`);
+//       return res.status(400).json({ message: 'Registration failed. Please try again.' });
+//     }
+
+//     // 🛡️ ANTI-BOT CHECK 2: Timing check.
+//     if (formLoadedAt) {
+//       const elapsed = Date.now() - Number(formLoadedAt);
+//       if (isNaN(elapsed) || elapsed < 2500) {
+//         console.log(`[ANTI-BOT] Submission too fast (${elapsed}ms) from IP: ${userIP}`);
+//         return res.status(400).json({ message: 'Please take a moment to fill the form before submitting.' });
+//       }
+//       if (elapsed > 60 * 60 * 1000) {
+//         return res.status(400).json({ message: 'Form expired. Please refresh and try again.' });
+//       }
+//     }
+
+//     // 🔥 SECURITY LAYER 0: Remove extra spaces (trim)
+//     name = name ? name.trim() : '';
+//     mobile = mobile ? mobile.trim() : '';
+//     email = email ? email.trim() : '';
+
+//     // 🔥 1. STRICT NAME VALIDATION
+//     const nameRegex = /^[A-Za-z\s]{3,50}$/;
+//     if (!name || !nameRegex.test(name)) {
+//         return res.status(400).json({ message: 'Invalid Name. Only alphabets are allowed (No symbols or numbers).' });
+//     }
+
+//     // 🔥 2. STRICT MOBILE VALIDATION
+//     const mobileRegex = /^[0-9]{10,15}$/;
+//     if (!mobile || !mobileRegex.test(mobile)) {
+//         return res.status(400).json({ message: 'Invalid Mobile Number.' });
+//     }
+
+//     // 🔥 3. EMAIL CHECK
+//     if (!email || !email.toLowerCase().endsWith('@gmail.com')) {
+//         return res.status(400).json({ message: 'Registration failed: Only @gmail.com emails are accepted.' });
+//     }
+
+//     // 🔥 4. SPONSOR CHECK LOGIC (MANDATORY SPONSOR)
+//     // 👉 Bina Sponsor ID ke registration allow NAHI hoga
+//     if (!sponsorId || sponsorId.toString().trim() === '') {
+//         return res.status(400).json({ message: 'Sponsor ID is strictly required for registration.' });
+//     }
+
+//     let actualSponsorId = parseInt(sponsorId);
+//     let isFakeSponsor = false;
+
+//     if (isNaN(actualSponsorId)) {
+//         return res.status(400).json({ message: 'Invalid Sponsor ID format. It must be a number.' });
+//     }
+
+//     let sponsorExists = await User.findOne({ userId: actualSponsorId });
+
+//     if (!sponsorExists) {
+//          sponsorExists = await FakeUser.findOne({ userId: actualSponsorId });
+//         if (sponsorExists) {
+//             isFakeSponsor = true; 
+//         }
+//     }
+
+//     if (!sponsorExists) return res.status(400).json({ message: 'Invalid Sponsor ID.' });
+
+//     if (!isFakeSponsor && sponsorExists.isSponsorDeactivated) {
+//         return res.status(403).json({ message: 'Policy violation: The provided sponsor link is invalid or deactivated.' });    
+//     }
+
+//     // ✨ Fake Sponsor Logic
+//     if (isFakeSponsor) {
+//         const SYSTEM_TOP_ID = 100000; 
+//         const topUser = await User.findOne({ userId: SYSTEM_TOP_ID }); 
+//         if (topUser) {
+//             actualSponsorId = topUser.userId; 
+//             console.log(`[SYSTEM ATTACH] Fake Sponsor (${sponsorId}) used. Redirecting to Top Earning ID: ${topUser.userId}`);
+//         } else {
+//             console.log(`⚠️ WARNING: Top ID ${SYSTEM_TOP_ID} not found in database!`);
+//         }
+//     }
+
+//     // 🛡️ SMART REGISTRATION LIMIT
+//     const isLocalIP = userIP === '127.0.0.1' || userIP === '::1';
+//     if (!isLocalIP) {
+//         const rule = await IpRule.findOne({ ipAddress: userIP });
+//         if (rule && rule.isBlocked) {
+//             return res.status(403).json({ message: "Access Denied: Your IP has been blocked by the Administrator." });
+//         }
+//     }
+
+//     // 🚀 DEVICE FINGERPRINT CHECK
+//     if (deviceId) {
+//         const isDeviceBlocked = await BlockedDevice.findOne({ deviceId });
+//         if (isDeviceBlocked) {
+//             return res.status(403).json({ message: "Access Denied: Your device has been blocked due to a policy violation." });
+//         }
+//     }
+
+//     // ✨ Unique ID Generator
+//     let newUserId;
+//     let isUniqueId = false;
+//     while (!isUniqueId) {
+//         newUserId = await generateUserId(); 
+//         const existsInFake = await FakeUser.exists({ userId: newUserId });
+//         const existsInReal = await User.exists({ userId: newUserId });
+//         if (!existsInFake && !existsInReal) {
+//             isUniqueId = true;
+//         }
+//     }
+
+//     // 🔥 AUTO GENERATE NUMERIC-ONLY PASSWORD (8 digits, e.g. "48213967")
+//     const generatedPassword = generateNumericPassword(8);
+
+//     // User Creation (walletAddress removed)
+//     const user = new User({
+//       userId: newUserId, 
+//       name, mobile, email, country,
+//       password: generatedPassword, 
+//       transactionPassword: generatedPassword, // Same password dono ke liye
+//       sponsorId: actualSponsorId, // Mandatory Sponsor ID saved here
+//       role: 'user',
+//       ipAddress: userIP,
+//       deviceId: deviceId || null 
+//     });
+
+//     await user.save();
+
+//     // 👉 EMAIL TEMPLATE (Active)
+//     try {
+//        await sendEmail({
+//     email: user.email,
+//     subject: '🎉 Welcome to Crowd One - Your Success Starts Here',
+//     html: `
+//     <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #d4af37; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+        
+//         <!-- Header: Premium Dark Navy -->
+//         <div style="background-color: #020b1c; padding: 40px 20px; text-align: center; border-bottom: 3px solid #d4af37;">
+//             <h1 style="margin: 0; font-size: 28px; font-weight: 900; color: #d4af37; text-transform: uppercase; letter-spacing: 2px;">CROWD ONE</h1>
+//             <p style="margin: 8px 0 0 0; font-size: 14px; color: #ffffff; opacity: 0.8; letter-spacing: 1px;">TOGETHER, WE GROW</p>
+//         </div>
+
+//         <!-- Body Content -->
+//         <div style="padding: 40px 30px; color: #333333;">
+//             <h2 style="margin-top: 0; color: #020b1c;">Welcome, ${user.name}!</h2>
+//             <p style="font-size: 16px; line-height: 1.6; color: #555555; margin-bottom: 20px;">
+//                 Congratulations! Your journey towards financial growth is officially active. You are now part of a secure, blockchain-based ecosystem designed to unlock <strong>Crowd Donation Earning rewards</strong>. 🌟
+//             </p>
+
+//             <!-- Credential Box: Professional Styling -->
+//             <div style="background-color: #f8f9fa; padding: 25px; border-radius: 12px; margin: 30px 0; border: 1px solid #e1e1e1; box-shadow: inset 0 0 10px rgba(0,0,0,0.05);">
+//                 <p style="margin: 0 0 15px 0; font-size: 15px;">
+//                     <span style="font-weight: bold; color: #020b1c;">👤 User ID:</span> 
+//                     <span style="font-family: monospace; background: #eee; padding: 2px 6px; border-radius: 4px;">${user.userId}</span>
+//                 </p>
+//                 <p style="margin: 0 0 15px 0; font-size: 15px;">
+//                     <span style="font-weight: bold; color: #020b1c;">🔑 Login Password:</span> 
+//                     <span style="font-family: monospace; background: #eee; padding: 2px 6px; border-radius: 4px;">${user.password}</span>
+//                 </p>
+//                 <p style="margin: 0; font-size: 15px;">
+//                     <span style="font-weight: bold; color: #020b1c;">🛡️ Transaction PIN:</span> 
+//                     <span style="font-family: monospace; background: #eee; padding: 2px 6px; border-radius: 4px;">${user.transactionPassword}</span>
+//                 </p>
+//             </div>
+
+//             <!-- Call to Action Button -->
+//             <div style="text-align: center; margin: 40px 0;">
+//                 <a href="https://crowdone.world/login" style="display: inline-block; background: linear-gradient(to right, #1e88e5, #1565c0); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 50px; font-size: 16px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 15px rgba(30,136,229,0.4);">
+//                     Login to Dashboard
+//                 </a>
+//             </div>
+
+//             <!-- Security Warning -->
+//             <div style="background-color: #fff3e0; border-left: 4px solid #d4af37; padding: 15px; border-radius: 4px;">
+//                 <p style="font-size: 13px; color: #856404; margin: 0; font-weight: bold;">
+//                     ⚠️ Security Alert: Keep these credentials confidential. Do not share your Transaction PIN with anyone.
+//                 </p>
+//             </div>
+//         </div>
+
+//         <!-- Footer -->
+//         <div style="background-color: #020b1c; padding: 20px; text-align: center; color: #ffffff; opacity: 0.7; font-size: 12px;">
+//             <p style="margin: 0;">© 2026 Crowd One. All rights reserved.</p>
+//             <p style="margin: 5px 0 0 0; font-size: 10px; text-transform: uppercase; letter-spacing: 1px;">Together, We Grow Stronger</p>
+//         </div>
+//     </div>
+//     `
+// });
+//     } catch (emailErr) { 
+//         console.error("Email failed:", emailErr); 
+//     }
+
+//     res.status(201).json({ 
+//         message: 'User registered successfully. Password sent to email.', 
+//         userId: user.userId, 
+//         name: user.name, 
+//         password: user.password // Abhi bhi popup ke liye bhej rahe hain
+//     });
+
+//   } catch (err) {
+//     console.error('Register error:', err);
+//     res.status(500).json({ message: 'Server error.' });
+//   }
+// });
+
+
 
 router.post('/register', checkFeature('allowRegistrations'), async (req, res) => {
   try {
@@ -671,7 +318,6 @@ router.post('/register', checkFeature('allowRegistrations'), async (req, res) =>
     }
 
     // 🔥 4. SPONSOR CHECK LOGIC (MANDATORY SPONSOR)
-    // 👉 Bina Sponsor ID ke registration allow NAHI hoga
     if (!sponsorId || sponsorId.toString().trim() === '') {
         return res.status(400).json({ message: 'Sponsor ID is strictly required for registration.' });
     }
@@ -687,6 +333,13 @@ router.post('/register', checkFeature('allowRegistrations'), async (req, res) =>
 
     if (!sponsorExists) {
          sponsorExists = await FakeUser.findOne({ userId: actualSponsorId });
+         
+         // 🔥 NAYA LOGIC: Agar ID DummyUser (Fake Deposit) ki hai, toh bhi usko valid maan lo
+         if (!sponsorExists) {
+             const DummyUser = require('../models/DummyUser'); // Dummy model ko call kiya
+             sponsorExists = await DummyUser.findOne({ userId: actualSponsorId });
+         }
+
         if (sponsorExists) {
             isFakeSponsor = true; 
         }
@@ -698,13 +351,13 @@ router.post('/register', checkFeature('allowRegistrations'), async (req, res) =>
         return res.status(403).json({ message: 'Policy violation: The provided sponsor link is invalid or deactivated.' });    
     }
 
-    // ✨ Fake Sponsor Logic
+    // ✨ Fake/Dummy Sponsor Logic (Idhar user Root ID ke neeche shift ho jayega)
     if (isFakeSponsor) {
         const SYSTEM_TOP_ID = 100000; 
         const topUser = await User.findOne({ userId: SYSTEM_TOP_ID }); 
         if (topUser) {
             actualSponsorId = topUser.userId; 
-            console.log(`[SYSTEM ATTACH] Fake Sponsor (${sponsorId}) used. Redirecting to Top Earning ID: ${topUser.userId}`);
+            console.log(`[SYSTEM ATTACH] Fake/Dummy Sponsor (${sponsorId}) used. Redirecting to Top Earning ID: ${topUser.userId}`);
         } else {
             console.log(`⚠️ WARNING: Top ID ${SYSTEM_TOP_ID} not found in database!`);
         }
@@ -739,16 +392,16 @@ router.post('/register', checkFeature('allowRegistrations'), async (req, res) =>
         }
     }
 
-    // 🔥 AUTO GENERATE NUMERIC-ONLY PASSWORD (8 digits, e.g. "48213967")
+    // 🔥 AUTO GENERATE NUMERIC-ONLY PASSWORD (8 digits)
     const generatedPassword = generateNumericPassword(8);
 
-    // User Creation (walletAddress removed)
+    // User Creation
     const user = new User({
       userId: newUserId, 
       name, mobile, email, country,
       password: generatedPassword, 
-      transactionPassword: generatedPassword, // Same password dono ke liye
-      sponsorId: actualSponsorId, // Mandatory Sponsor ID saved here
+      transactionPassword: generatedPassword, 
+      sponsorId: actualSponsorId, // ✅ Ye ab 100000 hoga agar sponsor dummy tha
       role: 'user',
       ipAddress: userIP,
       deviceId: deviceId || null 
@@ -756,14 +409,14 @@ router.post('/register', checkFeature('allowRegistrations'), async (req, res) =>
 
     await user.save();
 
-    // 👉 EMAIL TEMPLATE (Active)
+    // 👉 EMAIL TEMPLATE
     try {
        await sendEmail({
     email: user.email,
     subject: '🎉 Welcome to Crowd One - Your Success Starts Here',
     html: `
     <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #d4af37; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
-        
+
         <!-- Header: Premium Dark Navy -->
         <div style="background-color: #020b1c; padding: 40px 20px; text-align: center; border-bottom: 3px solid #d4af37;">
             <h1 style="margin: 0; font-size: 28px; font-weight: 900; color: #d4af37; text-transform: uppercase; letter-spacing: 2px;">CROWD ONE</h1>
@@ -777,7 +430,7 @@ router.post('/register', checkFeature('allowRegistrations'), async (req, res) =>
                 Congratulations! Your journey towards financial growth is officially active. You are now part of a secure, blockchain-based ecosystem designed to unlock <strong>Crowd Donation Earning rewards</strong>. 🌟
             </p>
 
-            <!-- Credential Box: Professional Styling -->
+            <!-- Credential Box -->
             <div style="background-color: #f8f9fa; padding: 25px; border-radius: 12px; margin: 30px 0; border: 1px solid #e1e1e1; box-shadow: inset 0 0 10px rgba(0,0,0,0.05);">
                 <p style="margin: 0 0 15px 0; font-size: 15px;">
                     <span style="font-weight: bold; color: #020b1c;">👤 User ID:</span> 
@@ -824,7 +477,7 @@ router.post('/register', checkFeature('allowRegistrations'), async (req, res) =>
         message: 'User registered successfully. Password sent to email.', 
         userId: user.userId, 
         name: user.name, 
-        password: user.password // Abhi bhi popup ke liye bhej rahe hain
+        password: user.password 
     });
 
   } catch (err) {
@@ -832,8 +485,6 @@ router.post('/register', checkFeature('allowRegistrations'), async (req, res) =>
     res.status(500).json({ message: 'Server error.' });
   }
 });
-
-
 
 router.post('/login', async (req, res) => {
   try {
